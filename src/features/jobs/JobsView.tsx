@@ -69,8 +69,9 @@ export const JobsView: React.FC<JobsViewProps> = ({ currentUser }) => {
   };
 
   return (
-    <div className="w-full flex flex-col bg-[#070A12] text-white flex-1 pb-28 select-none">
-      {/* Search Bar */}
+    <div className="w-full flex flex-col bg-[#070A12] text-white flex-1 pb-28 md:pb-12 select-none">
+      <div className="max-w-7xl mx-auto w-full flex flex-col flex-1">
+        {/* Search Bar */}
       <div className="p-4 pb-2">
         <div className="relative">
           <Search className="w-4 h-4 text-slate-400 absolute left-3.5 top-3" />
@@ -101,52 +102,54 @@ export const JobsView: React.FC<JobsViewProps> = ({ currentUser }) => {
         </div>
       </div>
 
-      {/* Jobs List */}
-      <div className="p-4 space-y-3">
+      {/* Jobs List (Responsive multi-column) */}
+      <div className="p-4 grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
         {filteredJobs.map((job) => {
           const isApplied = !!appliedJobs[job.id];
           return (
             <div
               key={job.id}
-              className="p-4 rounded-2xl bg-[#14192B] border border-white/5 hover:border-white/15 transition-all group"
+              className="p-4 rounded-2xl bg-[#14192B] border border-white/5 hover:border-white/15 transition-all group flex flex-col justify-between"
             >
-              <div className="flex items-start justify-between gap-3">
-                <div className="flex items-start gap-3">
-                  <SafeImage
-                    src={job.companyLogo}
-                    fallbackText={job.company}
-                    fallbackGradient="from-blue-900 to-indigo-950"
-                    alt={job.company}
-                    className="w-11 h-11 rounded-2xl object-cover ring-1 ring-white/10"
-                  />
-                  <div>
-                    <h4 className="font-bold text-sm text-white group-hover:text-cyan-300 transition-colors">
-                      {job.title}
-                    </h4>
-                    <p className="text-xs text-slate-400 mt-0.5">
-                      {job.company} • {job.location}
-                    </p>
-                    <p className="text-xs font-bold text-cyan-400 mt-1">{job.salaryRange}</p>
+              <div>
+                <div className="flex items-start justify-between gap-3">
+                  <div className="flex items-start gap-3">
+                    <SafeImage
+                      src={job.companyLogo}
+                      fallbackText={job.company}
+                      fallbackGradient="from-blue-900 to-indigo-950"
+                      alt={job.company}
+                      className="w-11 h-11 rounded-2xl object-cover ring-1 ring-white/10"
+                    />
+                    <div>
+                      <h4 className="font-bold text-sm text-white group-hover:text-cyan-300 transition-colors">
+                        {job.title}
+                      </h4>
+                      <p className="text-xs text-slate-400 mt-0.5">
+                        {job.company} • {job.location}
+                      </p>
+                      <p className="text-xs font-bold text-cyan-400 mt-1">{job.salaryRange}</p>
+                    </div>
                   </div>
-                </div>
 
-                {/* Badge tag */}
-                <div className="text-right shrink-0">
-                  <span
-                    className={`inline-block px-2.5 py-1 rounded-full text-[10px] font-bold ${
-                      job.jobType === 'Full-time'
-                        ? 'bg-emerald-500/20 text-emerald-400 border border-emerald-500/30'
-                        : 'bg-amber-500/20 text-amber-400 border border-amber-500/30'
-                    }`}
-                  >
-                    {job.jobType}
-                  </span>
-                  <p className="text-[10px] text-slate-500 mt-1">{job.createdAt}</p>
+                  {/* Badge tag */}
+                  <div className="text-right shrink-0">
+                    <span
+                      className={`inline-block px-2.5 py-1 rounded-full text-[10px] font-bold ${
+                        job.jobType === 'Full-time'
+                          ? 'bg-emerald-500/20 text-emerald-400 border border-emerald-500/30'
+                          : 'bg-amber-500/20 text-amber-400 border border-amber-500/30'
+                      }`}
+                    >
+                      {job.jobType}
+                    </span>
+                    <p className="text-[10px] text-slate-500 mt-1">{job.createdAt}</p>
+                  </div>
                 </div>
               </div>
 
               {/* Tags & Action */}
-              <div className="mt-3 pt-2.5 border-t border-white/5 flex items-center justify-between">
+              <div className="mt-4 pt-2.5 border-t border-white/5 flex items-center justify-between">
                 <div className="flex items-center gap-1.5 flex-wrap">
                   {job.tags.slice(0, 3).map((tag) => (
                     <span
@@ -173,6 +176,7 @@ export const JobsView: React.FC<JobsViewProps> = ({ currentUser }) => {
             </div>
           );
         })}
+      </div>
       </div>
 
       {/* Apply Modal with AI Note Assistant */}

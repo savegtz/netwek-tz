@@ -119,8 +119,9 @@ export const ShopMarketplace: React.FC<ShopMarketplaceProps> = ({
   };
 
   return (
-    <div className="w-full flex flex-col bg-[#070A12] text-white flex-1 pb-28 select-none">
-      {/* Search Bar & Cart Action */}
+    <div className="w-full flex flex-col bg-[#070A12] text-white flex-1 pb-28 md:pb-12 select-none">
+      <div className="max-w-7xl mx-auto w-full flex flex-col flex-1">
+        {/* Search Bar & Cart Action */}
       <div className="px-4 pt-3 pb-2 flex items-center gap-2">
         <div className="relative flex-1">
           <Search className="w-4 h-4 text-slate-400 absolute left-3.5 top-3" />
@@ -218,8 +219,8 @@ export const ShopMarketplace: React.FC<ShopMarketplaceProps> = ({
         </button>
       </div>
 
-      {/* 2-Column Product Grid (Matching Screenshot 4: Wireless Earbuds, Smart Watch) */}
-      <div className="p-5 pt-2 grid grid-cols-2 gap-3.5">
+      {/* 2-Column Product Grid on mobile, up to 6 columns on desktop */}
+      <div className="p-4 sm:p-5 pt-2 grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6 gap-3.5 sm:gap-4">
         {filteredProducts.map((product) => (
           <div
             key={product.id}
@@ -328,6 +329,8 @@ export const ShopMarketplace: React.FC<ShopMarketplaceProps> = ({
           </div>
         </div>
       )}
+
+      </div>
 
       {/* Cart Modal */}
       {isCartOpen && (

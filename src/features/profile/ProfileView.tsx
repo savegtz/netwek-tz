@@ -82,7 +82,8 @@ export const ProfileView: React.FC<ProfileViewProps> = ({
   };
 
   return (
-    <div className="w-full flex flex-col bg-[#0A0D18] text-white pb-24">
+    <div className="w-full flex flex-col bg-[#0A0D18] text-white pb-24 md:pb-12">
+      <div className="max-w-4xl mx-auto w-full flex flex-col">
       {/* Top Header Icons (Matching Stitch Screen 5: Users icon on left, Shield and Share on right) */}
       <div className="px-5 py-3 flex items-center justify-between">
         <button
@@ -205,8 +206,8 @@ export const ProfileView: React.FC<ProfileViewProps> = ({
         })}
       </div>
 
-      {/* 3x2 Grid of Media Items (Matching Stitch Screen 5) */}
-      <div className="p-2 grid grid-cols-3 gap-1.5">
+      {/* Responsive Grid of Media Items (3 columns mobile, up to 6 on desktop) */}
+      <div className="p-3 sm:p-4 grid grid-cols-3 sm:grid-cols-4 md:grid-cols-6 gap-2">
         {profilePosts.map((item) => (
           <div
             key={item.id}
@@ -230,6 +231,7 @@ export const ProfileView: React.FC<ProfileViewProps> = ({
             </div>
           </div>
         ))}
+      </div>
       </div>
     </div>
   );

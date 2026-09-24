@@ -130,8 +130,8 @@ export const Header: React.FC<HeaderProps> = ({
           )}
         </div>
 
-        {/* Center: Desktop Navigation Tabs (Hidden on mobile) */}
-        <nav className="hidden lg:flex items-center gap-1">
+        {/* Center: Desktop Navigation Tabs (Visible on tablet & desktop) */}
+        <nav className="hidden md:flex items-center gap-1">
           {mainTabs.map((item) => {
             const isActive = activeTab === item.id;
             return (
@@ -165,14 +165,17 @@ export const Header: React.FC<HeaderProps> = ({
           {/* Desktop Only: Preview Mode Toggle */}
           <button
             onClick={onToggleFrameMode}
-            className={`p-2 rounded-xl border transition-all text-xs hidden md:flex items-center gap-1 ${
-              isFrameMode
-                ? 'bg-cyan-500/15 border-cyan-500/30 text-cyan-300'
+            className={`p-2 rounded-xl border transition-all text-xs hidden md:flex items-center gap-1.5 ${
+              !isFrameMode
+                ? 'bg-cyan-500/20 border-cyan-400/40 text-cyan-300 shadow-sm'
                 : 'bg-white/5 border-white/10 text-slate-400 hover:text-white'
             }`}
-            title={isFrameMode ? 'Switch to Full Screen layout' : 'Switch to Smartphone Canvas layout'}
+            title={!isFrameMode ? 'Full Screen Web View (Active)' : 'Switch to Full Screen Web View'}
           >
-            {isFrameMode ? <Monitor className="w-4 h-4" /> : <Smartphone className="w-4 h-4" />}
+            {!isFrameMode ? <Monitor className="w-4 h-4 text-cyan-400" /> : <Smartphone className="w-4 h-4" />}
+            <span className="text-[11px] font-medium hidden lg:inline">
+              {!isFrameMode ? 'Web View' : 'Mobile View'}
+            </span>
           </button>
 
           {/* Notifications Bell */}

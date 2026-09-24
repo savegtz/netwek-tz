@@ -51,7 +51,8 @@ export const RideRequestView: React.FC<RideRequestViewProps> = ({ onBack }) => {
   };
 
   return (
-    <div className="w-full flex flex-col bg-[#070A12] text-white flex-1 pb-28 select-none">
+    <div className="w-full flex flex-col bg-[#070A12] text-white flex-1 pb-28 md:pb-12 select-none">
+      <div className="max-w-4xl mx-auto w-full flex flex-col flex-1">
       {/* Header */}
       <div className="p-4 flex items-center justify-between border-b border-white/5">
         <div className="flex items-center gap-2">
@@ -216,6 +217,7 @@ export const RideRequestView: React.FC<RideRequestViewProps> = ({ onBack }) => {
             </div>
           )}
         </div>
+      </div>
       </div>
     </div>
   );

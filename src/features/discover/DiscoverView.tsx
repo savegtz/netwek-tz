@@ -63,8 +63,9 @@ export const DiscoverView: React.FC<DiscoverViewProps> = ({
   ];
 
   return (
-    <div className="w-full flex flex-col bg-[#070A12] text-white flex-1 pb-28 select-none">
-      {/* Search Bar */}
+    <div className="w-full flex flex-col bg-[#070A12] text-white flex-1 pb-28 md:pb-12 select-none">
+      <div className="max-w-6xl mx-auto w-full flex flex-col flex-1">
+        {/* Search Bar */}
       <div className="p-4 pb-2">
         <div className="relative">
           <Search className="w-4 h-4 text-slate-400 absolute left-3.5 top-3" />
@@ -105,7 +106,7 @@ export const DiscoverView: React.FC<DiscoverViewProps> = ({
       </div>
 
       {/* 4 Category Tiles (Creators, Businesses, Communities, Products) */}
-      <div className="p-4 grid grid-cols-2 gap-3">
+      <div className="p-4 grid grid-cols-2 sm:grid-cols-4 gap-3 sm:gap-4">
         {categories.map((cat) => {
           const Icon = cat.icon;
           return (
@@ -139,8 +140,8 @@ export const DiscoverView: React.FC<DiscoverViewProps> = ({
         </button>
       </div>
 
-      {/* Trending List (Tech World, Local Food, Job Opportunities, Travel & Adventure) */}
-      <div className="p-4 space-y-2.5">
+      {/* Trending List (Responsive 2-column on desktop) */}
+      <div className="p-4 grid grid-cols-1 md:grid-cols-2 gap-3">
         {trendingItems.map((item) => (
           <button
             key={item.id}
@@ -165,6 +166,7 @@ export const DiscoverView: React.FC<DiscoverViewProps> = ({
             <ChevronRight className="w-4 h-4 text-slate-500 group-hover:text-white transition-colors" />
           </button>
         ))}
+      </div>
       </div>
     </div>
   );

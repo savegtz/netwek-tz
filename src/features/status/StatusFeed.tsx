@@ -74,7 +74,8 @@ export const StatusFeed: React.FC<StatusFeedProps> = ({
   };
 
   return (
-    <div className="w-full flex flex-col bg-[#070A12] text-white flex-1 pb-24 select-none">
+    <div className="w-full flex flex-col bg-[#070A12] text-white flex-1 pb-24 md:pb-10 select-none">
+      <div className="max-w-4xl mx-auto w-full flex flex-col flex-1">
       {/* Stories Horizontal Row */}
       <div className="px-3 pt-2 pb-2 border-b border-white/[0.04]">
         <div className="flex items-center gap-3 overflow-x-auto no-scrollbar py-1">
@@ -118,7 +119,7 @@ export const StatusFeed: React.FC<StatusFeedProps> = ({
       </div>
 
       {/* Main Status Story Card */}
-      <div className="p-3 sm:p-4 flex-1 flex flex-col">
+      <div className="p-3 sm:p-4 flex-1 flex flex-col max-w-xl mx-auto w-full">
         <div className="relative flex-1 rounded-[24px] sm:rounded-[28px] overflow-hidden bg-slate-900 border border-white/10 shadow-2xl flex flex-col justify-between min-h-[380px] sm:min-h-[440px]">
           {/* Background image */}
           <div className="absolute inset-0 z-0">
@@ -260,6 +261,7 @@ export const StatusFeed: React.FC<StatusFeedProps> = ({
             </div>
           </div>
         )}
+      </div>
       </div>
     </div>
   );

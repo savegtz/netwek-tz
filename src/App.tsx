@@ -9,6 +9,7 @@ import { doc, getDoc, setDoc } from 'firebase/firestore';
 import { auth, db } from './services/firebase/config';
 import { UserProfile, Conversation, StatusType } from './types';
 import { INITIAL_USER, INITIAL_CONVERSATIONS } from './services/seed/initialData';
+import { MessageSquare, Plus, Sparkles, ShieldCheck, Lock } from 'lucide-react';
 
 // Layout & Navigation Components
 import { Header } from './components/Header';
@@ -48,7 +49,7 @@ export default function App() {
   const [isNotificationsOpen, setIsNotificationsOpen] = useState(false);
   const [activeCallType, setActiveCallType] = useState<'video' | 'voice' | null>(null);
   const [createStatusType, setCreateStatusType] = useState<StatusType | 'ai' | null>(null);
-  const [isFrameMode, setIsFrameMode] = useState<boolean>(true); // Clean smartphone preview vs responsive full-width
+  const [isFrameMode, setIsFrameMode] = useState<boolean>(false); // Full-width responsive web view by default
 
   // Firebase Auth sync
   useEffect(() => {
@@ -124,8 +125,8 @@ export default function App() {
 
   return (
     <div className="h-[100dvh] w-full bg-[#06080F] text-slate-100 flex flex-col font-sans selection:bg-cyan-500 selection:text-white overflow-hidden">
-      {/* Top Application Header (Hidden inside active chat room for immersive full screen) */}
-      {!activeConversation && (
+      {/* Top Application Header (Hidden inside active chat room on mobile, always visible on desktop) */}
+      <div className={activeConversation && !isFrameMode ? 'hidden md:block' : 'block'}>
         <Header
           currentUser={currentUser}
           activeTab={activeTab}
@@ -141,47 +142,108 @@ export default function App() {
           onToggleFrameMode={() => setIsFrameMode(!isFrameMode)}
           unreadNotificationsCount={2}
         />
-      )}
+      </div>
 
       {/* Main View Area */}
-      <main className="flex-1 flex items-stretch justify-center overflow-hidden p-0 md:p-3">
+      <main className="flex-1 flex items-stretch justify-center overflow-hidden p-0">
         <div
           className={`w-full h-full flex flex-col overflow-hidden transition-all duration-300 ${
             isFrameMode
-              ? 'md:max-w-[430px] md:rounded-[32px] md:border md:border-white/10 md:shadow-2xl md:bg-[#0A0D18]'
-              : 'md:max-w-5xl md:rounded-2xl md:border md:border-white/10 md:shadow-xl md:bg-[#0A0D18]'
-          } bg-[#070A12]`}
+              ? 'md:max-w-[430px] md:my-auto md:h-[880px] md:rounded-[36px] md:border md:border-white/10 md:shadow-2xl md:bg-[#0A0D18]'
+              : 'w-full h-full bg-[#070A12]'
+          }`}
         >
           {/* Active View Container */}
           <div className="relative flex-1 flex flex-col overflow-y-auto overscroll-contain">
-            {/* View: Chats */}
+            {/* View: Chats (Responsive dual-pane on Web View, single-pane on mobile) */}
             {activeTab === 'chats' && (
-              <>
-                {activeConversation ? (
-                  activeConversation.isGroup ? (
-                    <GroupChatRoom
-                      conversation={activeConversation}
-                      currentUser={currentUser}
-                      onBack={() => setActiveConversation(null)}
-                      onStartCall={(type) => setActiveCallType(type)}
-                    />
-                  ) : (
-                    <ChatRoom
-                      conversation={activeConversation}
-                      currentUser={currentUser}
-                      onBack={() => setActiveConversation(null)}
-                      onStartCall={(type) => setActiveCallType(type)}
-                    />
-                  )
-                ) : (
+              <div className="w-full h-full flex flex-1 overflow-hidden">
+                {/* Left Pane: Chat List */}
+                <div
+                  className={`${
+                    activeConversation && !isFrameMode ? 'hidden md:flex' : 'flex'
+                  } ${
+                    isFrameMode
+                      ? 'w-full'
+                      : 'w-full md:w-80 lg:w-[380px] shrink-0 md:border-r md:border-white/[0.08]'
+                  } flex-col h-full bg-[#070A12] overflow-hidden`}
+                >
                   <ChatList
                     currentUser={currentUser}
+                    activeConversationId={activeConversation?.id}
                     onSelectConversation={(conv) => setActiveConversation(conv)}
                     onStartNewChat={() => setIsCreateMenuOpen(true)}
                     onOpenProfile={() => setActiveTab('profile')}
                   />
+                </div>
+
+                {/* Right Pane: Active Conversation or Desktop Empty State */}
+                {(!isFrameMode || activeConversation) && (
+                  <div
+                    className={`${
+                      !activeConversation && !isFrameMode ? 'hidden md:flex' : 'flex'
+                    } ${
+                      isFrameMode ? 'w-full' : 'flex-1'
+                    } flex-col h-full bg-[#080B16] overflow-hidden`}
+                  >
+                    {activeConversation ? (
+                      activeConversation.isGroup ? (
+                        <GroupChatRoom
+                          conversation={activeConversation}
+                          currentUser={currentUser}
+                          onBack={() => setActiveConversation(null)}
+                          onStartCall={(type) => setActiveCallType(type)}
+                        />
+                      ) : (
+                        <ChatRoom
+                          conversation={activeConversation}
+                          currentUser={currentUser}
+                          onBack={() => setActiveConversation(null)}
+                          onStartCall={(type) => setActiveCallType(type)}
+                        />
+                      )
+                    ) : (
+                      /* Desktop Web Chat Welcome Placeholder */
+                      <div className="w-full h-full flex flex-col items-center justify-center p-8 text-center bg-gradient-to-b from-[#080B16] via-[#090D1A] to-[#070A12]">
+                        <div className="relative mb-6">
+                          <div className="w-20 h-20 rounded-3xl bg-gradient-to-tr from-cyan-500/20 via-indigo-500/20 to-purple-500/20 border border-cyan-500/30 flex items-center justify-center shadow-2xl shadow-cyan-500/10">
+                            <MessageSquare className="w-10 h-10 text-cyan-400" />
+                          </div>
+                          <span className="absolute -bottom-1 -right-1 w-6 h-6 rounded-full bg-emerald-500/20 border border-emerald-400/40 text-emerald-400 flex items-center justify-center text-xs">
+                            ✓
+                          </span>
+                        </div>
+                        <h3 className="text-xl font-black text-white tracking-tight mb-2">
+                          Zenia Web Messenger
+                        </h3>
+                        <p className="text-xs sm:text-sm text-slate-400 max-w-md leading-relaxed mb-6">
+                          Chagua mazungumzo upande wa kushoto au anzisha mazungumzo mapya na marafiki, vikundi, au wauzaji wa sokoni.
+                        </p>
+                        <div className="flex flex-wrap items-center justify-center gap-3">
+                          <button
+                            onClick={() => setIsCreateMenuOpen(true)}
+                            className="px-4 py-2.5 rounded-xl bg-gradient-to-r from-cyan-400 to-blue-500 text-slate-950 font-bold text-xs shadow-lg shadow-cyan-500/20 hover:scale-105 active:scale-95 transition-all flex items-center gap-2"
+                          >
+                            <Plus className="w-4 h-4 stroke-[3]" />
+                            <span>Ujumbe Mpya (New Chat)</span>
+                          </button>
+                          <button
+                            onClick={() => setIsAIOpen(true)}
+                            className="px-4 py-2.5 rounded-xl bg-purple-500/15 hover:bg-purple-500/25 border border-purple-500/30 text-purple-200 font-semibold text-xs transition-all flex items-center gap-2"
+                          >
+                            <Sparkles className="w-4 h-4 text-purple-400" />
+                            <span>Zenia AI Assistant</span>
+                          </button>
+                        </div>
+                        <div className="mt-12 flex items-center gap-2 text-xs text-slate-500">
+                          <Lock className="w-3.5 h-3.5 text-cyan-400/80" />
+                          <span>Mazungumzo yamelindwa na usalama wa mwisho hadi mwisho (End-to-end Encrypted)</span>
+                        </div>
+                      </div>
+                    )}
+                  </div>
                 )}
-              </>
+              </div>
             )}
 
             {/* View: Status Stories */}
@@ -243,16 +305,18 @@ export default function App() {
             )}
           </div>
 
-          {/* Bottom Navigation (Hidden when chatting inside room to give maximum message space) */}
-          {!activeConversation && (
-            <BottomNav
-              activeTab={activeTab}
-              onSelectTab={(tab) => {
-                setActiveConversation(null);
-                setActiveTab(tab);
-              }}
-              onOpenCreateMenu={() => setIsCreateMenuOpen(true)}
-            />
+          {/* Bottom Navigation (Hidden on desktop in full web view, shown on mobile or phone canvas) */}
+          {(!activeConversation || isFrameMode) && (
+            <div className={!isFrameMode ? 'md:hidden' : 'block'}>
+              <BottomNav
+                activeTab={activeTab}
+                onSelectTab={(tab) => {
+                  setActiveConversation(null);
+                  setActiveTab(tab);
+                }}
+                onOpenCreateMenu={() => setIsCreateMenuOpen(true)}
+              />
+            </div>
           )}
         </div>
       </main>

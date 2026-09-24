@@ -19,6 +19,7 @@ import { SafeImage } from '../../components/SafeImage';
 
 interface ChatListProps {
   currentUser: UserProfile;
+  activeConversationId?: string;
   onSelectConversation: (conv: Conversation) => void;
   onStartNewChat: () => void;
   onOpenProfile?: () => void;
@@ -26,6 +27,7 @@ interface ChatListProps {
 
 export const ChatList: React.FC<ChatListProps> = ({
   currentUser,
+  activeConversationId,
   onSelectConversation,
   onStartNewChat,
   onOpenProfile,
@@ -118,7 +120,7 @@ export const ChatList: React.FC<ChatListProps> = ({
       </div>
 
       {/* Conversation List */}
-      <div className="flex-1 overflow-y-auto px-2 divide-y divide-white/[0.04] pb-28">
+      <div className="flex-1 overflow-y-auto px-2 divide-y divide-white/[0.04] pb-24 md:pb-6">
         {filteredConversations.map((conv) => {
           const otherUserId = conv.participants.find((p) => p !== currentUser.id);
           const otherUser = otherUserId && conv.participantDetails ? conv.participantDetails[otherUserId] : null;
@@ -127,12 +129,17 @@ export const ChatList: React.FC<ChatListProps> = ({
             ? conv.groupAvatar || '/assets/images/amina_avatar_1790280951312.jpg'
             : otherUser?.photoURL || '/assets/images/amina_avatar_1790280951312.jpg';
           const isOnline = otherUser?.isOnline;
+          const isSelected = activeConversationId === conv.id;
 
           return (
             <button
               key={conv.id}
               onClick={() => onSelectConversation(conv)}
-              className="w-full flex items-center gap-3.5 p-3 rounded-2xl hover:bg-white/[0.04] active:bg-white/[0.08] transition-all text-left group"
+              className={`w-full flex items-center gap-3.5 p-3 rounded-2xl transition-all text-left group ${
+                isSelected
+                  ? 'bg-cyan-500/15 border border-cyan-500/30 shadow-sm'
+                  : 'hover:bg-white/[0.04] active:bg-white/[0.08] border border-transparent'
+              }`}
             >
               {/* Avatar with status dot */}
               <div className="relative shrink-0">
@@ -141,7 +148,9 @@ export const ChatList: React.FC<ChatListProps> = ({
                   fallbackText={title}
                   fallbackGradient={conv.isGroup ? 'from-purple-800 to-indigo-900' : 'from-cyan-800 to-blue-900'}
                   alt={title || ''}
-                  className="w-12 h-12 rounded-full object-cover ring-2 ring-white/10 group-hover:ring-cyan-500/40 transition-all"
+                  className={`w-12 h-12 rounded-full object-cover ring-2 transition-all ${
+                    isSelected ? 'ring-cyan-400' : 'ring-white/10 group-hover:ring-cyan-500/40'
+                  }`}
                 />
                 {isOnline && (
                   <span className="absolute bottom-0 right-0 w-3 h-3 rounded-full bg-emerald-500 ring-2 ring-[#070A12]" />
@@ -156,7 +165,11 @@ export const ChatList: React.FC<ChatListProps> = ({
               {/* Chat details */}
               <div className="flex-1 min-w-0">
                 <div className="flex items-center justify-between gap-1 mb-0.5">
-                  <h4 className="font-semibold text-sm text-slate-100 truncate group-hover:text-cyan-300 transition-colors">
+                  <h4
+                    className={`font-semibold text-sm truncate transition-colors ${
+                      isSelected ? 'text-cyan-300 font-bold' : 'text-slate-100 group-hover:text-cyan-300'
+                    }`}
+                  >
                     {title}
                   </h4>
                   <span className="text-[11px] text-slate-400 shrink-0 font-medium">
@@ -189,7 +202,7 @@ export const ChatList: React.FC<ChatListProps> = ({
       {/* Floating Action Button (FAB) at bottom right */}
       <button
         onClick={onStartNewChat}
-        className="fixed sm:absolute bottom-22 right-4 p-3.5 rounded-full bg-gradient-to-tr from-indigo-500 via-purple-500 to-pink-500 text-white shadow-xl shadow-purple-500/40 hover:scale-105 active:scale-95 transition-all z-30"
+        className="absolute bottom-20 md:bottom-6 right-4 p-3.5 rounded-full bg-gradient-to-tr from-indigo-500 via-purple-500 to-pink-500 text-white shadow-xl shadow-purple-500/40 hover:scale-105 active:scale-95 transition-all z-30"
         title="Compose new message"
       >
         <Edit3 className="w-5 h-5 stroke-[2.5]" />

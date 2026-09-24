@@ -67,7 +67,8 @@ export const EventsView: React.FC<EventsViewProps> = ({ onBack }) => {
   };
 
   return (
-    <div className="w-full flex flex-col bg-[#070A12] text-white flex-1 pb-28 select-none">
+    <div className="w-full flex flex-col bg-[#070A12] text-white flex-1 pb-28 md:pb-12 select-none">
+      <div className="max-w-4xl mx-auto w-full flex flex-col flex-1">
       {/* Hero Banner (Matching Music Festival 2026 Screenshot Screen 9) */}
       <div className="relative h-64 w-full bg-black">
         <SafeImage
@@ -177,6 +178,7 @@ export const EventsView: React.FC<EventsViewProps> = ({ onBack }) => {
             )}
           </button>
         </div>
+      </div>
       </div>
 
       {/* Ticket QR Modal */}
