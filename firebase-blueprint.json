@@ -1,0 +1,240 @@
+{
+  "entities": {
+    "User": {
+      "title": "User",
+      "description": "User profile with personal, creator, or business details",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string", "maxLength": 128 },
+        "email": { "type": "string", "maxLength": 256 },
+        "displayName": { "type": "string", "maxLength": 100 },
+        "username": { "type": "string", "maxLength": 50, "pattern": "^[a-zA-Z0-9_]+$" },
+        "photoURL": { "type": "string", "maxLength": 1024 },
+        "bio": { "type": "string", "maxLength": 500 },
+        "accountType": { "type": "string", "enum": ["personal", "creator", "business", "organization"] },
+        "verified": { "type": "boolean" },
+        "followersCount": { "type": "number" },
+        "followingCount": { "type": "number" },
+        "postsCount": { "type": "number" },
+        "isOnline": { "type": "boolean" },
+        "lastSeen": { "type": "string" },
+        "createdAt": { "type": "string" }
+      },
+      "required": ["id", "email", "username", "displayName"]
+    },
+    "Conversation": {
+      "title": "Conversation",
+      "description": "Direct or group chat conversation metadata",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string", "maxLength": 128 },
+        "participants": { "type": "array" },
+        "isGroup": { "type": "boolean" },
+        "groupName": { "type": "string", "maxLength": 100 },
+        "groupAvatar": { "type": "string", "maxLength": 1024 },
+        "lastMessage": { "type": "string", "maxLength": 1000 },
+        "lastMessageSenderId": { "type": "string", "maxLength": 128 },
+        "updatedAt": { "type": "string" }
+      },
+      "required": ["id", "participants", "updatedAt"]
+    },
+    "Message": {
+      "title": "Message",
+      "description": "A message within a conversation",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string", "maxLength": 128 },
+        "conversationId": { "type": "string", "maxLength": 128 },
+        "senderId": { "type": "string", "maxLength": 128 },
+        "receiverId": { "type": "string", "maxLength": 128 },
+        "text": { "type": "string", "maxLength": 5000 },
+        "messageType": { "type": "string", "enum": ["text", "image", "video", "audio", "document", "location", "contact", "gif", "sticker"] },
+        "mediaUrl": { "type": "string", "maxLength": 2048 },
+        "fileName": { "type": "string", "maxLength": 256 },
+        "fileSize": { "type": "string", "maxLength": 50 },
+        "replyTo": { "type": "object" },
+        "reactions": { "type": "object" },
+        "readBy": { "type": "array" },
+        "createdAt": { "type": "string" }
+      },
+      "required": ["id", "conversationId", "senderId", "text", "messageType", "createdAt"]
+    },
+    "Status": {
+      "title": "Status",
+      "description": "Ephemeral 24h multimedia status story with rich interactions",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string", "maxLength": 128 },
+        "authorId": { "type": "string", "maxLength": 128 },
+        "authorName": { "type": "string", "maxLength": 100 },
+        "authorPhoto": { "type": "string", "maxLength": 1024 },
+        "type": { "type": "string", "maxLength": 50 },
+        "mediaUrl": { "type": "string", "maxLength": 2048 },
+        "text": { "type": "string", "maxLength": 1000 },
+        "location": { "type": "string", "maxLength": 100 },
+        "visibility": { "type": "string", "enum": ["public", "contacts", "close_friends"] },
+        "likesCount": { "type": "number" },
+        "commentsCount": { "type": "number" },
+        "sharesCount": { "type": "number" },
+        "metadata": { "type": "object" },
+        "createdAt": { "type": "string" },
+        "expiresAt": { "type": "string" }
+      },
+      "required": ["id", "authorId", "authorName", "type", "createdAt", "expiresAt"]
+    },
+    "Product": {
+      "title": "Product",
+      "description": "Marketplace item listing",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string", "maxLength": 128 },
+        "sellerId": { "type": "string", "maxLength": 128 },
+        "sellerName": { "type": "string", "maxLength": 100 },
+        "name": { "type": "string", "maxLength": 200 },
+        "description": { "type": "string", "maxLength": 3000 },
+        "price": { "type": "number" },
+        "currency": { "type": "string", "maxLength": 10 },
+        "images": { "type": "array" },
+        "category": { "type": "string", "maxLength": 50 },
+        "stock": { "type": "number" },
+        "rating": { "type": "number" },
+        "reviewsCount": { "type": "number" },
+        "status": { "type": "string", "enum": ["active", "sold_out", "draft"] },
+        "createdAt": { "type": "string" }
+      },
+      "required": ["id", "sellerId", "name", "price", "currency", "category"]
+    },
+    "Order": {
+      "title": "Order",
+      "description": "Marketplace purchase order",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string", "maxLength": 128 },
+        "buyerId": { "type": "string", "maxLength": 128 },
+        "sellerId": { "type": "string", "maxLength": 128 },
+        "items": { "type": "array" },
+        "totalAmount": { "type": "number" },
+        "currency": { "type": "string", "maxLength": 10 },
+        "status": { "type": "string", "enum": ["pending", "processing", "paid", "failed", "cancelled", "refunded"] },
+        "paymentMethod": { "type": "string", "maxLength": 50 },
+        "deliveryAddress": { "type": "string", "maxLength": 500 },
+        "createdAt": { "type": "string" }
+      },
+      "required": ["id", "buyerId", "sellerId", "totalAmount", "status", "createdAt"]
+    },
+    "Event": {
+      "title": "Event",
+      "description": "Music festivals, tech summits, community events",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string", "maxLength": 128 },
+        "hostId": { "type": "string", "maxLength": 128 },
+        "hostName": { "type": "string", "maxLength": 100 },
+        "title": { "type": "string", "maxLength": 200 },
+        "description": { "type": "string", "maxLength": 3000 },
+        "bannerUrl": { "type": "string", "maxLength": 2048 },
+        "date": { "type": "string", "maxLength": 100 },
+        "time": { "type": "string", "maxLength": 50 },
+        "location": { "type": "string", "maxLength": 200 },
+        "generalAdmissionPrice": { "type": "number" },
+        "vipPrice": { "type": "number" },
+        "currency": { "type": "string", "maxLength": 10 },
+        "createdAt": { "type": "string" }
+      },
+      "required": ["id", "hostId", "title", "date", "location"]
+    },
+    "Job": {
+      "title": "Job",
+      "description": "Job posting with requirements and salary range",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string", "maxLength": 128 },
+        "posterId": { "type": "string", "maxLength": 128 },
+        "title": { "type": "string", "maxLength": 200 },
+        "company": { "type": "string", "maxLength": 150 },
+        "location": { "type": "string", "maxLength": 150 },
+        "jobType": { "type": "string", "enum": ["Full-time", "Part-time", "Remote", "Contract"] },
+        "salaryRange": { "type": "string", "maxLength": 100 },
+        "description": { "type": "string", "maxLength": 3000 },
+        "tags": { "type": "array" },
+        "createdAt": { "type": "string" }
+      },
+      "required": ["id", "posterId", "title", "company", "location", "jobType"]
+    },
+    "Community": {
+      "title": "Community",
+      "description": "Community hub with discussions and channels",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string", "maxLength": 128 },
+        "name": { "type": "string", "maxLength": 150 },
+        "description": { "type": "string", "maxLength": 1000 },
+        "iconUrl": { "type": "string", "maxLength": 1024 },
+        "bannerUrl": { "type": "string", "maxLength": 1024 },
+        "category": { "type": "string", "maxLength": 100 },
+        "membersCount": { "type": "number" },
+        "createdBy": { "type": "string", "maxLength": 128 },
+        "createdAt": { "type": "string" }
+      },
+      "required": ["id", "name", "description", "createdBy"]
+    },
+    "Notification": {
+      "title": "Notification",
+      "description": "User notification alert",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string", "maxLength": 128 },
+        "userId": { "type": "string", "maxLength": 128 },
+        "title": { "type": "string", "maxLength": 200 },
+        "message": { "type": "string", "maxLength": 1000 },
+        "type": { "type": "string", "enum": ["message", "reaction", "follow", "comment", "status", "order", "event", "job", "system"] },
+        "read": { "type": "boolean" },
+        "avatar": { "type": "string", "maxLength": 1024 },
+        "createdAt": { "type": "string" }
+      },
+      "required": ["id", "userId", "title", "message", "type", "createdAt"]
+    }
+  },
+  "firestore": {
+    "/users/{userId}": {
+      "schema": { "$ref": "#/entities/User" },
+      "description": "User profile collection"
+    },
+    "/conversations/{conversationId}": {
+      "schema": { "$ref": "#/entities/Conversation" },
+      "description": "Chat conversations"
+    },
+    "/conversations/{conversationId}/messages/{messageId}": {
+      "schema": { "$ref": "#/entities/Message" },
+      "description": "Messages inside conversation"
+    },
+    "/statuses/{statusId}": {
+      "schema": { "$ref": "#/entities/Status" },
+      "description": "Status stories"
+    },
+    "/products/{productId}": {
+      "schema": { "$ref": "#/entities/Product" },
+      "description": "Marketplace products"
+    },
+    "/orders/{orderId}": {
+      "schema": { "$ref": "#/entities/Order" },
+      "description": "Shop orders"
+    },
+    "/events/{eventId}": {
+      "schema": { "$ref": "#/entities/Event" },
+      "description": "Events and ticketing"
+    },
+    "/jobs/{jobId}": {
+      "schema": { "$ref": "#/entities/Job" },
+      "description": "Job listings"
+    },
+    "/communities/{communityId}": {
+      "schema": { "$ref": "#/entities/Community" },
+      "description": "Communities"
+    },
+    "/notifications/{notificationId}": {
+      "schema": { "$ref": "#/entities/Notification" },
+      "description": "In-app notifications"
+    }
+  }
+}

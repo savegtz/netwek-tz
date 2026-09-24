@@ -1,0 +1,191 @@
+rules_version = '2';
+
+service cloud.firestore {
+  match /databases/{database}/documents {
+
+    function isSignedIn() {
+      return request.auth != null;
+    }
+
+    function isOwner(userId) {
+      return isSignedIn() && request.auth.uid == userId;
+    }
+
+    function isAdmin() {
+      return isSignedIn() && (
+        request.auth.token.email == 'savegamour@gmail.com' ||
+        exists(/databases/$(database)/documents/admins/$(request.auth.uid))
+      );
+    }
+
+    // Default catch-all
+    match /{document=**} {
+      allow read, write: if false;
+    }
+
+    // Users collection
+    match /users/{userId} {
+      allow read: if isSignedIn();
+      allow create: if isOwner(userId);
+      allow update: if isOwner(userId) || isAdmin();
+      allow delete: if isAdmin();
+    }
+
+    // Admins collection
+    match /admins/{adminId} {
+      allow read: if isSignedIn();
+      allow write: if isAdmin();
+    }
+
+    // Conversations
+    match /conversations/{conversationId} {
+      allow read: if isSignedIn() && (
+        resource == null ||
+        request.auth.uid in resource.data.participants ||
+        isAdmin()
+      );
+      allow create: if isSignedIn();
+      allow update: if isSignedIn() && (
+        request.auth.uid in resource.data.participants ||
+        isAdmin()
+      );
+      allow delete: if isAdmin();
+
+      match /messages/{messageId} {
+        allow read: if isSignedIn();
+        allow create: if isSignedIn();
+        allow update: if isSignedIn() && (
+          resource.data.senderId == request.auth.uid ||
+          isAdmin()
+        );
+        allow delete: if isSignedIn() && (
+          resource.data.senderId == request.auth.uid ||
+          isAdmin()
+        );
+      }
+    }
+
+    // Statuses
+    match /statuses/{statusId} {
+      allow read: if isSignedIn();
+      allow create: if isSignedIn() && request.resource.data.authorId == request.auth.uid;
+      allow update: if isSignedIn();
+      allow delete: if isSignedIn() && (
+        resource.data.authorId == request.auth.uid ||
+        isAdmin()
+      );
+    }
+
+    // Products
+    match /products/{productId} {
+      allow read: if true;
+      allow create: if isSignedIn() && request.resource.data.sellerId == request.auth.uid;
+      allow update: if isSignedIn() && (
+        resource.data.sellerId == request.auth.uid ||
+        isAdmin()
+      );
+      allow delete: if isSignedIn() && (
+        resource.data.sellerId == request.auth.uid ||
+        isAdmin()
+      );
+    }
+
+    // Orders
+    match /orders/{orderId} {
+      allow read: if isSignedIn() && (
+        resource.data.buyerId == request.auth.uid ||
+        resource.data.sellerId == request.auth.uid ||
+        isAdmin()
+      );
+      allow create: if isSignedIn() && request.resource.data.buyerId == request.auth.uid;
+      allow update: if isSignedIn() && (
+        resource.data.buyerId == request.auth.uid ||
+        resource.data.sellerId == request.auth.uid ||
+        isAdmin()
+      );
+      allow delete: if isAdmin();
+    }
+
+    // Events
+    match /events/{eventId} {
+      allow read: if true;
+      allow create: if isSignedIn();
+      allow update: if isSignedIn() && (
+        resource.data.hostId == request.auth.uid ||
+        isAdmin()
+      );
+      allow delete: if isSignedIn() && (
+        resource.data.hostId == request.auth.uid ||
+        isAdmin()
+      );
+    }
+
+    // Jobs
+    match /jobs/{jobId} {
+      allow read: if true;
+      allow create: if isSignedIn();
+      allow update: if isSignedIn() && (
+        resource.data.posterId == request.auth.uid ||
+        isAdmin()
+      );
+      allow delete: if isSignedIn() && (
+        resource.data.posterId == request.auth.uid ||
+        isAdmin()
+      );
+    }
+
+    // Communities
+    match /communities/{communityId} {
+      allow read: if true;
+      allow create: if isSignedIn();
+      allow update: if isSignedIn() && (
+        resource.data.createdBy == request.auth.uid ||
+        isAdmin()
+      );
+      allow delete: if isAdmin();
+
+      match /posts/{postId} {
+        allow read: if true;
+        allow create: if isSignedIn();
+        allow update: if isSignedIn();
+        allow delete: if isSignedIn() && (
+          resource.data.authorId == request.auth.uid ||
+          isAdmin()
+        );
+      }
+    }
+
+    // Notifications
+    match /notifications/{notificationId} {
+      allow read: if isSignedIn() && (resource.data.userId == request.auth.uid || isAdmin());
+      allow create: if isSignedIn();
+      allow update: if isSignedIn() && (resource.data.userId == request.auth.uid || isAdmin());
+      allow delete: if isSignedIn() && (resource.data.userId == request.auth.uid || isAdmin());
+    }
+
+    // Rides
+    match /rides/{rideId} {
+      allow read: if isSignedIn();
+      allow create: if isSignedIn();
+      allow update: if isSignedIn();
+      allow delete: if isAdmin();
+    }
+
+    // Wallets & Transactions
+    match /wallets/{walletId} {
+      allow read, write: if isSignedIn() && (walletId == request.auth.uid || isAdmin());
+    }
+
+    match /transactions/{transactionId} {
+      allow read: if isSignedIn() && (resource.data.userId == request.auth.uid || isAdmin());
+      allow create: if isSignedIn();
+      allow update: if isAdmin();
+      allow delete: if isAdmin();
+    }
+
+    // Test connection doc
+    match /test/{docId} {
+      allow read: if true;
+    }
+  }
+}

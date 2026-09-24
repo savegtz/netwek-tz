@@ -1,0 +1,9 @@
+{
+  "name": "Zenia",
+  "description": "Connect • Create • Discover • Earn — Your complete digital life in one place.",
+  "requestFramePermissions": [
+    "camera",
+    "microphone"
+  ],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}
