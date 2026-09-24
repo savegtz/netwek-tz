@@ -31,12 +31,23 @@ Kwa kuwa mradi una backend ya Express (`server.ts`) inayohudumia React frontend 
 
 5. **Environment Variables (Vigezo vya Mazingira)**:
    Kwenye sehemu ya *Environment Variables*, ongeza:
+   - `NODE_VERSION` = `22`
    - `NODE_ENV` = `production`
    - `GEMINI_API_KEY` = *(Weka Gemini API Key yako kwa ajili ya AI Assistant)*
 
 6. Bonyeza **"Create Web Service"**.
    - Render itapakua packages, itajenga build ya Vite (`npm run build`), na kisha itawasha server (`npm start`).
    - Baada ya dakika chache utapata link yako ya bure ya moja kwa moja (mfano `https://zenia-superapp.onrender.com`).
+
+---
+
+## Hitilafu Iliyokuwa Imekataa (ERESOLVE / npm install):
+Sababu iliyofanya Render ikatae hapo awali ilikuwa mgongano wa peer dependency (`ERESOLVE could not resolve esbuild` kati ya `esbuild` na `vite`).
+Maboresho yaliyofanyika:
+1. Tumeondoa mgongano wa `esbuild` uliokuwepo kwenye `package.json`.
+2. Tumezalisha faili rasmi la `package-lock.json` ili `npm install` kwenye Render ifanye kazi safi bila hitilafu yoyote.
+3. Tumeongeza `"engines": { "node": ">=20.0.0" }` na `NODE_VERSION=22` kwenye `render.yaml`.
+4. Sasa pakia (push) mabadiliko haya mapya kwenye GitHub, kisha kwenye Render bonyeza **Manual Deploy** -> **Deploy latest commit** (au **Clear build cache & deploy**).
 
 ---
 
