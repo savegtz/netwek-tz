@@ -104,137 +104,141 @@ export const WalletView: React.FC<WalletViewProps> = ({ onBack }) => {
         </span>
       </div>
 
-      {/* Main Balance Card (Matching Screenshot Screen 12: TZS 245,000) */}
-      <div className="p-4">
-        <div className="relative rounded-3xl p-6 bg-gradient-to-br from-[#151D33] via-[#161F3B] to-[#12182D] border border-white/10 shadow-2xl overflow-hidden">
-          <div className="absolute top-0 right-0 w-32 h-32 bg-cyan-500/15 rounded-full blur-2xl pointer-events-none" />
+      {/* Responsive Grid on Desktop */}
+      <div className="grid grid-cols-1 md:grid-cols-12 gap-5 p-4 flex-1">
+        {/* Left Column: Balance & Services */}
+        <div className="md:col-span-7 flex flex-col gap-5">
+          {/* Main Balance Card (Matching Screenshot Screen 12: TZS 245,000) */}
+          <div className="relative rounded-3xl p-6 bg-gradient-to-br from-[#151D33] via-[#161F3B] to-[#12182D] border border-white/10 shadow-2xl overflow-hidden">
+            <div className="absolute top-0 right-0 w-32 h-32 bg-cyan-500/15 rounded-full blur-2xl pointer-events-none" />
 
-          <div className="flex items-center gap-2.5 mb-2">
-            <div className="w-8 h-8 rounded-xl bg-cyan-500/20 border border-cyan-400/40 flex items-center justify-center text-cyan-300">
-              <CreditCard className="w-4 h-4" />
+            <div className="flex items-center gap-2.5 mb-2">
+              <div className="w-8 h-8 rounded-xl bg-cyan-500/20 border border-cyan-400/40 flex items-center justify-center text-cyan-300">
+                <CreditCard className="w-4 h-4" />
+              </div>
+              <span className="text-xs text-slate-400 font-medium">Available Balance</span>
             </div>
-            <span className="text-xs text-slate-400 font-medium">Available Balance</span>
-          </div>
 
-          <h2 className="text-3xl font-black text-white tracking-tight">
-            TZS {balance.toLocaleString()}
-          </h2>
+            <h2 className="text-3xl sm:text-4xl font-black text-white tracking-tight">
+              TZS {balance.toLocaleString()}
+            </h2>
 
-          {/* 4 Action Circles: Send, Receive, Pay, More */}
-          <div className="grid grid-cols-4 gap-2 mt-6">
-            <button
-              onClick={() => setIsSendModalOpen(true)}
-              className="flex flex-col items-center gap-1.5 group"
-            >
-              <div className="w-12 h-12 rounded-2xl bg-white/10 hover:bg-cyan-500/20 hover:border-cyan-400 border border-white/10 flex items-center justify-center transition-all group-hover:scale-105">
-                <ArrowUpRight className="w-5 h-5 text-cyan-300" />
-              </div>
-              <span className="text-[11px] font-medium text-slate-300">Send</span>
-            </button>
-
-            <button
-              onClick={() => {
-                const add = 20000;
-                setBalance((b) => b + add);
-                alert(`Top up simulated: +TZS ${add.toLocaleString()}`);
-              }}
-              className="flex flex-col items-center gap-1.5 group"
-            >
-              <div className="w-12 h-12 rounded-2xl bg-white/10 hover:bg-emerald-500/20 hover:border-emerald-400 border border-white/10 flex items-center justify-center transition-all group-hover:scale-105">
-                <ArrowDownLeft className="w-5 h-5 text-emerald-300" />
-              </div>
-              <span className="text-[11px] font-medium text-slate-300">Receive</span>
-            </button>
-
-            <button
-              onClick={() => setIsSendModalOpen(true)}
-              className="flex flex-col items-center gap-1.5 group"
-            >
-              <div className="w-12 h-12 rounded-2xl bg-white/10 hover:bg-purple-500/20 hover:border-purple-400 border border-white/10 flex items-center justify-center transition-all group-hover:scale-105">
-                <CreditCard className="w-5 h-5 text-purple-300" />
-              </div>
-              <span className="text-[11px] font-medium text-slate-300">Pay</span>
-            </button>
-
-            <button className="flex flex-col items-center gap-1.5 group">
-              <div className="w-12 h-12 rounded-2xl bg-white/10 hover:bg-white/15 border border-white/10 flex items-center justify-center transition-all group-hover:scale-105">
-                <MoreHorizontal className="w-5 h-5 text-slate-300" />
-              </div>
-              <span className="text-[11px] font-medium text-slate-300">More</span>
-            </button>
-          </div>
-        </div>
-      </div>
-
-      {/* Services Grid (Mobile Money, Bank Transfer, Buy Airtime, Pay Business, Pay Services) */}
-      <div className="px-4 py-2">
-        <h4 className="text-xs font-bold uppercase tracking-wider text-slate-400 mb-2.5">
-          Services
-        </h4>
-        <div className="grid grid-cols-5 gap-2">
-          {services.map((srv) => {
-            const Icon = srv.icon;
-            return (
+            {/* 4 Action Circles: Send, Receive, Pay, More */}
+            <div className="grid grid-cols-4 gap-2 mt-6">
               <button
-                key={srv.id}
                 onClick={() => setIsSendModalOpen(true)}
-                className="flex flex-col items-center gap-1.5 p-2 rounded-2xl bg-white/[0.03] hover:bg-white/[0.08] border border-white/5 transition-all text-center group"
+                className="flex flex-col items-center gap-1.5 group"
               >
-                <div className="w-10 h-10 rounded-xl bg-white/5 flex items-center justify-center group-hover:scale-110 transition-transform">
-                  <Icon className={`w-5 h-5 ${srv.color}`} />
+                <div className="w-12 h-12 rounded-2xl bg-white/10 hover:bg-cyan-500/20 hover:border-cyan-400 border border-white/10 flex items-center justify-center transition-all group-hover:scale-105">
+                  <ArrowUpRight className="w-5 h-5 text-cyan-300" />
                 </div>
-                <span className="text-[10px] font-medium text-slate-300 leading-tight">
-                  {srv.label}
-                </span>
+                <span className="text-[11px] font-medium text-slate-300">Send</span>
               </button>
-            );
-          })}
-        </div>
-      </div>
 
-      {/* Recent Transactions List (Matching Screenshot Screen 12) */}
-      <div className="p-4 flex-1">
-        <div className="flex items-center justify-between mb-3">
-          <h4 className="text-xs font-bold uppercase tracking-wider text-slate-400">
-            Recent Transactions
-          </h4>
-          <button className="text-[11px] text-cyan-400 hover:underline">View All</button>
-        </div>
-
-        <div className="space-y-2">
-          {transactions.map((tx) => {
-            const isPositive = tx.amount > 0;
-            return (
-              <div
-                key={tx.id}
-                className="p-3 rounded-2xl bg-[#14192B] border border-white/5 flex items-center justify-between"
+              <button
+                onClick={() => {
+                  const add = 20000;
+                  setBalance((b) => b + add);
+                  alert(`Top up simulated: +TZS ${add.toLocaleString()}`);
+                }}
+                className="flex flex-col items-center gap-1.5 group"
               >
-                <div className="flex items-center gap-3">
-                  <div
-                    className={`w-9 h-9 rounded-xl flex items-center justify-center font-bold ${
-                      isPositive
-                        ? 'bg-emerald-500/20 text-emerald-400'
-                        : 'bg-rose-500/20 text-rose-400'
+                <div className="w-12 h-12 rounded-2xl bg-white/10 hover:bg-emerald-500/20 hover:border-emerald-400 border border-white/10 flex items-center justify-center transition-all group-hover:scale-105">
+                  <ArrowDownLeft className="w-5 h-5 text-emerald-300" />
+                </div>
+                <span className="text-[11px] font-medium text-slate-300">Receive</span>
+              </button>
+
+              <button
+                onClick={() => setIsSendModalOpen(true)}
+                className="flex flex-col items-center gap-1.5 group"
+              >
+                <div className="w-12 h-12 rounded-2xl bg-white/10 hover:bg-purple-500/20 hover:border-purple-400 border border-white/10 flex items-center justify-center transition-all group-hover:scale-105">
+                  <CreditCard className="w-5 h-5 text-purple-300" />
+                </div>
+                <span className="text-[11px] font-medium text-slate-300">Pay</span>
+              </button>
+
+              <button className="flex flex-col items-center gap-1.5 group">
+                <div className="w-12 h-12 rounded-2xl bg-white/10 hover:bg-white/15 border border-white/10 flex items-center justify-center transition-all group-hover:scale-105">
+                  <MoreHorizontal className="w-5 h-5 text-slate-300" />
+                </div>
+                <span className="text-[11px] font-medium text-slate-300">More</span>
+              </button>
+            </div>
+          </div>
+
+          {/* Services Grid (Mobile Money, Bank Transfer, Buy Airtime, Pay Business, Pay Services) */}
+          <div className="p-4 rounded-3xl bg-[#101526]/80 border border-white/5">
+            <h4 className="text-xs font-bold uppercase tracking-wider text-slate-400 mb-3">
+              Services & Payments
+            </h4>
+            <div className="grid grid-cols-5 gap-2">
+              {services.map((srv) => {
+                const Icon = srv.icon;
+                return (
+                  <button
+                    key={srv.id}
+                    onClick={() => setIsSendModalOpen(true)}
+                    className="flex flex-col items-center gap-1.5 p-2 rounded-2xl bg-white/[0.03] hover:bg-white/[0.08] border border-white/5 transition-all text-center group"
+                  >
+                    <div className="w-10 h-10 rounded-xl bg-white/5 flex items-center justify-center group-hover:scale-110 transition-transform">
+                      <Icon className={`w-5 h-5 ${srv.color}`} />
+                    </div>
+                    <span className="text-[10px] font-medium text-slate-300 leading-tight">
+                      {srv.label}
+                    </span>
+                  </button>
+                );
+              })}
+            </div>
+          </div>
+        </div>
+
+        {/* Right Column: Recent Transactions */}
+        <div className="md:col-span-5 flex flex-col p-4 rounded-3xl bg-[#101526]/80 border border-white/5">
+          <div className="flex items-center justify-between mb-3">
+            <h4 className="text-xs font-bold uppercase tracking-wider text-slate-400">
+              Recent Transactions
+            </h4>
+            <button className="text-[11px] text-cyan-400 hover:underline">View All</button>
+          </div>
+
+          <div className="space-y-2 flex-1 overflow-y-auto max-h-[360px] md:max-h-none pr-0.5">
+            {transactions.map((tx) => {
+              const isPositive = tx.amount > 0;
+              return (
+                <div
+                  key={tx.id}
+                  className="p-3 rounded-2xl bg-[#14192B] hover:bg-[#181F36] border border-white/5 flex items-center justify-between transition-colors"
+                >
+                  <div className="flex items-center gap-3">
+                    <div
+                      className={`w-9 h-9 rounded-xl flex items-center justify-center font-bold ${
+                        isPositive
+                          ? 'bg-emerald-500/20 text-emerald-400'
+                          : 'bg-rose-500/20 text-rose-400'
+                      }`}
+                    >
+                      {isPositive ? '+' : '-'}
+                    </div>
+                    <div>
+                      <h5 className="font-semibold text-xs text-white">{tx.title}</h5>
+                      <p className="text-[10px] text-slate-400">{tx.timestamp}</p>
+                    </div>
+                  </div>
+
+                  <span
+                    className={`font-bold text-xs ${
+                      isPositive ? 'text-emerald-400' : 'text-slate-200'
                     }`}
                   >
-                    {isPositive ? '+' : '-'}
-                  </div>
-                  <div>
-                    <h5 className="font-semibold text-xs text-white">{tx.title}</h5>
-                    <p className="text-[10px] text-slate-400">{tx.timestamp}</p>
-                  </div>
+                    {isPositive ? '+' : ''}TZS {Math.abs(tx.amount).toLocaleString()}
+                  </span>
                 </div>
-
-                <span
-                  className={`font-bold text-xs ${
-                    isPositive ? 'text-emerald-400' : 'text-slate-200'
-                  }`}
-                >
-                  {isPositive ? '+' : ''}TZS {Math.abs(tx.amount).toLocaleString()}
-                </span>
-              </div>
-            );
-          })}
+              );
+            })}
+          </div>
         </div>
       </div>
       </div>

@@ -68,154 +68,164 @@ export const RideRequestView: React.FC<RideRequestViewProps> = ({ onBack }) => {
         </span>
       </div>
 
-      {/* Stylized Interactive Map Route Preview (Matching Screenshot Screen 11) */}
-      <div className="relative h-44 w-full bg-[#11162B] overflow-hidden border-b border-white/10 flex items-center justify-center">
-        {/* Subtle grid pattern for map styling */}
-        <div
-          className="absolute inset-0 opacity-20"
-          style={{
-            backgroundImage:
-              'radial-gradient(circle at 1px 1px, rgba(255,255,255,0.3) 1px, transparent 0)',
-            backgroundSize: '24px 24px',
-          }}
-        />
+      {/* Responsive 2-Column Grid on Desktop */}
+      <div className="grid grid-cols-1 md:grid-cols-12 gap-5 p-4 flex-1">
+        {/* Left Column: Interactive Map Preview */}
+        <div className="md:col-span-6 flex flex-col">
+          <div className="relative h-56 md:h-full min-h-[220px] md:min-h-[380px] w-full rounded-3xl bg-[#11162B] overflow-hidden border border-white/10 flex items-center justify-center shadow-xl">
+            {/* Subtle grid pattern for map styling */}
+            <div
+              className="absolute inset-0 opacity-20"
+              style={{
+                backgroundImage:
+                  'radial-gradient(circle at 1px 1px, rgba(255,255,255,0.3) 1px, transparent 0)',
+                backgroundSize: '24px 24px',
+              }}
+            />
 
-        {/* Animated route vector */}
-        <svg className="w-full h-full absolute inset-0 pointer-events-none">
-          <path
-            d="M 60 110 Q 180 30 340 80"
-            fill="none"
-            stroke="#06b6d4"
-            strokeWidth="4"
-            strokeDasharray="6 4"
-            className="animate-pulse"
-          />
-        </svg>
+            {/* Animated route vector */}
+            <svg className="w-full h-full absolute inset-0 pointer-events-none">
+              <path
+                d="M 60 110 Q 180 30 340 80"
+                fill="none"
+                stroke="#06b6d4"
+                strokeWidth="4"
+                strokeDasharray="6 4"
+                className="animate-pulse"
+              />
+            </svg>
 
-        {/* Pickup Pin */}
-        <div className="absolute left-12 bottom-8 flex flex-col items-center">
-          <div className="w-6 h-6 rounded-full bg-cyan-500 flex items-center justify-center text-white shadow-lg shadow-cyan-500/50">
-            <div className="w-2 h-2 rounded-full bg-white" />
+            {/* Pickup Pin */}
+            <div className="absolute left-8 sm:left-12 bottom-8 flex flex-col items-center">
+              <div className="w-7 h-7 rounded-full bg-cyan-500 flex items-center justify-center text-white shadow-lg shadow-cyan-500/50">
+                <div className="w-2.5 h-2.5 rounded-full bg-white" />
+              </div>
+              <span className="text-[10px] font-bold text-cyan-300 mt-1 bg-black/70 px-2 py-0.5 rounded shadow">
+                {pickup}
+              </span>
+            </div>
+
+            {/* Destination Pin */}
+            <div className="absolute right-8 sm:right-12 top-10 flex flex-col items-center">
+              <div className="w-7 h-7 rounded-full bg-purple-500 flex items-center justify-center text-white shadow-lg shadow-purple-500/50">
+                <Navigation className="w-4 h-4 text-white" />
+              </div>
+              <span className="text-[10px] font-bold text-purple-300 mt-1 bg-black/70 px-2 py-0.5 rounded shadow">
+                {destination}
+              </span>
+            </div>
           </div>
-          <span className="text-[10px] font-bold text-cyan-300 mt-1 bg-black/60 px-1.5 py-0.5 rounded">
-            Mlimani City
-          </span>
         </div>
 
-        {/* Destination Pin */}
-        <div className="absolute right-12 top-10 flex flex-col items-center">
-          <div className="w-6 h-6 rounded-full bg-purple-500 flex items-center justify-center text-white shadow-lg shadow-purple-500/50">
-            <Navigation className="w-3.5 h-3.5 text-white" />
+        {/* Right Column: Inputs & Vehicle Tier Options */}
+        <div className="md:col-span-6 flex flex-col justify-between p-4 rounded-3xl bg-[#101526]/80 border border-white/5">
+          <div className="space-y-3">
+            {/* Pickup & Destination Form Inputs */}
+            <div className="space-y-2 pb-2 border-b border-white/5">
+              <div className="flex items-center gap-2 p-3 rounded-2xl bg-[#14192B] border border-white/5">
+                <div className="w-2.5 h-2.5 rounded-full bg-cyan-400 shrink-0" />
+                <input
+                  type="text"
+                  value={pickup}
+                  onChange={(e) => setPickup(e.target.value)}
+                  className="flex-1 bg-transparent text-xs text-white focus:outline-none"
+                  placeholder="Pickup location"
+                />
+              </div>
+              <div className="flex items-center gap-2 p-3 rounded-2xl bg-[#14192B] border border-white/5">
+                <div className="w-2.5 h-2.5 rounded-full bg-purple-400 shrink-0" />
+                <input
+                  type="text"
+                  value={destination}
+                  onChange={(e) => setDestination(e.target.value)}
+                  className="flex-1 bg-transparent text-xs text-white focus:outline-none"
+                  placeholder="Destination location"
+                />
+              </div>
+            </div>
+
+            {/* Vehicle Tier Options: Economy, Comfort, XL (Matching Screenshot Screen 11) */}
+            <div className="space-y-2">
+              {options.map((opt) => {
+                const isSelected = selectedTier === opt.tier;
+                return (
+                  <button
+                    key={opt.tier}
+                    onClick={() => setSelectedTier(opt.tier)}
+                    className={`w-full p-3 rounded-2xl border text-left flex items-center justify-between transition-all ${
+                      isSelected
+                        ? 'bg-cyan-500/15 border-cyan-400 shadow-md'
+                        : 'bg-[#14192B] border-white/5 hover:border-white/10'
+                    }`}
+                  >
+                    <div className="flex items-center gap-3">
+                      <div className="text-2xl">{opt.icon}</div>
+                      <div>
+                        <h5 className="font-bold text-xs text-white flex items-center gap-2">
+                          {opt.name}
+                          <span className="text-[10px] text-slate-400 font-normal">
+                            {opt.etaMinutes} min • {opt.seats}
+                          </span>
+                        </h5>
+                        <p className="text-[10px] text-slate-400 mt-0.5">Instant dispatch nearby</p>
+                      </div>
+                    </div>
+                    <span className="font-extrabold text-xs text-cyan-300">
+                      {opt.currency} {opt.price.toLocaleString()}
+                    </span>
+                  </button>
+                );
+              })}
+            </div>
           </div>
-          <span className="text-[10px] font-bold text-purple-300 mt-1 bg-black/60 px-1.5 py-0.5 rounded">
-            Arusha
-          </span>
-        </div>
-      </div>
 
-      {/* Pickup & Destination Form Inputs */}
-      <div className="p-4 space-y-2 border-b border-white/5">
-        <div className="flex items-center gap-2 p-2.5 rounded-xl bg-[#14192B] border border-white/5">
-          <div className="w-2.5 h-2.5 rounded-full bg-cyan-400 shrink-0" />
-          <input
-            type="text"
-            value={pickup}
-            onChange={(e) => setPickup(e.target.value)}
-            className="flex-1 bg-transparent text-xs text-white focus:outline-none"
-          />
-        </div>
-        <div className="flex items-center gap-2 p-2.5 rounded-xl bg-[#14192B] border border-white/5">
-          <div className="w-2.5 h-2.5 rounded-full bg-purple-400 shrink-0" />
-          <input
-            type="text"
-            value={destination}
-            onChange={(e) => setDestination(e.target.value)}
-            className="flex-1 bg-transparent text-xs text-white focus:outline-none"
-          />
-        </div>
-      </div>
-
-      {/* Vehicle Tier Options: Economy, Comfort, XL (Matching Screenshot Screen 11) */}
-      <div className="p-4 flex-1 flex flex-col justify-between">
-        <div className="space-y-2.5">
-          {options.map((opt) => {
-            const isSelected = selectedTier === opt.tier;
-            return (
+          {/* Live status or Request Button */}
+          <div className="pt-4">
+            {rideStatus === 'idle' && (
               <button
-                key={opt.tier}
-                onClick={() => setSelectedTier(opt.tier)}
-                className={`w-full p-3.5 rounded-2xl border text-left flex items-center justify-between transition-all ${
-                  isSelected
-                    ? 'bg-cyan-500/15 border-cyan-400 shadow-md'
-                    : 'bg-[#14192B] border-white/5 hover:border-white/10'
-                }`}
+                onClick={handleRequestRide}
+                className="w-full py-3.5 rounded-2xl bg-gradient-to-r from-cyan-500 to-blue-600 hover:from-cyan-400 hover:to-blue-500 text-white font-bold text-xs shadow-xl shadow-cyan-500/30 active:scale-95 transition-all"
               >
-                <div className="flex items-center gap-3">
-                  <div className="text-2xl">{opt.icon}</div>
-                  <div>
-                    <h5 className="font-bold text-xs text-white flex items-center gap-2">
-                      {opt.name}
-                      <span className="text-[10px] text-slate-400 font-normal">
-                        {opt.etaMinutes} min • {opt.seats}
-                      </span>
-                    </h5>
-                    <p className="text-[11px] text-slate-400 mt-0.5">Instant dispatch nearby</p>
+                Request Ride
+              </button>
+            )}
+
+            {rideStatus === 'searching' && (
+              <div className="p-4 rounded-2xl bg-cyan-500/10 border border-cyan-500/30 text-center animate-pulse">
+                <p className="text-xs font-bold text-cyan-300">Searching for nearby drivers...</p>
+                <p className="text-[10px] text-slate-400 mt-1">Connecting with Zenia mobility network</p>
+              </div>
+            )}
+
+            {rideStatus === 'matched' && driverInfo && (
+              <div className="p-4 rounded-2xl bg-emerald-500/15 border border-emerald-500/30 animate-in fade-in">
+                <div className="flex items-center justify-between mb-2">
+                  <div className="flex items-center gap-2">
+                    <CheckCircle2 className="w-5 h-5 text-emerald-400" />
+                    <span className="font-bold text-xs text-white">Driver Assigned!</span>
                   </div>
+                  <span className="text-xs text-emerald-300 font-mono font-bold">
+                    ETA {driverInfo.eta} MIN
+                  </span>
                 </div>
-                <span className="font-extrabold text-xs text-cyan-300">
-                  {opt.currency} {opt.price.toLocaleString()}
-                </span>
-              </button>
-            );
-          })}
-        </div>
-
-        {/* Live status or Request Button */}
-        <div className="pt-4">
-          {rideStatus === 'idle' && (
-            <button
-              onClick={handleRequestRide}
-              className="w-full py-3.5 rounded-2xl bg-gradient-to-r from-cyan-500 to-blue-600 hover:from-cyan-400 hover:to-blue-500 text-white font-bold text-xs shadow-xl shadow-cyan-500/30 active:scale-95 transition-all"
-            >
-              Request Ride
-            </button>
-          )}
-
-          {rideStatus === 'searching' && (
-            <div className="p-4 rounded-2xl bg-cyan-500/10 border border-cyan-500/30 text-center animate-pulse">
-              <p className="text-xs font-bold text-cyan-300">Searching for nearby drivers...</p>
-              <p className="text-[10px] text-slate-400 mt-1">Connecting with Zenia mobility network</p>
-            </div>
-          )}
-
-          {rideStatus === 'matched' && driverInfo && (
-            <div className="p-4 rounded-2xl bg-emerald-500/15 border border-emerald-500/30 animate-in fade-in">
-              <div className="flex items-center justify-between mb-2">
-                <div className="flex items-center gap-2">
-                  <CheckCircle2 className="w-5 h-5 text-emerald-400" />
-                  <span className="font-bold text-xs text-white">Driver Assigned!</span>
+                <div className="p-2.5 rounded-xl bg-black/30 text-xs flex items-center justify-between">
+                  <div>
+                    <p className="font-bold text-white">{driverInfo.name} ★ {driverInfo.rating}</p>
+                    <p className="text-slate-300">{driverInfo.car}</p>
+                  </div>
+                  <span className="px-2 py-1 rounded bg-white text-slate-900 font-mono font-black text-xs">
+                    {driverInfo.plate}
+                  </span>
                 </div>
-                <span className="text-xs text-emerald-300 font-mono font-bold">
-                  ETA {driverInfo.eta} MIN
-                </span>
+                <button
+                  onClick={() => setRideStatus('idle')}
+                  className="w-full mt-3 py-2 rounded-xl bg-white/10 hover:bg-white/20 text-xs font-medium text-slate-300"
+                >
+                  Cancel / Reset Ride
+                </button>
               </div>
-              <div className="p-2.5 rounded-xl bg-black/30 text-xs flex items-center justify-between">
-                <div>
-                  <p className="font-bold text-white">{driverInfo.name} ★ {driverInfo.rating}</p>
-                  <p className="text-slate-300">{driverInfo.car}</p>
-                </div>
-                <span className="px-2 py-1 rounded bg-white text-slate-900 font-mono font-black text-xs">
-                  {driverInfo.plate}
-                </span>
-              </div>
-              <button
-                onClick={() => setRideStatus('idle')}
-                className="w-full mt-3 py-2 rounded-xl bg-white/10 hover:bg-white/20 text-xs font-medium text-slate-300"
-              >
-                Cancel / Reset Ride
-              </button>
-            </div>
-          )}
+            )}
+          </div>
         </div>
       </div>
       </div>

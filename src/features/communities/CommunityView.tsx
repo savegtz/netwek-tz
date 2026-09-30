@@ -93,9 +93,10 @@ export const CommunityView: React.FC<CommunityViewProps> = ({
   };
 
   return (
-    <div className="w-full flex flex-col bg-[#070A12] text-white flex-1 pb-28 select-none">
+    <div className="w-full flex flex-col bg-[#070A12] text-white flex-1 pb-28 md:pb-12 select-none">
+      <div className="max-w-4xl mx-auto w-full flex flex-col flex-1">
       {/* Header Banner (Matching Screenshot Screen 13) */}
-      <div className="relative h-40 w-full bg-indigo-950 overflow-hidden">
+      <div className="relative h-44 sm:h-52 w-full rounded-b-3xl sm:rounded-3xl sm:mt-3 bg-indigo-950 overflow-hidden">
         <SafeImage
           src={community.bannerUrl}
           fallbackText={community.name}
@@ -252,6 +253,7 @@ export const CommunityView: React.FC<CommunityViewProps> = ({
           })}
         </div>
       )}
+      </div>
     </div>
   );
 };

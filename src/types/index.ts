@@ -51,6 +51,8 @@ export interface ChatMessage {
   createdAt: string;
   deliveredAt?: string;
   editedAt?: string;
+  isStarred?: boolean;
+  isPinned?: boolean;
 }
 
 export interface Conversation {
@@ -65,6 +67,12 @@ export interface Conversation {
   lastMessageType?: MessageType;
   updatedAt: string;
   unreadCount?: number;
+  isArchived?: boolean;
+  mutedUntil?: '8h' | '1w' | 'always' | null;
+  isPinned?: boolean;
+  isFavorite?: boolean;
+  lists?: string[];
+  isBlocked?: boolean;
 }
 
 export type StatusType =

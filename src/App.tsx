@@ -174,6 +174,16 @@ export default function App() {
                     onSelectConversation={(conv) => setActiveConversation(conv)}
                     onStartNewChat={() => setIsCreateMenuOpen(true)}
                     onOpenProfile={() => setActiveTab('profile')}
+                    onUpdateConversation={(updated) => {
+                      if (activeConversation?.id === updated.id) {
+                        setActiveConversation(updated);
+                      }
+                    }}
+                    onDeleteConversation={(deletedId) => {
+                      if (activeConversation?.id === deletedId) {
+                        setActiveConversation(null);
+                      }
+                    }}
                   />
                 </div>
 
@@ -193,6 +203,16 @@ export default function App() {
                           currentUser={currentUser}
                           onBack={() => setActiveConversation(null)}
                           onStartCall={(type) => setActiveCallType(type)}
+                          onUpdateConversation={(updated) => {
+                            if (activeConversation?.id === updated.id) {
+                              setActiveConversation(updated);
+                            }
+                          }}
+                          onDeleteConversation={(deletedId) => {
+                            if (activeConversation?.id === deletedId) {
+                              setActiveConversation(null);
+                            }
+                          }}
                         />
                       ) : (
                         <ChatRoom
@@ -200,6 +220,16 @@ export default function App() {
                           currentUser={currentUser}
                           onBack={() => setActiveConversation(null)}
                           onStartCall={(type) => setActiveCallType(type)}
+                          onUpdateConversation={(updated) => {
+                            if (activeConversation?.id === updated.id) {
+                              setActiveConversation(updated);
+                            }
+                          }}
+                          onDeleteConversation={(deletedId) => {
+                            if (activeConversation?.id === deletedId) {
+                              setActiveConversation(null);
+                            }
+                          }}
                         />
                       )
                     ) : (
@@ -270,6 +300,7 @@ export default function App() {
                 currentUser={currentUser}
                 onOpenEditProfile={() => setIsAuthOpen(true)}
                 onOpenAdmin={() => setIsAdminOpen(true)}
+                onSelectService={(tab) => setActiveTab(tab)}
               />
             )}
 
@@ -356,7 +387,7 @@ export default function App() {
       {/* Notifications Drawer */}
       {isNotificationsOpen && (
         <div className="fixed inset-0 z-50 flex items-end sm:items-center justify-center p-0 sm:p-4 bg-black/85 backdrop-blur-md animate-in fade-in">
-          <div className="relative w-full max-w-md bg-[#0A0D18] border-t sm:border border-white/10 rounded-t-[28px] sm:rounded-3xl overflow-hidden shadow-2xl max-h-[92vh] flex flex-col">
+          <div className="relative w-full max-w-lg bg-[#0A0D18] border-t sm:border border-white/10 rounded-t-[28px] sm:rounded-3xl overflow-hidden shadow-2xl max-h-[92vh] flex flex-col">
             <NotificationsView
               onBack={() => setIsNotificationsOpen(false)}
               onNavigate={(type) => {

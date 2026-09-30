@@ -9,6 +9,8 @@ import {
   ShoppingBag,
   Users,
   Shield,
+  CreditCard,
+  ChevronRight,
   Heart,
 } from 'lucide-react';
 import { UserProfile } from '../../types';
@@ -18,12 +20,14 @@ interface ProfileViewProps {
   currentUser: UserProfile;
   onOpenEditProfile: () => void;
   onOpenAdmin: () => void;
+  onSelectService?: (service: string) => void;
 }
 
 export const ProfileView: React.FC<ProfileViewProps> = ({
   currentUser,
   onOpenEditProfile,
   onOpenAdmin,
+  onSelectService,
 }) => {
   const [activeTab, setActiveTab] = useState<'posts' | 'status' | 'videos' | 'shop'>('posts');
 
@@ -174,6 +178,25 @@ export const ProfileView: React.FC<ProfileViewProps> = ({
           >
             <Share2 className="w-3.5 h-3.5" />
             Share
+          </button>
+        </div>
+
+        {/* Zenia Wallet in Profile */}
+        <div className="w-full max-w-xs mt-5 text-left">
+          <button
+            onClick={() => onSelectService && onSelectService('wallet')}
+            className="w-full flex items-center justify-between p-3.5 rounded-2xl bg-[#0F1426] border border-white/[0.06] hover:border-emerald-500/40 hover:bg-emerald-500/5 transition-all text-left group active:scale-95 shadow-sm"
+          >
+            <div className="flex items-center gap-3 min-w-0">
+              <div className="w-10 h-10 rounded-xl bg-emerald-500/15 text-emerald-400 flex items-center justify-center shrink-0 group-hover:scale-105 transition-transform">
+                <CreditCard className="w-5 h-5" />
+              </div>
+              <div className="min-w-0">
+                <p className="text-xs font-bold text-white group-hover:text-emerald-300 truncate">Zenia Wallet</p>
+                <p className="text-[10px] text-slate-400 truncate">Salio, kadi & malipo</p>
+              </div>
+            </div>
+            <ChevronRight className="w-4 h-4 text-slate-500 group-hover:text-emerald-400 shrink-0 ml-1" />
           </button>
         </div>
       </div>

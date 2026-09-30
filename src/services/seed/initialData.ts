@@ -34,7 +34,7 @@ export const INITIAL_CONVERSATIONS: Conversation[] = [
     participantDetails: {
       user_sarah: {
         displayName: 'Sarah Mwangi',
-        photoURL: 'https://images.unsplash.com/photo-1573496359142-b8d87734a5a2?w=500&auto=format&fit=crop&q=80',
+        photoURL: '/src/assets/images/sarah_avatar_1790802224123.jpg',
         username: 'sarah_m',
         isOnline: true,
       },
@@ -51,7 +51,7 @@ export const INITIAL_CONVERSATIONS: Conversation[] = [
     participants: ['current_user_id', 'user_design_team'],
     isGroup: true,
     groupName: 'Design Team',
-    groupAvatar: 'https://images.unsplash.com/photo-1522071820081-009f0129c71c?w=500&auto=format&fit=crop&q=80',
+    groupAvatar: '/src/assets/images/team_design_1790802245828.jpg',
     lastMessage: 'File uploaded: project_final.psd',
     lastMessageSenderId: 'user_james',
     lastMessageType: 'document',
@@ -63,7 +63,7 @@ export const INITIAL_CONVERSATIONS: Conversation[] = [
     participants: ['current_user_id', 'user_family'],
     isGroup: true,
     groupName: 'Family Group',
-    groupAvatar: 'https://images.unsplash.com/photo-1511895426328-dc8714191300?w=500&auto=format&fit=crop&q=80',
+    groupAvatar: '/assets/images/concert_festival_1790280974630.jpg',
     lastMessage: 'Mama: Karibu nyumbani!',
     lastMessageSenderId: 'user_mama',
     lastMessageType: 'text',
@@ -76,7 +76,7 @@ export const INITIAL_CONVERSATIONS: Conversation[] = [
     participantDetails: {
       user_alex: {
         displayName: 'Alex Johnson',
-        photoURL: 'https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?w=500&auto=format&fit=crop&q=80',
+        photoURL: '/src/assets/images/alex_avatar_1790802235334.jpg',
         username: 'alex_j',
         isOnline: true,
       },
@@ -94,7 +94,7 @@ export const INITIAL_CONVERSATIONS: Conversation[] = [
     participantDetails: {
       user_market: {
         displayName: 'Market Place Support',
-        photoURL: 'https://images.unsplash.com/photo-1472099645785-5658abf4ff4e?w=500&auto=format&fit=crop&q=80',
+        photoURL: '/assets/images/wireless_earbuds_1790280984496.jpg',
         username: 'marketplace_hq',
         isOnline: false,
       },
@@ -111,7 +111,7 @@ export const INITIAL_CONVERSATIONS: Conversation[] = [
     participants: ['current_user_id', 'user_travel'],
     isGroup: true,
     groupName: 'Travel Buddies',
-    groupAvatar: 'https://images.unsplash.com/photo-1488646953014-85cb44e25828?w=500&auto=format&fit=crop&q=80',
+    groupAvatar: '/assets/images/zanzibar_beach_1790280962219.jpg',
     lastMessage: "Jane: Let's plan the Zanzibar trip",
     lastMessageSenderId: 'user_jane',
     lastMessageType: 'text',

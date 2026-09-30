@@ -79,7 +79,7 @@ export const VideoCallScreen: React.FC<VideoCallScreenProps> = ({
   };
 
   return (
-    <div className="relative w-full max-w-md mx-auto h-[680px] bg-slate-950 rounded-3xl overflow-hidden shadow-2xl border border-white/10 flex flex-col justify-between">
+    <div className="relative w-full max-w-xl mx-auto h-[680px] md:h-[720px] bg-slate-950 rounded-3xl overflow-hidden shadow-2xl border border-white/10 flex flex-col justify-between my-auto">
       {/* Remote User Background (Matching Video Call screenshot) */}
       <div className="absolute inset-0 z-0">
         <img

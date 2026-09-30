@@ -1,10 +1,17 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import {
   Search,
   CheckCheck,
   Edit3,
   Users,
-  User,
+  Pin,
+  BellOff,
+  Heart,
+  Ban,
+  Archive,
+  MoreVertical,
+  Check,
+  X,
 } from 'lucide-react';
 import {
   collection,
@@ -16,6 +23,7 @@ import { handleFirestoreError, OperationType } from '../../services/firebase/fir
 import { Conversation, UserProfile } from '../../types';
 import { INITIAL_CONVERSATIONS } from '../../services/seed/initialData';
 import { SafeImage } from '../../components/SafeImage';
+import { DirectChatContextMenu } from './components/DirectChatContextMenu';
 
 interface ChatListProps {
   currentUser: UserProfile;
@@ -23,6 +31,8 @@ interface ChatListProps {
   onSelectConversation: (conv: Conversation) => void;
   onStartNewChat: () => void;
   onOpenProfile?: () => void;
+  onUpdateConversation?: (conv: Conversation) => void;
+  onDeleteConversation?: (convId: string) => void;
 }
 
 export const ChatList: React.FC<ChatListProps> = ({
@@ -31,12 +41,100 @@ export const ChatList: React.FC<ChatListProps> = ({
   onSelectConversation,
   onStartNewChat,
   onOpenProfile,
+  onUpdateConversation,
+  onDeleteConversation,
 }) => {
   const [conversations, setConversations] = useState<Conversation[]>(INITIAL_CONVERSATIONS);
   const [searchQuery, setSearchQuery] = useState('');
-  const [activeFilter, setActiveFilter] = useState<'all' | 'unread' | 'groups' | 'communities'>('all');
-  const [showSearchInput, setShowSearchInput] = useState(true);
+  const [activeFilter, setActiveFilter] = useState<'all' | 'unread' | 'favorites' | 'groups' | 'archived'>('all');
+  const [customLists, setCustomLists] = useState<string[]>(['Family', 'Work', 'VIP', 'Close Friends']);
+  const [activeListFilter, setActiveListFilter] = useState<string | null>(null);
 
+  // Context Menu State for 1-on-1 Person-to-Person Direct Chat
+  const [contextMenuState, setContextMenuState] = useState<{
+    isOpen: boolean;
+    conversation: Conversation | null;
+    position: { x: number; y: number };
+  }>({
+    isOpen: false,
+    conversation: null,
+    position: { x: 0, y: 0 },
+  });
+
+  // Toast Notification state
+  const [toastMessage, setToastMessage] = useState<string | null>(null);
+  const toastTimeoutRef = useRef<NodeJS.Timeout | null>(null);
+
+  const showToast = (message: string) => {
+    if (toastTimeoutRef.current) clearTimeout(toastTimeoutRef.current);
+    setToastMessage(message);
+    toastTimeoutRef.current = setTimeout(() => {
+      setToastMessage(null);
+    }, 3200);
+  };
+
+  // Long press handling for touch & mouse devices
+  const longPressTimeoutRef = useRef<NodeJS.Timeout | null>(null);
+  const isLongPressTriggeredRef = useRef(false);
+
+  const handleTouchStart = (conv: Conversation, e: React.TouchEvent) => {
+    isLongPressTriggeredRef.current = false;
+    const touch = e.touches[0];
+    const touchX = touch.clientX;
+    const touchY = touch.clientY;
+
+    longPressTimeoutRef.current = setTimeout(() => {
+      isLongPressTriggeredRef.current = true;
+      if (typeof window !== 'undefined' && 'vibrate' in navigator) {
+        navigator.vibrate?.(45);
+      }
+      setContextMenuState({
+        isOpen: true,
+        conversation: conv,
+        position: { x: touchX, y: touchY },
+      });
+    }, 400);
+  };
+
+  const handleTouchMove = () => {
+    if (longPressTimeoutRef.current) {
+      clearTimeout(longPressTimeoutRef.current);
+      longPressTimeoutRef.current = null;
+    }
+  };
+
+  const handleTouchEnd = () => {
+    if (longPressTimeoutRef.current) {
+      clearTimeout(longPressTimeoutRef.current);
+      longPressTimeoutRef.current = null;
+    }
+  };
+
+  // Mouse hold long-press handling
+  const handleMouseDown = (conv: Conversation, e: React.MouseEvent) => {
+    if (e.button !== 0) return; // Only left-click
+    isLongPressTriggeredRef.current = false;
+    const mouseX = e.clientX;
+    const mouseY = e.clientY;
+
+    longPressTimeoutRef.current = setTimeout(() => {
+      isLongPressTriggeredRef.current = true;
+      setContextMenuState({
+        isOpen: true,
+        conversation: conv,
+        position: { x: mouseX, y: mouseY },
+      });
+    }, 450);
+  };
+
+  const handleMouseUp = () => {
+    if (longPressTimeoutRef.current) {
+      clearTimeout(longPressTimeoutRef.current);
+      longPressTimeoutRef.current = null;
+    }
+  };
+
+  // Sync with Firestore if logged in
   useEffect(() => {
     if (!auth.currentUser) return;
     const path = 'conversations';
@@ -59,54 +157,232 @@ export const ChatList: React.FC<ChatListProps> = ({
       );
       return () => unsubscribe();
     } catch (err) {
-      console.warn('Conversations listener error:', err);
+      console.warn('Conversations listener notice:', err);
     }
   }, []);
 
-  const filteredConversations = conversations.filter((c) => {
-    const otherId = c.participants.find((p) => p !== currentUser.id) || '';
-    const other = c.participantDetails?.[otherId];
-    const name = c.isGroup ? c.groupName || '' : other?.displayName || 'Chat';
-    const matchesSearch =
-      name.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      (c.lastMessage || '').toLowerCase().includes(searchQuery.toLowerCase());
-    if (!matchesSearch) return false;
+  // Update specific conversation
+  const updateConversationState = (updated: Conversation) => {
+    setConversations((prev) =>
+      prev.map((c) => (c.id === updated.id ? updated : c))
+    );
+    if (onUpdateConversation) {
+      onUpdateConversation(updated);
+    }
+  };
 
-    if (activeFilter === 'unread') return (c.unreadCount || 0) > 0;
-    if (activeFilter === 'groups') return c.isGroup;
-    if (activeFilter === 'communities') return false;
-    return true;
-  });
+  // Actions Implementation
+  const handleArchive = (conv: Conversation) => {
+    const isNowArchived = !conv.isArchived;
+    const updated: Conversation = { ...conv, isArchived: isNowArchived };
+    updateConversationState(updated);
+    showToast(isNowArchived ? 'Chat imewekwa kwenye kumbukumbu (Archived)' : 'Chat imerudishwa (Unarchived)');
+  };
+
+  const handleMute = (conv: Conversation, duration: '8h' | '1w' | 'always' | null) => {
+    const updated: Conversation = { ...conv, mutedUntil: duration };
+    updateConversationState(updated);
+    if (duration) {
+      const durText = duration === '8h' ? 'saa 8' : duration === '1w' ? 'wiki 1' : 'muda wote';
+      showToast(`Taarifa zimezimwa kwa ${durText} (Muted)`);
+    } else {
+      showToast('Taarifa zimewashwa (Unmuted)');
+    }
+  };
+
+  const handlePin = (conv: Conversation) => {
+    const isNowPinned = !conv.isPinned;
+    const updated: Conversation = { ...conv, isPinned: isNowPinned };
+    updateConversationState(updated);
+    showToast(isNowPinned ? 'Chat imebandikwa juu (Pinned to top)' : 'Chat imetolewa juu (Unpinned)');
+  };
+
+  const handleMarkUnread = (conv: Conversation) => {
+    const currentUnread = conv.unreadCount || 0;
+    const nextUnread = currentUnread > 0 ? 0 : 1;
+    const updated: Conversation = { ...conv, unreadCount: nextUnread };
+    updateConversationState(updated);
+    showToast(nextUnread > 0 ? 'Imetiwa alama ya haijasomwa (Marked unread)' : 'Imetiwa alama ya imesomwa (Marked read)');
+  };
+
+  const handleToggleFavorite = (conv: Conversation) => {
+    const isNowFav = !conv.isFavorite;
+    const updated: Conversation = { ...conv, isFavorite: isNowFav };
+    updateConversationState(updated);
+    showToast(isNowFav ? 'Imeongezwa kwenye Vipendwa (Favorites)' : 'Imeondolewa kwenye Vipendwa');
+  };
+
+  const handleAddToList = (conv: Conversation, listName: string) => {
+    const currentLists = conv.lists || [];
+    const exists = currentLists.includes(listName);
+    const nextLists = exists
+      ? currentLists.filter((l) => l !== listName)
+      : [...currentLists, listName];
+    const updated: Conversation = { ...conv, lists: nextLists };
+    updateConversationState(updated);
+    showToast(exists ? `Imeondolewa kwenye orodha ya "${listName}"` : `Imeongezwa kwenye orodha ya "${listName}"`);
+  };
+
+  const handleCreateCustomList = (listName: string) => {
+    if (!customLists.includes(listName)) {
+      setCustomLists((prev) => [...prev, listName]);
+    }
+  };
+
+  const handleBlock = (conv: Conversation) => {
+    const isNowBlocked = !conv.isBlocked;
+    const updated: Conversation = { ...conv, isBlocked: isNowBlocked };
+    updateConversationState(updated);
+    showToast(isNowBlocked ? 'Mtu huyu amezuiwa (Contact blocked)' : 'Mtu huyu ameruhusiwa tena (Unblocked)');
+  };
+
+  const handleClearChat = (conv: Conversation) => {
+    const updated: Conversation = {
+      ...conv,
+      lastMessage: 'Messages cleared',
+      unreadCount: 0,
+      updatedAt: 'Just now',
+    };
+    updateConversationState(updated);
+    showToast('Jumbe zote za mazungumzo haya zimefutwa (Chat cleared)');
+  };
+
+  const handleDeleteChat = (conv: Conversation) => {
+    setConversations((prev) => prev.filter((c) => c.id !== conv.id));
+    if (onDeleteConversation) {
+      onDeleteConversation(conv.id);
+    }
+    showToast('Mazungumzo yamefutwa kabisa (Chat deleted)');
+  };
+
+  const handleExitGroup = (conv: Conversation) => {
+    setConversations((prev) => prev.filter((c) => c.id !== conv.id));
+    if (onDeleteConversation) {
+      onDeleteConversation(conv.id);
+    }
+    const name = conv.groupName || 'Kikundi';
+    showToast(`Umetoka kwenye kikundi cha "${name}" (Exited group)`);
+  };
+
+  const handleDeleteCustomList = (listName: string) => {
+    setCustomLists((prev) => prev.filter((l) => l !== listName));
+    setConversations((prev) =>
+      prev.map((c) => ({
+        ...c,
+        lists: c.lists?.filter((l) => l !== listName),
+      }))
+    );
+    if (activeListFilter === listName) {
+      setActiveListFilter(null);
+    }
+    showToast(`Orodha ya "#${listName}" imefutwa (Deleted)`);
+  };
+
+  const handleClearAllCustomLists = () => {
+    setCustomLists([]);
+    setConversations((prev) =>
+      prev.map((c) => ({
+        ...c,
+        lists: [],
+      }))
+    );
+    setActiveListFilter(null);
+    showToast('Orodha zote zimefutwa (All custom lists deleted)');
+  };
+
+  // Filter & Sort Conversations
+  const archivedCount = conversations.filter((c) => c.isArchived).length;
+
+  const filteredConversations = conversations
+    .filter((c) => {
+      const otherId = c.participants.find((p) => p !== currentUser.id) || '';
+      const other = c.participantDetails?.[otherId];
+      const name = c.isGroup ? c.groupName || '' : other?.displayName || 'Chat';
+      const matchesSearch =
+        name.toLowerCase().includes(searchQuery.toLowerCase()) ||
+        (c.lastMessage || '').toLowerCase().includes(searchQuery.toLowerCase());
+      if (!matchesSearch) return false;
+
+      // Handle custom list filter
+      if (activeListFilter) {
+        return c.lists?.includes(activeListFilter);
+      }
+
+      // Handle standard filters
+      if (activeFilter === 'archived') return c.isArchived === true;
+      if (c.isArchived) return false; // Hide archived from normal tabs
+
+      if (activeFilter === 'unread') return (c.unreadCount || 0) > 0;
+      if (activeFilter === 'favorites') return c.isFavorite === true;
+      if (activeFilter === 'groups') return c.isGroup;
+      return true;
+    })
+    .sort((a, b) => {
+      // Pinned chats appear on top
+      if (a.isPinned && !b.isPinned) return -1;
+      if (!a.isPinned && b.isPinned) return 1;
+      return 0;
+    });
 
   return (
     <div className="w-full flex flex-col bg-[#070A12] text-white flex-1 relative select-none">
+      {/* Toast Notification Banner */}
+      {toastMessage && (
+        <div className="absolute top-2 left-4 right-4 z-40 bg-gradient-to-r from-cyan-900/90 to-[#121626]/95 border border-cyan-500/40 text-cyan-200 text-xs px-3.5 py-2 rounded-2xl shadow-xl backdrop-blur-md flex items-center justify-between animate-in slide-in-from-top-2 duration-200">
+          <div className="flex items-center gap-2">
+            <Check className="w-4 h-4 text-cyan-400 shrink-0" />
+            <span>{toastMessage}</span>
+          </div>
+          <button
+            onClick={() => setToastMessage(null)}
+            className="text-cyan-400/70 hover:text-cyan-200 text-xs ml-2 font-bold"
+          >
+            ✕
+          </button>
+        </div>
+      )}
+
       {/* Search Input Bar */}
       <div className="px-4 pt-3 pb-2">
-        <div className="relative">
-          <Search className="w-4 h-4 text-slate-400 absolute left-3.5 top-3" />
+        <div className="relative flex items-center">
+          <Search className="w-4 h-4 text-slate-400 absolute left-3.5 pointer-events-none" />
           <input
             type="text"
             value={searchQuery}
             onChange={(e) => setSearchQuery(e.target.value)}
             placeholder="Search conversations, friends..."
-            className="w-full bg-[#121626] border border-white/[0.08] rounded-2xl pl-10 pr-4 py-2.5 text-xs text-white placeholder-slate-400 focus:outline-none focus:border-cyan-400 transition-colors shadow-inner"
+            className="w-full bg-[#0E1324] border border-white/[0.08] focus:border-cyan-400/80 rounded-2xl pl-10 pr-9 py-2.5 text-xs text-white placeholder-slate-400 focus:outline-none focus:ring-1 focus:ring-cyan-400/40 transition-all shadow-inner"
           />
+          {searchQuery && (
+            <button
+              onClick={() => setSearchQuery('')}
+              className="absolute right-3 p-1 rounded-full text-slate-400 hover:text-white"
+            >
+              <X className="w-3.5 h-3.5" />
+            </button>
+          )}
         </div>
       </div>
 
-      {/* Filter Tabs (All, Unread, Groups, Communities) */}
+      {/* Filter Tabs (All, Unread, Favorites, Groups, Archived) */}
       <div className="px-4 pb-2.5 flex items-center gap-2 overflow-x-auto no-scrollbar">
         {[
           { id: 'all', label: 'All' },
           { id: 'unread', label: 'Unread' },
+          { id: 'favorites', label: 'Favorites' },
           { id: 'groups', label: 'Groups' },
-          { id: 'communities', label: 'Communities' },
+          ...(archivedCount > 0
+            ? [{ id: 'archived', label: `Archived (${archivedCount})` }]
+            : []),
         ].map((pill) => {
-          const isActive = activeFilter === pill.id;
+          const isActive = activeFilter === pill.id && !activeListFilter;
           return (
             <button
               key={pill.id}
-              onClick={() => setActiveFilter(pill.id as any)}
+              onClick={() => {
+                setActiveListFilter(null);
+                setActiveFilter(pill.id as any);
+              }}
               className={`px-3.5 py-1.5 rounded-full text-xs font-semibold transition-all shrink-0 active:scale-95 ${
                 isActive
                   ? 'bg-gradient-to-r from-cyan-400 to-blue-500 text-slate-950 font-bold shadow-md shadow-cyan-500/25'
@@ -117,96 +393,269 @@ export const ChatList: React.FC<ChatListProps> = ({
             </button>
           );
         })}
+
+        {/* Custom Lists Filter Pills with quick delete */}
+        {customLists.map((list) => {
+          const isActive = activeListFilter === list;
+          return (
+            <div
+              key={list}
+              className={`flex items-center gap-1 rounded-full text-xs font-medium transition-all shrink-0 pl-3 pr-1.5 py-1 ${
+                isActive
+                  ? 'bg-purple-600 text-white font-bold shadow-md shadow-purple-600/30'
+                  : 'bg-white/5 border border-white/5 text-slate-400 hover:text-white'
+              }`}
+            >
+              <button
+                onClick={() => {
+                  if (activeListFilter === list) {
+                    setActiveListFilter(null);
+                  } else {
+                    setActiveListFilter(list);
+                  }
+                }}
+                className="hover:underline active:scale-95 truncate max-w-[100px]"
+              >
+                #{list}
+              </button>
+              <button
+                onClick={(e) => {
+                  e.stopPropagation();
+                  handleDeleteCustomList(list);
+                }}
+                className={`p-0.5 rounded-full transition-colors ${
+                  isActive ? 'hover:bg-white/20 text-white/80' : 'hover:bg-rose-500/20 text-slate-500 hover:text-rose-400'
+                }`}
+                title={`Futa #${list}`}
+              >
+                <X className="w-3 h-3" />
+              </button>
+            </div>
+          );
+        })}
       </div>
+
+      {/* Archived Banner (Quick access if not in archived tab) */}
+      {archivedCount > 0 && activeFilter !== 'archived' && !activeListFilter && (
+        <div className="px-4 pb-2">
+          <button
+            onClick={() => setActiveFilter('archived')}
+            className="w-full flex items-center justify-between p-2.5 rounded-2xl bg-white/[0.03] hover:bg-white/[0.06] border border-white/5 text-xs text-slate-300 transition-colors"
+          >
+            <div className="flex items-center gap-2.5">
+              <Archive className="w-4 h-4 text-cyan-400" />
+              <span className="font-semibold text-slate-200">Archived Chats</span>
+            </div>
+            <span className="text-xs px-2 py-0.5 rounded-full bg-cyan-500/20 text-cyan-300 font-mono font-bold">
+              {archivedCount}
+            </span>
+          </button>
+        </div>
+      )}
 
       {/* Conversation List */}
       <div className="flex-1 overflow-y-auto px-2 divide-y divide-white/[0.04] pb-24 md:pb-6">
-        {filteredConversations.map((conv) => {
-          const otherUserId = conv.participants.find((p) => p !== currentUser.id);
-          const otherUser = otherUserId && conv.participantDetails ? conv.participantDetails[otherUserId] : null;
-          const title = conv.isGroup ? conv.groupName : otherUser?.displayName || 'Direct Chat';
-          const avatar = conv.isGroup
-            ? conv.groupAvatar || '/assets/images/amina_avatar_1790280951312.jpg'
-            : otherUser?.photoURL || '/assets/images/amina_avatar_1790280951312.jpg';
-          const isOnline = otherUser?.isOnline;
-          const isSelected = activeConversationId === conv.id;
+        {filteredConversations.length === 0 ? (
+          <div className="p-8 text-center text-slate-500 text-xs">
+            Hakuna mazungumzo yaliyopatikana.
+          </div>
+        ) : (
+          filteredConversations.map((conv) => {
+            const otherUserId = conv.participants.find((p) => p !== currentUser.id);
+            const otherUser = otherUserId && conv.participantDetails ? conv.participantDetails[otherUserId] : null;
+            const title = conv.isGroup ? conv.groupName : otherUser?.displayName || 'Direct Chat';
+            const avatar = conv.isGroup
+              ? conv.groupAvatar || '/assets/images/amina_avatar_1790280951312.jpg'
+              : otherUser?.photoURL || '/assets/images/amina_avatar_1790280951312.jpg';
+            const isOnline = otherUser?.isOnline;
+            const isSelected = activeConversationId === conv.id;
 
-          return (
-            <button
-              key={conv.id}
-              onClick={() => onSelectConversation(conv)}
-              className={`w-full flex items-center gap-3.5 p-3 rounded-2xl transition-all text-left group ${
-                isSelected
-                  ? 'bg-cyan-500/15 border border-cyan-500/30 shadow-sm'
-                  : 'hover:bg-white/[0.04] active:bg-white/[0.08] border border-transparent'
-              }`}
-            >
-              {/* Avatar with status dot */}
-              <div className="relative shrink-0">
-                <SafeImage
-                  src={avatar}
-                  fallbackText={title}
-                  fallbackGradient={conv.isGroup ? 'from-purple-800 to-indigo-900' : 'from-cyan-800 to-blue-900'}
-                  alt={title || ''}
-                  className={`w-12 h-12 rounded-full object-cover ring-2 transition-all ${
-                    isSelected ? 'ring-cyan-400' : 'ring-white/10 group-hover:ring-cyan-500/40'
-                  }`}
-                />
-                {isOnline && (
-                  <span className="absolute bottom-0 right-0 w-3 h-3 rounded-full bg-emerald-500 ring-2 ring-[#070A12]" />
-                )}
-                {conv.isGroup && (
-                  <span className="absolute -top-1 -right-1 w-4 h-4 rounded-full bg-purple-600 text-white flex items-center justify-center text-[9px] shadow-sm">
-                    <Users className="w-2.5 h-2.5" />
-                  </span>
-                )}
-              </div>
-
-              {/* Chat details */}
-              <div className="flex-1 min-w-0">
-                <div className="flex items-center justify-between gap-1 mb-0.5">
-                  <h4
-                    className={`font-semibold text-sm truncate transition-colors ${
-                      isSelected ? 'text-cyan-300 font-bold' : 'text-slate-100 group-hover:text-cyan-300'
+            return (
+              <div
+                key={conv.id}
+                onTouchStart={(e) => handleTouchStart(conv, e)}
+                onTouchMove={handleTouchMove}
+                onTouchEnd={handleTouchEnd}
+                onMouseDown={(e) => handleMouseDown(conv, e)}
+                onMouseUp={handleMouseUp}
+                onMouseLeave={handleMouseUp}
+                onContextMenu={(e) => {
+                  e.preventDefault();
+                  e.stopPropagation();
+                  setContextMenuState({
+                    isOpen: true,
+                    conversation: conv,
+                    position: { x: e.clientX, y: e.clientY },
+                  });
+                }}
+                className={`relative group w-full flex items-center gap-3.5 p-3 rounded-2xl transition-all text-left cursor-pointer ${
+                  isSelected
+                    ? 'bg-cyan-500/15 border border-cyan-500/30 shadow-sm'
+                    : 'hover:bg-white/[0.04] active:bg-white/[0.08] border border-transparent'
+                }`}
+                onClick={(e) => {
+                  if (isLongPressTriggeredRef.current) {
+                    e.preventDefault();
+                    e.stopPropagation();
+                    isLongPressTriggeredRef.current = false;
+                    return;
+                  }
+                  onSelectConversation(conv);
+                }}
+              >
+                {/* Avatar with status dot */}
+                <div className="relative shrink-0">
+                  <SafeImage
+                    src={avatar}
+                    fallbackText={title}
+                    fallbackGradient={conv.isGroup ? 'from-purple-800 to-indigo-900' : 'from-cyan-800 to-blue-900'}
+                    alt={title || ''}
+                    className={`w-12 h-12 rounded-full object-cover ring-2 transition-all ${
+                      isSelected ? 'ring-cyan-400' : 'ring-white/10 group-hover:ring-cyan-500/40'
                     }`}
-                  >
-                    {title}
-                  </h4>
-                  <span className="text-[11px] text-slate-400 shrink-0 font-medium">
-                    {conv.updatedAt}
-                  </span>
-                </div>
-                <div className="flex items-center justify-between gap-2">
-                  <p className="text-xs text-slate-400 truncate flex items-center gap-1">
-                    {conv.lastMessageSenderId === currentUser.id && (
-                      <CheckCheck className="w-3.5 h-3.5 text-cyan-400 shrink-0" />
-                    )}
-                    {conv.lastMessage === 'Typing...' ? (
-                      <span className="text-cyan-400 font-medium italic">Typing...</span>
-                    ) : (
-                      conv.lastMessage
-                    )}
-                  </p>
-                  {(conv.unreadCount || 0) > 0 && (
-                    <span className="w-5 h-5 rounded-full bg-gradient-to-tr from-cyan-400 to-blue-500 text-[10px] font-bold text-slate-950 flex items-center justify-center shrink-0 shadow-sm">
-                      {conv.unreadCount}
+                  />
+                  {isOnline && (
+                    <span className="absolute bottom-0 right-0 w-3 h-3 rounded-full bg-emerald-500 ring-2 ring-[#070A12]" />
+                  )}
+                  {conv.isGroup && (
+                    <span className="absolute -top-1 -right-1 w-4 h-4 rounded-full bg-purple-600 text-white flex items-center justify-center text-[9px] shadow-sm">
+                      <Users className="w-2.5 h-2.5" />
                     </span>
                   )}
                 </div>
+
+                {/* Chat details */}
+                <div className="flex-1 min-w-0">
+                  <div className="flex items-center justify-between gap-1 mb-0.5">
+                    <div className="flex items-center gap-1.5 min-w-0">
+                      <h4
+                        className={`font-semibold text-sm truncate transition-colors ${
+                          isSelected ? 'text-cyan-300 font-bold' : 'text-slate-100 group-hover:text-cyan-300'
+                        }`}
+                      >
+                        {title}
+                      </h4>
+                      {/* Pinned Icon */}
+                      {conv.isPinned && (
+                        <Pin className="w-3.5 h-3.5 text-cyan-400 shrink-0 rotate-45" />
+                      )}
+                      {/* Favorite Icon */}
+                      {conv.isFavorite && (
+                        <Heart className="w-3.5 h-3.5 text-pink-500 fill-pink-500 shrink-0" />
+                      )}
+                      {/* Blocked Badge */}
+                      {conv.isBlocked && (
+                        <span className="text-[9px] px-1.5 py-0.2 rounded bg-rose-500/20 text-rose-300 font-bold border border-rose-500/30 shrink-0">
+                          Blocked
+                        </span>
+                      )}
+                    </div>
+
+                    <div className="flex items-center gap-1 shrink-0">
+                      {/* Muted Icon */}
+                      {conv.mutedUntil && (
+                        <BellOff className="w-3.5 h-3.5 text-slate-400" />
+                      )}
+                      <span className="text-[11px] text-slate-400 font-medium">
+                        {conv.updatedAt}
+                      </span>
+                    </div>
+                  </div>
+
+                  <div className="flex items-center justify-between gap-2">
+                    <p className="text-xs text-slate-400 truncate flex items-center gap-1">
+                      {conv.lastMessageSenderId === currentUser.id && (
+                        <CheckCheck className="w-3.5 h-3.5 text-cyan-400 shrink-0" />
+                      )}
+                      {conv.lastMessage === 'Typing...' ? (
+                        <span className="text-cyan-400 font-medium italic">Typing...</span>
+                      ) : (
+                        conv.lastMessage
+                      )}
+                    </p>
+
+                    <div className="flex items-center gap-1.5 shrink-0">
+                      {/* List Tags */}
+                      {conv.lists && conv.lists.length > 0 && (
+                        <span className="text-[9px] px-1.5 py-0.5 rounded-full bg-purple-500/20 text-purple-300 font-semibold border border-purple-500/30">
+                          {conv.lists[0]}
+                        </span>
+                      )}
+
+                      {/* Unread Count Badge */}
+                      {(conv.unreadCount || 0) > 0 && (
+                        <span className="w-5 h-5 rounded-full bg-gradient-to-tr from-cyan-400 to-blue-500 text-[10px] font-bold text-slate-950 flex items-center justify-center shrink-0 shadow-sm">
+                          {conv.unreadCount}
+                        </span>
+                      )}
+
+                      {/* Desktop 3-dots Hover Menu (ONLY for 1-on-1 person-to-person direct chat) */}
+                      {!conv.isGroup && (
+                        <button
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            const rect = e.currentTarget.getBoundingClientRect();
+                            setContextMenuState({
+                              isOpen: true,
+                              conversation: conv,
+                              position: {
+                                x: rect.left - 180,
+                                y: rect.bottom + 4,
+                              },
+                            });
+                          }}
+                          className="opacity-0 group-hover:opacity-100 p-1 rounded-lg hover:bg-white/10 text-slate-400 hover:text-white transition-opacity"
+                          title="Chaguzi za mazungumzo (Chat options)"
+                        >
+                          <MoreVertical className="w-4 h-4" />
+                        </button>
+                      )}
+                    </div>
+                  </div>
+                </div>
               </div>
-            </button>
-          );
-        })}
+            );
+          })
+        )}
       </div>
 
       {/* Floating Action Button (FAB) at bottom right */}
       <button
         onClick={onStartNewChat}
-        className="absolute bottom-20 md:bottom-6 right-4 p-3.5 rounded-full bg-gradient-to-tr from-indigo-500 via-purple-500 to-pink-500 text-white shadow-xl shadow-purple-500/40 hover:scale-105 active:scale-95 transition-all z-30"
-        title="Compose new message"
+        className="fixed sm:absolute bottom-20 md:bottom-6 right-4 w-12 h-12 rounded-2xl bg-gradient-to-tr from-cyan-400 via-blue-500 to-indigo-600 text-white shadow-xl shadow-cyan-500/30 border border-white/20 hover:scale-105 active:scale-90 transition-all z-30 flex items-center justify-center group"
+        title="Ujumbe Mpya (New Chat)"
       >
-        <Edit3 className="w-5 h-5 stroke-[2.5]" />
+        <Edit3 className="w-5 h-5 stroke-[2.4] group-hover:scale-110 transition-transform" />
       </button>
+
+      {/* Context Menu for 1-on-1 Person-to-Person Chat */}
+      {contextMenuState.isOpen && contextMenuState.conversation && (
+        <DirectChatContextMenu
+          conversation={contextMenuState.conversation}
+          position={contextMenuState.position}
+          isOpen={contextMenuState.isOpen}
+          onClose={() =>
+            setContextMenuState({
+              isOpen: false,
+              conversation: null,
+              position: { x: 0, y: 0 },
+            })
+          }
+          onArchive={handleArchive}
+          onMute={handleMute}
+          onPin={handlePin}
+          onMarkUnread={handleMarkUnread}
+          onToggleFavorite={handleToggleFavorite}
+          onAddToList={handleAddToList}
+          onClearChat={handleClearChat}
+          onDeleteChat={handleDeleteChat}
+          onExitGroup={handleExitGroup}
+          customLists={customLists}
+          onCreateCustomList={handleCreateCustomList}
+          onDeleteCustomList={handleDeleteCustomList}
+          onClearAllCustomLists={handleClearAllCustomLists}
+        />
+      )}
     </div>
   );
 };

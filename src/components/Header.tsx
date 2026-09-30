@@ -1,21 +1,14 @@
-import React, { useState } from 'react';
+import React from 'react';
 import {
   Bell,
   Sparkles,
-  Shield,
   Smartphone,
   Monitor,
-  Menu,
-  X,
-  CreditCard,
-  Briefcase,
   Compass,
   ShoppingBag,
   MessageCircle,
   Video,
   Users,
-  Car,
-  Calendar,
   ChevronLeft,
 } from 'lucide-react';
 import { UserProfile } from '../types';
@@ -46,8 +39,6 @@ export const Header: React.FC<HeaderProps> = ({
   onToggleFrameMode,
   unreadNotificationsCount,
 }) => {
-  const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
-
   const mainTabs = [
     { id: 'chats', label: 'Chats', icon: MessageCircle },
     { id: 'status', label: 'Status', icon: Video },
@@ -56,15 +47,7 @@ export const Header: React.FC<HeaderProps> = ({
     { id: 'profile', label: 'Profile', icon: Users },
   ];
 
-  const subServices = [
-    { id: 'events', label: 'Events & Tickets', icon: Calendar, color: 'text-purple-400' },
-    { id: 'jobs', label: 'Jobs & Careers', icon: Briefcase, color: 'text-amber-400' },
-    { id: 'transport', label: 'Rides & Transit', icon: Car, color: 'text-blue-400' },
-    { id: 'wallet', label: 'Zenia Wallet', icon: CreditCard, color: 'text-emerald-400' },
-    { id: 'community', label: 'Tech Communities', icon: Users, color: 'text-cyan-400' },
-  ];
-
-  const isSubService = ['events', 'jobs', 'transport', 'wallet', 'community'].includes(activeTab);
+  const isSubService = ['events', 'jobs', 'transport', 'wallet'].includes(activeTab);
 
   const getTabTitle = (tab: string) => {
     switch (tab) {
@@ -100,8 +83,8 @@ export const Header: React.FC<HeaderProps> = ({
         <div className="flex items-center gap-2">
           {isSubService ? (
             <button
-              onClick={() => onSelectTab('discover')}
-              className="flex items-center gap-1.5 px-2 py-1 rounded-xl bg-white/5 hover:bg-white/10 text-slate-200 transition-colors"
+              onClick={() => onSelectTab('profile')}
+              className="flex items-center gap-1.5 px-2.5 py-1.5 rounded-xl bg-white/5 hover:bg-white/10 text-slate-200 transition-colors"
             >
               <ChevronLeft className="w-5 h-5 text-cyan-400" />
               <span className="text-xs font-semibold text-white">{getTabTitle(activeTab)}</span>
@@ -195,8 +178,12 @@ export const Header: React.FC<HeaderProps> = ({
           {/* User Profile Avatar with SafeImage */}
           <button
             onClick={() => onSelectTab('profile')}
-            className="flex items-center gap-1.5 p-1 pl-1 pr-2 rounded-full bg-white/5 border border-white/10 hover:border-white/20 transition-all active:scale-95"
-            title="Profile"
+            className={`flex items-center gap-1.5 p-1 pl-1 pr-2 rounded-full border transition-all active:scale-95 ${
+              activeTab === 'profile'
+                ? 'bg-cyan-500/20 border-cyan-400/50 ring-2 ring-cyan-500/30'
+                : 'bg-white/5 border-white/10 hover:border-white/20'
+            }`}
+            title="Profile & Services"
           >
             <div className="relative">
               <SafeImage
@@ -212,68 +199,8 @@ export const Header: React.FC<HeaderProps> = ({
               {currentUser.displayName.split(' ')[0]}
             </span>
           </button>
-
-          {/* More menu drawer trigger */}
-          <button
-            onClick={() => setMobileMenuOpen(!mobileMenuOpen)}
-            className="p-2 rounded-xl bg-white/5 hover:bg-white/10 border border-white/5 text-slate-300 transition-colors"
-            title="All Services"
-          >
-            {mobileMenuOpen ? <X className="w-4 h-4" /> : <Menu className="w-4 h-4" />}
-          </button>
         </div>
       </div>
-
-      {/* Services Dropdown Drawer (Mobile & Quick Hub) */}
-      {mobileMenuOpen && (
-        <div className="pt-3 pb-2 mt-2 border-t border-white/10 animate-in slide-in-from-top-2 duration-200">
-          <div className="grid grid-cols-2 sm:grid-cols-5 gap-2">
-            {subServices.map((item) => {
-              const Icon = item.icon;
-              const isActive = activeTab === item.id;
-              return (
-                <button
-                  key={item.id}
-                  onClick={() => {
-                    onSelectTab(item.id);
-                    setMobileMenuOpen(false);
-                  }}
-                  className={`flex items-center gap-2 p-2.5 rounded-xl text-xs font-medium transition-all ${
-                    isActive
-                      ? 'bg-cyan-500/20 text-cyan-300 font-bold border border-cyan-500/30'
-                      : 'bg-[#121626] text-slate-300 hover:text-white border border-white/5 hover:border-white/15'
-                  }`}
-                >
-                  <Icon className={`w-4 h-4 shrink-0 ${item.color}`} />
-                  <span className="truncate">{item.label}</span>
-                </button>
-              );
-            })}
-          </div>
-
-          <div className="mt-2 pt-2 border-t border-white/5 flex items-center justify-between text-xs text-slate-400">
-            <button
-              onClick={() => {
-                onOpenAuth();
-                setMobileMenuOpen(false);
-              }}
-              className="text-cyan-400 hover:underline py-1"
-            >
-              Account & Settings
-            </button>
-            <button
-              onClick={() => {
-                onOpenAdmin();
-                setMobileMenuOpen(false);
-              }}
-              className="flex items-center gap-1 text-slate-400 hover:text-cyan-300 py-1"
-            >
-              <Shield className="w-3.5 h-3.5 text-cyan-400" />
-              <span>Admin & System</span>
-            </button>
-          </div>
-        </div>
-      )}
     </header>
   );
 };
