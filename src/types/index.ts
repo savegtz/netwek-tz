@@ -73,6 +73,7 @@ export interface Conversation {
   isFavorite?: boolean;
   lists?: string[];
   isBlocked?: boolean;
+  isLocked?: boolean;
 }
 
 export type StatusType =

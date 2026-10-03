@@ -12,6 +12,10 @@ import {
   MoreVertical,
   Check,
   X,
+  Lock,
+  Unlock,
+  KeyRound,
+  ShieldCheck,
 } from 'lucide-react';
 import {
   collection,
@@ -24,6 +28,8 @@ import { Conversation, UserProfile } from '../../types';
 import { INITIAL_CONVERSATIONS } from '../../services/seed/initialData';
 import { SafeImage } from '../../components/SafeImage';
 import { DirectChatContextMenu } from './components/DirectChatContextMenu';
+import { ChatPinModal, PinModalMode } from './components/ChatPinModal';
+import { ChatListStatusRow } from '../status/ChatListStatusRow';
 
 interface ChatListProps {
   currentUser: UserProfile;
@@ -33,6 +39,7 @@ interface ChatListProps {
   onOpenProfile?: () => void;
   onUpdateConversation?: (conv: Conversation) => void;
   onDeleteConversation?: (convId: string) => void;
+  onOpenCreateStatus?: () => void;
 }
 
 export const ChatList: React.FC<ChatListProps> = ({
@@ -43,12 +50,27 @@ export const ChatList: React.FC<ChatListProps> = ({
   onOpenProfile,
   onUpdateConversation,
   onDeleteConversation,
+  onOpenCreateStatus,
 }) => {
   const [conversations, setConversations] = useState<Conversation[]>(INITIAL_CONVERSATIONS);
   const [searchQuery, setSearchQuery] = useState('');
-  const [activeFilter, setActiveFilter] = useState<'all' | 'unread' | 'favorites' | 'groups' | 'archived'>('all');
+  const [activeFilter, setActiveFilter] = useState<'all' | 'unread' | 'favorites' | 'groups' | 'archived' | 'locked'>('all');
   const [customLists, setCustomLists] = useState<string[]>(['Family', 'Work', 'VIP', 'Close Friends']);
   const [activeListFilter, setActiveListFilter] = useState<string | null>(null);
+
+  // Unlocked conversations in the current active session
+  const [unlockedConversationIds, setUnlockedConversationIds] = useState<Set<string>>(new Set());
+
+  // PIN Modal State
+  const [pinModalState, setPinModalState] = useState<{
+    isOpen: boolean;
+    mode: PinModalMode;
+    chatTitle?: string;
+    onSuccessCallback?: () => void;
+  }>({
+    isOpen: false,
+    mode: 'verify',
+  });
 
   // Context Menu State for 1-on-1 Person-to-Person Direct Chat
   const [contextMenuState, setContextMenuState] = useState<{
@@ -290,8 +312,60 @@ export const ChatList: React.FC<ChatListProps> = ({
     showToast('Orodha zote zimefutwa (All custom lists deleted)');
   };
 
+  const handleToggleLockChat = (conv: Conversation) => {
+    const savedPin = localStorage.getItem('zenia_chat_security_pin');
+    const isNowLocked = !conv.isLocked;
+
+    if (isNowLocked && !savedPin) {
+      setPinModalState({
+        isOpen: true,
+        mode: 'create',
+        chatTitle: conv.isGroup ? conv.groupName : 'Mazungumzo',
+        onSuccessCallback: () => {
+          const updated: Conversation = { ...conv, isLocked: true };
+          updateConversationState(updated);
+          showToast(`PIN imehifadhiwa na mazungumzo yamefungwa 🔒`);
+        },
+      });
+      return;
+    }
+
+    if (!isNowLocked && savedPin) {
+      setPinModalState({
+        isOpen: true,
+        mode: 'verify',
+        chatTitle: conv.isGroup ? conv.groupName : 'Mazungumzo',
+        onSuccessCallback: () => {
+          const updated: Conversation = { ...conv, isLocked: false };
+          updateConversationState(updated);
+          setUnlockedConversationIds((prev) => {
+            const next = new Set(prev);
+            next.delete(conv.id);
+            return next;
+          });
+          showToast('Kufuli imeondolewa (Chat unlocked 🔓)');
+        },
+      });
+      return;
+    }
+
+    const updated: Conversation = { ...conv, isLocked: isNowLocked };
+    updateConversationState(updated);
+    if (isNowLocked) {
+      setUnlockedConversationIds((prev) => {
+        const next = new Set(prev);
+        next.delete(conv.id);
+        return next;
+      });
+      showToast('Mazungumzo yamefungwa kwa PIN (Chat locked 🔒)');
+    } else {
+      showToast('Kufuli imeondolewa (Chat unlocked 🔓)');
+    }
+  };
+
   // Filter & Sort Conversations
   const archivedCount = conversations.filter((c) => c.isArchived).length;
+  const lockedCount = conversations.filter((c) => c.isLocked).length;
 
   const filteredConversations = conversations
     .filter((c) => {
@@ -309,6 +383,7 @@ export const ChatList: React.FC<ChatListProps> = ({
       }
 
       // Handle standard filters
+      if (activeFilter === 'locked') return c.isLocked === true;
       if (activeFilter === 'archived') return c.isArchived === true;
       if (c.isArchived) return false; // Hide archived from normal tabs
 
@@ -342,9 +417,9 @@ export const ChatList: React.FC<ChatListProps> = ({
         </div>
       )}
 
-      {/* Search Input Bar */}
-      <div className="px-4 pt-3 pb-2">
-        <div className="relative flex items-center">
+      {/* Search Input Bar & PIN Security Key */}
+      <div className="px-4 pt-3 pb-2 flex items-center gap-2">
+        <div className="relative flex-1 flex items-center">
           <Search className="w-4 h-4 text-slate-400 absolute left-3.5 pointer-events-none" />
           <input
             type="text"
@@ -362,15 +437,34 @@ export const ChatList: React.FC<ChatListProps> = ({
             </button>
           )}
         </div>
+
+        {/* PIN Security Key Button */}
+        <button
+          onClick={() => {
+            const savedPin = localStorage.getItem('zenia_chat_security_pin');
+            setPinModalState({
+              isOpen: true,
+              mode: savedPin ? 'change' : 'create',
+              chatTitle: 'Usalama wa Meseji (Chat Security)',
+            });
+          }}
+          className="p-2.5 rounded-2xl bg-[#0E1324] border border-white/[0.08] hover:border-cyan-400/50 hover:bg-cyan-500/10 text-slate-400 hover:text-cyan-400 transition-all shrink-0 active:scale-95 shadow-sm"
+          title="Badili au Weka PIN ya Mazungumzo (Set/Change PIN)"
+        >
+          <KeyRound className="w-4 h-4" />
+        </button>
       </div>
 
-      {/* Filter Tabs (All, Unread, Favorites, Groups, Archived) */}
+      {/* Filter Tabs (All, Unread, Favorites, Groups, Locked, Archived) */}
       <div className="px-4 pb-2.5 flex items-center gap-2 overflow-x-auto no-scrollbar">
         {[
           { id: 'all', label: 'All' },
           { id: 'unread', label: 'Unread' },
           { id: 'favorites', label: 'Favorites' },
           { id: 'groups', label: 'Groups' },
+          ...(lockedCount > 0
+            ? [{ id: 'locked', label: `🔒 Locked (${lockedCount})` }]
+            : []),
           ...(archivedCount > 0
             ? [{ id: 'archived', label: `Archived (${archivedCount})` }]
             : []),
@@ -434,6 +528,23 @@ export const ChatList: React.FC<ChatListProps> = ({
           );
         })}
       </div>
+
+      {/* WhatsApp Modern Status Icons Carousel (Positioned exactly at user's red arrow) */}
+      {activeFilter !== 'archived' && !activeListFilter && (
+        <ChatListStatusRow
+          currentUser={currentUser}
+          onOpenCreateStatus={() => {
+            if (onOpenCreateStatus) {
+              onOpenCreateStatus();
+            } else {
+              showToast('Gusa kuweka Status');
+            }
+          }}
+          onSendStatusReply={(status, reply) => {
+            showToast(`Ujumbe umetumwa kwa ${status.authorName}: "${reply}"`);
+          }}
+        />
+      )}
 
       {/* Archived Banner (Quick access if not in archived tab) */}
       {archivedCount > 0 && activeFilter !== 'archived' && !activeListFilter && (
@@ -500,6 +611,19 @@ export const ChatList: React.FC<ChatListProps> = ({
                     isLongPressTriggeredRef.current = false;
                     return;
                   }
+                  // Require PIN verification if conversation is locked
+                  if (conv.isLocked && !unlockedConversationIds.has(conv.id)) {
+                    setPinModalState({
+                      isOpen: true,
+                      mode: 'verify',
+                      chatTitle: title,
+                      onSuccessCallback: () => {
+                        setUnlockedConversationIds((prev) => new Set(prev).add(conv.id));
+                        onSelectConversation(conv);
+                      },
+                    });
+                    return;
+                  }
                   onSelectConversation(conv);
                 }}
               >
@@ -535,6 +659,15 @@ export const ChatList: React.FC<ChatListProps> = ({
                       >
                         {title}
                       </h4>
+                      {/* Locked PIN Icon */}
+                      {conv.isLocked && (
+                        <span
+                          className="p-0.5 rounded bg-cyan-500/15 border border-cyan-500/30 text-cyan-400 shrink-0"
+                          title="Mazungumzo Yamefungwa kwa PIN"
+                        >
+                          <Lock className="w-3 h-3" />
+                        </span>
+                      )}
                       {/* Pinned Icon */}
                       {conv.isPinned && (
                         <Pin className="w-3.5 h-3.5 text-cyan-400 shrink-0 rotate-45" />
@@ -563,16 +696,23 @@ export const ChatList: React.FC<ChatListProps> = ({
                   </div>
 
                   <div className="flex items-center justify-between gap-2">
-                    <p className="text-xs text-slate-400 truncate flex items-center gap-1">
-                      {conv.lastMessageSenderId === currentUser.id && (
-                        <CheckCheck className="w-3.5 h-3.5 text-cyan-400 shrink-0" />
-                      )}
-                      {conv.lastMessage === 'Typing...' ? (
-                        <span className="text-cyan-400 font-medium italic">Typing...</span>
-                      ) : (
-                        conv.lastMessage
-                      )}
-                    </p>
+                    {conv.isLocked && !unlockedConversationIds.has(conv.id) ? (
+                      <p className="text-xs text-cyan-400/90 truncate flex items-center gap-1.5 font-medium">
+                        <Lock className="w-3 h-3 text-cyan-400 shrink-0" />
+                        <span className="italic">Ujumbe umefungwa kwa PIN</span>
+                      </p>
+                    ) : (
+                      <p className="text-xs text-slate-400 truncate flex items-center gap-1">
+                        {conv.lastMessageSenderId === currentUser.id && (
+                          <CheckCheck className="w-3.5 h-3.5 text-cyan-400 shrink-0" />
+                        )}
+                        {conv.lastMessage === 'Typing...' ? (
+                          <span className="text-cyan-400 font-medium italic">Typing...</span>
+                        ) : (
+                          conv.lastMessage
+                        )}
+                      </p>
+                    )}
 
                     <div className="flex items-center gap-1.5 shrink-0">
                       {/* List Tags */}
@@ -646,6 +786,7 @@ export const ChatList: React.FC<ChatListProps> = ({
           onPin={handlePin}
           onMarkUnread={handleMarkUnread}
           onToggleFavorite={handleToggleFavorite}
+          onToggleLockChat={handleToggleLockChat}
           onAddToList={handleAddToList}
           onClearChat={handleClearChat}
           onDeleteChat={handleDeleteChat}
@@ -656,6 +797,27 @@ export const ChatList: React.FC<ChatListProps> = ({
           onClearAllCustomLists={handleClearAllCustomLists}
         />
       )}
+
+      {/* PIN Security Modal (Verification, Creation & Reset) */}
+      <ChatPinModal
+        isOpen={pinModalState.isOpen}
+        mode={pinModalState.mode}
+        chatTitle={pinModalState.chatTitle}
+        onClose={() =>
+          setPinModalState((prev) => ({
+            ...prev,
+            isOpen: false,
+          }))
+        }
+        onSuccess={() => {
+          if (pinModalState.onSuccessCallback) {
+            pinModalState.onSuccessCallback();
+          }
+        }}
+        onPinChanged={(_newPin) => {
+          showToast('PIN mpya ya usalama imehifadhiwa kikamilifu! 🔒');
+        }}
+      />
     </div>
   );
 };

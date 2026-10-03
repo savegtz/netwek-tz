@@ -25,6 +25,7 @@ import {
   Star,
   CornerUpLeft,
   Sparkles,
+  Lock,
 } from 'lucide-react';
 import { Conversation, ChatMessage, UserProfile } from '../../types';
 import { INITIAL_MESSAGES_CONV2, INITIAL_CONVERSATIONS } from '../../services/seed/initialData';
@@ -401,8 +402,16 @@ export const GroupChatRoom: React.FC<GroupChatRoomProps> = ({
                 DT
               </div>
               <div>
-                <h3 className="font-bold text-sm leading-tight text-white group-hover:text-cyan-300 transition-colors">
-                  {conversation.groupName || 'Design Team'}
+                <h3 className="font-bold text-sm leading-tight text-white group-hover:text-cyan-300 transition-colors flex items-center gap-1.5">
+                  <span>{conversation.groupName || 'Design Team'}</span>
+                  {conversation.isLocked && (
+                    <span
+                      className="p-0.5 rounded bg-cyan-500/15 border border-cyan-500/30 text-cyan-400"
+                      title="Kikundi Kimefungwa kwa PIN"
+                    >
+                      <Lock className="w-3 h-3" />
+                    </span>
+                  )}
                 </h3>
                 <p className="text-[11px] text-slate-400">12 members</p>
               </div>

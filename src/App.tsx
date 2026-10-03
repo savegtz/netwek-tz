@@ -21,7 +21,6 @@ import { AuthModal } from './features/auth/AuthModal';
 import { ChatList } from './features/chat/ChatList';
 import { ChatRoom } from './features/chat/ChatRoom';
 import { GroupChatRoom } from './features/chat/GroupChatRoom';
-import { StatusFeed } from './features/status/StatusFeed';
 import { CreateStatusModal } from './features/status/CreateStatusModal';
 import { ShopMarketplace } from './features/shop/ShopMarketplace';
 import { ProfileView } from './features/profile/ProfileView';
@@ -174,6 +173,7 @@ export default function App() {
                     onSelectConversation={(conv) => setActiveConversation(conv)}
                     onStartNewChat={() => setIsCreateMenuOpen(true)}
                     onOpenProfile={() => setActiveTab('profile')}
+                    onOpenCreateStatus={() => setIsCreateMenuOpen(true)}
                     onUpdateConversation={(updated) => {
                       if (activeConversation?.id === updated.id) {
                         setActiveConversation(updated);
@@ -274,16 +274,6 @@ export default function App() {
                   </div>
                 )}
               </div>
-            )}
-
-            {/* View: Status Stories */}
-            {activeTab === 'status' && (
-              <StatusFeed
-                currentUser={currentUser}
-                onOpenCreateMenu={() => setIsCreateMenuOpen(true)}
-                onViewProduct={() => setActiveTab('shop')}
-                onViewEvent={() => setActiveTab('events')}
-              />
             )}
 
             {/* View: Shop / Marketplace */}

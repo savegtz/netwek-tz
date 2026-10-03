@@ -25,6 +25,7 @@ import {
   CornerUpLeft,
   Sparkles,
   Smile,
+  Lock,
 } from 'lucide-react';
 import { Conversation, ChatMessage, UserProfile } from '../../types';
 import { AIService } from '../../services/ai/aiService';
@@ -456,8 +457,16 @@ export const ChatRoom: React.FC<ChatRoomProps> = ({
                 <span className="absolute bottom-0 right-0 w-2.5 h-2.5 rounded-full bg-emerald-500 ring-2 ring-[#0D1222]" />
               </div>
               <div>
-                <h3 className="font-bold text-sm leading-tight text-white group-hover:text-cyan-300 transition-colors flex items-center gap-1">
+                <h3 className="font-bold text-sm leading-tight text-white group-hover:text-cyan-300 transition-colors flex items-center gap-1.5">
                   <span>{name}</span>
+                  {conversation.isLocked && (
+                    <span
+                      className="p-0.5 rounded bg-cyan-500/15 border border-cyan-500/30 text-cyan-400"
+                      title="Mazungumzo Yamelindwa kwa PIN"
+                    >
+                      <Lock className="w-3 h-3" />
+                    </span>
+                  )}
                 </h3>
                 <p className="text-[11px] text-emerald-400 font-medium">Online</p>
               </div>

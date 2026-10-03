@@ -12,6 +12,8 @@ import {
   MinusCircle,
   LogOut,
   Trash2,
+  Lock,
+  Unlock,
   ChevronRight,
   ChevronDown,
   Check,
@@ -31,6 +33,7 @@ export interface DirectChatContextMenuProps {
   onPin: (conv: Conversation) => void;
   onMarkUnread: (conv: Conversation) => void;
   onToggleFavorite: (conv: Conversation) => void;
+  onToggleLockChat?: (conv: Conversation) => void;
   onAddToList: (conv: Conversation, listName: string) => void;
   onClearChat: (conv: Conversation) => void;
   onDeleteChat: (conv: Conversation) => void;
@@ -51,6 +54,7 @@ export const DirectChatContextMenu: React.FC<DirectChatContextMenuProps> = ({
   onPin,
   onMarkUnread,
   onToggleFavorite,
+  onToggleLockChat,
   onAddToList,
   onClearChat,
   onDeleteChat,
@@ -267,6 +271,26 @@ export const DirectChatContextMenu: React.FC<DirectChatContextMenuProps> = ({
             />
             <span className="font-medium text-white">
               {conversation.isFavorite ? 'Remove from Favorites' : 'Add to Favorites'}
+            </span>
+          </button>
+
+          {/* 6. Lock / Unlock chat with Security PIN */}
+          <button
+            onClick={() => {
+              if (onToggleLockChat) {
+                onToggleLockChat(conversation);
+              }
+              onClose();
+            }}
+            className="w-full flex items-center gap-3 px-3 py-2 text-xs rounded-xl hover:bg-white/10 text-left transition-colors group"
+          >
+            {conversation.isLocked ? (
+              <Unlock className="w-4 h-4 text-amber-400 group-hover:scale-105 transition-transform" />
+            ) : (
+              <Lock className="w-4 h-4 text-slate-300 group-hover:text-cyan-400 group-hover:scale-105 transition-transform" />
+            )}
+            <span className="font-medium text-white">
+              {conversation.isLocked ? 'Ondoa kufuli (Unlock chat)' : 'Funga kwa PIN (Lock chat)'}
             </span>
           </button>
 

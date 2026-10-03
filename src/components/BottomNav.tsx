@@ -1,7 +1,6 @@
 import React, { useState } from 'react';
 import {
   MessageSquare,
-  Sparkles,
   Store,
   Users,
   User,
@@ -220,32 +219,28 @@ export const BottomNav: React.FC<BottomNavProps> = ({
           </span>
         </button>
 
-        {/* 2. Status Tab (Status stories & updates) */}
+        {/* 2. Shop / Marketplace Tab */}
         <button
           onClick={() => {
-            onSelectTab('status');
+            onSelectTab('shop');
             setServicesMenuOpen(false);
           }}
           className="flex-1 flex flex-col items-center justify-center gap-1 py-1 transition-all active:scale-95 group"
-          aria-label="Status"
+          aria-label="Shop"
         >
-          <div className="relative">
-            <Sparkles
-              className={`w-5 h-5 transition-transform duration-200 ${
-                activeTab === 'status'
-                  ? 'text-[#3B82F6] fill-[#3B82F6]/20 stroke-[2.4] scale-105'
-                  : 'text-slate-400 group-hover:text-slate-200 stroke-[1.8]'
-              }`}
-            />
-            {/* Active stories subtle ring */}
-            <span className="absolute -top-0.5 -right-0.5 w-2 h-2 rounded-full bg-emerald-400 ring-2 ring-[#10131C]" />
-          </div>
+          <Store
+            className={`w-5 h-5 transition-transform duration-200 ${
+              activeTab === 'shop'
+                ? 'text-[#3B82F6] stroke-[2.5] scale-105'
+                : 'text-slate-400 group-hover:text-slate-200 stroke-[1.8]'
+            }`}
+          />
           <span
             className={`text-[11px] font-medium transition-colors ${
-              activeTab === 'status' ? 'text-[#3B82F6] font-semibold' : 'text-slate-400'
+              activeTab === 'shop' ? 'text-[#3B82F6] font-semibold' : 'text-slate-400'
             }`}
           >
-            Status
+            Shop
           </span>
         </button>
 

@@ -41,7 +41,6 @@ export const Header: React.FC<HeaderProps> = ({
 }) => {
   const mainTabs = [
     { id: 'chats', label: 'Chats', icon: MessageCircle },
-    { id: 'status', label: 'Status', icon: Video },
     { id: 'discover', label: 'Discover', icon: Compass },
     { id: 'shop', label: 'Shop', icon: ShoppingBag },
     { id: 'profile', label: 'Profile', icon: Users },
