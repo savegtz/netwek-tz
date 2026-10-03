@@ -3,7 +3,7 @@ import { Plus } from 'lucide-react';
 import { StatusItem, UserProfile } from '../../types';
 import { StatusStoryViewerModal } from './StatusStoryViewerModal';
 
-// Direct bundled local imports so images NEVER fail or fall back to initials
+// Direct bundled local imports matching reference image exactly
 import waveWallpaper from '../../assets/images/status_wave_wallpaper_1791059420542.jpg';
 import alexPortrait from '../../assets/images/alex_portrait_1791059432462.jpg';
 import micWallpaper from '../../assets/images/status_mic_wallpaper_1791059446504.jpg';
@@ -122,78 +122,55 @@ export const ChatListStatusRow: React.FC<ChatListStatusRowProps> = ({
   });
 
   return (
-    <div className="pt-1 pb-2.5 border-b border-white/[0.06] select-none">
-      {/* Horizontal Carousel of Status Cards (Refined WhatsApp squircle card layout) */}
-      <div className="flex items-center gap-2 overflow-x-auto no-scrollbar px-3 scroll-smooth">
+    <div className="pt-2 pb-1.5 px-3 border-b border-white/[0.06] select-none">
+      {/* Horizontal Status Cards Carousel (Exact match to WhatsApp reference image) */}
+      <div className="flex items-center gap-2.5 overflow-x-auto no-scrollbar scroll-smooth py-0.5">
         {/* 1. My Status Card (Hali Yangu) */}
         <div
           onClick={onOpenCreateStatus}
-          className="relative w-[104px] sm:w-[114px] h-[72px] sm:h-[76px] rounded-[18px] overflow-hidden bg-gradient-to-tr from-[#0F172A] via-[#1E293B] to-[#2E3C56] border border-white/10 shrink-0 cursor-pointer group active:scale-95 transition-all shadow-md hover:border-cyan-400/60"
+          className="relative w-[100px] sm:w-[104px] h-[58px] sm:h-[60px] rounded-[26px] overflow-hidden bg-gradient-to-tr from-[#0F172A] via-[#1E293B] to-[#334155] border border-white/10 shrink-0 cursor-pointer active:scale-95 transition-all shadow-md hover:border-cyan-400/60"
           title="Weka Hali Yako (Post Status)"
         >
-          {/* Subtle gradient vignette */}
-          <div className="absolute inset-0 bg-gradient-to-t from-black/85 via-black/20 to-black/30" />
+          {/* Subtle dark overlay */}
+          <div className="absolute inset-0 bg-black/20" />
 
-          {/* Top-Left Circular Avatar with Solid White Ring (Exact WhatsApp Match) */}
-          <div className="absolute top-1.5 left-1.5 z-10">
+          {/* Top-Left Circular Avatar with Solid White Ring (Exact match to reference photo) */}
+          <div className="absolute top-2 left-2 z-10">
             <div className="relative">
               <img
                 src={currentUser.photoURL || aminaAvatar}
                 alt="My Status"
-                className="w-7 h-7 sm:w-8 sm:h-8 rounded-full object-cover border-2 border-white shadow-md bg-slate-900"
+                className="w-7 h-7 rounded-full object-cover border-2 border-white shadow-md bg-slate-900"
               />
-              <span className="absolute -bottom-0.5 -right-0.5 w-3.5 h-3.5 rounded-full bg-emerald-500 text-white flex items-center justify-center text-[9px] font-black border border-[#0F172A] shadow-sm">
+              <span className="absolute -bottom-0.5 -right-0.5 w-3.5 h-3.5 rounded-full bg-emerald-500 text-white flex items-center justify-center text-[8.5px] font-black border border-[#0F172A] shadow-sm">
                 <Plus className="w-2.5 h-2.5 stroke-[3.5]" />
               </span>
             </div>
           </div>
-
-          {/* Bottom Contact Label */}
-          <div className="absolute bottom-1.5 left-2 right-1.5 z-10 pointer-events-none">
-            <p className="text-[10.5px] font-bold text-white truncate drop-shadow-[0_1px_2px_rgba(0,0,0,0.9)] leading-tight">
-              Hali Yangu
-            </p>
-            <p className="text-[8.5px] font-medium text-cyan-300 truncate drop-shadow leading-tight">
-              Gusa kuweka
-            </p>
-          </div>
         </div>
 
-        {/* 2. Contact Status Cards (Card 1: Colorful Waves + Man, Card 2: Studio Mic + Woman) */}
+        {/* 2. Contact Status Cards (Card 1: Fluid Waves + Man, Card 2: Vintage Mic + Woman) */}
         {statuses.map((item, idx) => (
           <div
             key={item.id}
             onClick={() => setViewerState({ isOpen: true, initialIndex: idx })}
-            className="relative w-[104px] sm:w-[114px] h-[72px] sm:h-[76px] rounded-[18px] overflow-hidden shrink-0 cursor-pointer group active:scale-95 transition-all shadow-md border border-white/10 hover:border-cyan-400/80"
+            className="relative w-[100px] sm:w-[104px] h-[58px] sm:h-[60px] rounded-[26px] overflow-hidden shrink-0 cursor-pointer group active:scale-95 transition-all shadow-md border border-white/10 hover:border-cyan-400/80"
             title={`Tazama status ya ${item.authorName}`}
           >
-            {/* Background cover image (Direct local bundle) */}
+            {/* Background cover image (Vivid waves or microphone matching screenshot) */}
             <img
               src={item.mediaUrl}
               alt={item.authorName}
               className="absolute inset-0 w-full h-full object-cover group-hover:scale-105 transition-transform duration-300"
             />
 
-            {/* Subtle dark vignette overlay for high text contrast */}
-            <div className="absolute inset-0 bg-gradient-to-t from-black/90 via-black/25 to-black/35" />
-
-            {/* Top-Left Circular Avatar with Solid White Ring (EXACT MATCH TO USER SCREENSHOT) */}
-            <div className="absolute top-1.5 left-1.5 z-10">
+            {/* Top-Left Circular Avatar with Solid White Ring (EXACT MATCH TO REFERENCE PHOTO) */}
+            <div className="absolute top-2 left-2 z-10">
               <img
                 src={item.authorPhoto}
                 alt={item.authorName}
-                className="w-7 h-7 sm:w-8 sm:h-8 rounded-full object-cover border-2 border-white shadow-md bg-slate-900"
+                className="w-7 h-7 rounded-full object-cover border-2 border-white shadow-md bg-slate-900"
               />
-            </div>
-
-            {/* Bottom Contact Name & Time */}
-            <div className="absolute bottom-1.5 left-2 right-1.5 z-10 pointer-events-none">
-              <p className="text-[10.5px] font-bold text-white truncate drop-shadow-[0_1px_2px_rgba(0,0,0,0.9)] leading-tight">
-                {item.authorName}
-              </p>
-              <p className="text-[8.5px] font-medium text-slate-200/90 truncate drop-shadow leading-tight">
-                {item.createdAt}
-              </p>
             </div>
           </div>
         ))}

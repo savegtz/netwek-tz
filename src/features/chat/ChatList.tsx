@@ -417,21 +417,36 @@ export const ChatList: React.FC<ChatListProps> = ({
         </div>
       )}
 
+      {/* WhatsApp Modern Status Icons Carousel (Placed ABOVE search as requested) */}
+      <ChatListStatusRow
+        currentUser={currentUser}
+        onOpenCreateStatus={() => {
+          if (onOpenCreateStatus) {
+            onOpenCreateStatus();
+          } else {
+            showToast('Gusa kuweka Status');
+          }
+        }}
+        onSendStatusReply={(status, reply) => {
+          showToast(`Ujumbe umetumwa kwa ${status.authorName}: "${reply}"`);
+        }}
+      />
+
       {/* Search Input Bar & PIN Security Key */}
-      <div className="px-4 pt-3 pb-2 flex items-center gap-2">
+      <div className="px-3.5 pt-2 pb-1.5 flex items-center gap-2">
         <div className="relative flex-1 flex items-center">
-          <Search className="w-4 h-4 text-slate-400 absolute left-3.5 pointer-events-none" />
+          <Search className="w-4 h-4 text-slate-400 absolute left-3 pointer-events-none" />
           <input
             type="text"
             value={searchQuery}
             onChange={(e) => setSearchQuery(e.target.value)}
             placeholder="Search conversations, friends..."
-            className="w-full bg-[#0E1324] border border-white/[0.08] focus:border-cyan-400/80 rounded-2xl pl-10 pr-9 py-2.5 text-xs text-white placeholder-slate-400 focus:outline-none focus:ring-1 focus:ring-cyan-400/40 transition-all shadow-inner"
+            className="w-full bg-[#0E1324] border border-white/[0.08] focus:border-cyan-400/80 rounded-xl pl-9 pr-8 py-2 text-xs text-white placeholder-slate-400 focus:outline-none focus:ring-1 focus:ring-cyan-400/40 transition-all shadow-inner"
           />
           {searchQuery && (
             <button
               onClick={() => setSearchQuery('')}
-              className="absolute right-3 p-1 rounded-full text-slate-400 hover:text-white"
+              className="absolute right-2.5 p-1 rounded-full text-slate-400 hover:text-white"
             >
               <X className="w-3.5 h-3.5" />
             </button>
@@ -448,7 +463,7 @@ export const ChatList: React.FC<ChatListProps> = ({
               chatTitle: 'Usalama wa Meseji (Chat Security)',
             });
           }}
-          className="p-2.5 rounded-2xl bg-[#0E1324] border border-white/[0.08] hover:border-cyan-400/50 hover:bg-cyan-500/10 text-slate-400 hover:text-cyan-400 transition-all shrink-0 active:scale-95 shadow-sm"
+          className="p-2 rounded-xl bg-[#0E1324] border border-white/[0.08] hover:border-cyan-400/50 hover:bg-cyan-500/10 text-slate-400 hover:text-cyan-400 transition-all shrink-0 active:scale-95 shadow-sm"
           title="Badili au Weka PIN ya Mazungumzo (Set/Change PIN)"
         >
           <KeyRound className="w-4 h-4" />
@@ -456,7 +471,7 @@ export const ChatList: React.FC<ChatListProps> = ({
       </div>
 
       {/* Filter Tabs (All, Unread, Favorites, Groups, Locked, Archived) */}
-      <div className="px-4 pb-2.5 flex items-center gap-2 overflow-x-auto no-scrollbar">
+      <div className="px-3.5 pb-2 flex items-center gap-1.5 overflow-x-auto no-scrollbar">
         {[
           { id: 'all', label: 'All' },
           { id: 'unread', label: 'Unread' },
@@ -528,23 +543,6 @@ export const ChatList: React.FC<ChatListProps> = ({
           );
         })}
       </div>
-
-      {/* WhatsApp Modern Status Icons Carousel (Positioned exactly at user's red arrow) */}
-      {activeFilter !== 'archived' && !activeListFilter && (
-        <ChatListStatusRow
-          currentUser={currentUser}
-          onOpenCreateStatus={() => {
-            if (onOpenCreateStatus) {
-              onOpenCreateStatus();
-            } else {
-              showToast('Gusa kuweka Status');
-            }
-          }}
-          onSendStatusReply={(status, reply) => {
-            showToast(`Ujumbe umetumwa kwa ${status.authorName}: "${reply}"`);
-          }}
-        />
-      )}
 
       {/* Archived Banner (Quick access if not in archived tab) */}
       {archivedCount > 0 && activeFilter !== 'archived' && !activeListFilter && (
