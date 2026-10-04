@@ -26,7 +26,50 @@ export type MessageType =
   | 'location'
   | 'contact'
   | 'gif'
-  | 'sticker';
+  | 'sticker'
+  | 'invoice'
+  | 'payment_receipt';
+
+export interface InvoiceDetails {
+  invoiceNumber: string;
+  title: string;
+  amount: number;
+  currency: string;
+  description?: string;
+  status: 'pending' | 'paid' | 'cancelled';
+  dueDate?: string;
+  paidAt?: string;
+  paymentMethod?: string;
+  paidBy?: string;
+  acceptedMethods?: string[];
+}
+
+export type TicketStatus = 'open' | 'in_progress' | 'resolved';
+export type TicketPriority = 'low' | 'normal' | 'high' | 'urgent';
+
+export interface CustomerInternalNote {
+  id: string;
+  authorName: string;
+  text: string;
+  createdAt: string;
+}
+
+export interface CustomerCrmProfile {
+  customerId: string;
+  customerName: string;
+  phone?: string;
+  email?: string;
+  location?: string;
+  joinedDate?: string;
+  totalSpent?: number;
+  currency?: string;
+  tags: string[];
+  internalNotes: CustomerInternalNote[];
+  ticketStatus: TicketStatus;
+  ticketPriority: TicketPriority;
+  ticketId?: string;
+  assignedAgentName?: string;
+}
 
 export interface ChatMessage {
   id: string;
@@ -41,6 +84,7 @@ export interface ChatMessage {
   thumbnailUrl?: string;
   fileName?: string;
   fileSize?: string;
+  invoiceDetails?: InvoiceDetails;
   replyTo?: {
     id: string;
     text: string;

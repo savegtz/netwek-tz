@@ -26,14 +26,24 @@ import {
   Sparkles,
   Smile,
   Lock,
+  Receipt,
+  Zap,
+  Award,
+  UserCheck,
+  DollarSign,
 } from 'lucide-react';
-import { Conversation, ChatMessage, UserProfile } from '../../types';
+import { Conversation, ChatMessage, UserProfile, InvoiceDetails, CustomerCrmProfile } from '../../types';
 import { AIService } from '../../services/ai/aiService';
 import { SafeImage } from '../../components/SafeImage';
 import { ChatRoomMoreMenu, CHAT_THEMES } from './components/ChatRoomMoreMenu';
 import { MessageActionMenu } from './components/MessageActionMenu';
 import { ContactInfoModal } from './components/ContactInfoModal';
 import { INITIAL_CONVERSATIONS } from '../../services/seed/initialData';
+import { InChatInvoiceModal } from './components/InChatInvoiceModal';
+import { InChatInvoiceCard } from './components/InChatInvoiceCard';
+import { CustomerCrmDrawer } from './components/CustomerCrmDrawer';
+import { QuickRepliesMenu } from './components/QuickRepliesMenu';
+import { AgentDashboardModal } from './components/AgentDashboardModal';
 
 interface ChatRoomProps {
   conversation: Conversation;
@@ -88,10 +98,104 @@ export const ChatRoom: React.FC<ChatRoomProps> = ({
       createdAt: '12:24 PM',
       reactions: { '👍': ['user_sarah'] },
     },
+    {
+      id: 'm_invoice_1',
+      conversationId: conversation.id,
+      senderId: currentUser.id,
+      senderName: 'You',
+      text: 'Tafadhali kamilisha malipo ya Wireless Earbuds Pro ili tukuletee mzigo wako sasa hivi.',
+      messageType: 'invoice',
+      invoiceDetails: {
+        invoiceNumber: 'INV-849201',
+        title: 'Wireless Earbuds Pro + Usafirishaji',
+        amount: 45000,
+        currency: 'TZS',
+        description: 'Bidhaa asilia ya sauti ya hali ya juu yenye udhamini wa mwaka 1.',
+        status: 'pending',
+        dueDate: 'Siku 3 zijazo',
+        acceptedMethods: ['M-Pesa', 'Airtel Money', 'Tigo Pesa', 'Kadi'],
+      },
+      createdAt: '12:26 PM',
+    },
   ]);
 
   const [inputText, setInputText] = useState('');
   const [isSpeaking, setIsSpeaking] = useState(false);
+  const [isContactTyping, setIsContactTyping] = useState(false);
+
+  // Mobijet Agent & Invoicing State
+  const [isInvoiceModalOpen, setIsInvoiceModalOpen] = useState(false);
+  const [isCrmDrawerOpen, setIsCrmDrawerOpen] = useState(false);
+  const [isQuickRepliesOpen, setIsQuickRepliesOpen] = useState(false);
+  const [isAgentDashboardOpen, setIsAgentDashboardOpen] = useState(false);
+
+  // Customer CRM Profile State
+  const [crmProfile, setCrmProfile] = useState<CustomerCrmProfile>({
+    customerId: otherUserId || 'cust_sarah',
+    customerName: name,
+    phone: '+255 714 892 012',
+    email: 'sarah.mwangi@example.com',
+    location: 'Dar es Salaam, Tanzania',
+    joinedDate: 'Februari 2026',
+    totalSpent: 485000,
+    currency: 'TZS',
+    tags: ['VIP', 'Mteja wa Mara kwa Mara', 'Oda Inasubiri'],
+    ticketStatus: 'open',
+    ticketPriority: 'high',
+    ticketId: 'TK-4821',
+    assignedAgentName: 'You (Agent)',
+    internalNotes: [
+      {
+        id: 'n1',
+        authorName: 'Agent You',
+        text: 'Mteja anapendelea malipo ya M-Pesa na anataka mzigo upelekwe ofisini Kariakoo.',
+        createdAt: 'Jana saa 4:00',
+      },
+      {
+        id: 'n2',
+        authorName: 'Helpdesk',
+        text: 'Amethibitisha atatoa maoni chanya ya nyota 5 akipokea mzigo wake kwa wakati.',
+        createdAt: 'Leo saa 11:30',
+      },
+    ],
+  });
+
+  const handleSendInvoice = (invoice: InvoiceDetails, noteMessage: string) => {
+    const invoiceMsg: ChatMessage = {
+      id: `inv_msg_${Date.now()}`,
+      conversationId: conversation.id,
+      senderId: currentUser.id,
+      senderName: 'You',
+      text: noteMessage,
+      messageType: 'invoice',
+      invoiceDetails: invoice,
+      createdAt: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
+    };
+    setMessages((prev) => [...prev, invoiceMsg]);
+    showToast(`Ankara #${invoice.invoiceNumber} ya ${invoice.currency} ${invoice.amount.toLocaleString()} imetumwa!`);
+  };
+
+  const handlePayInvoice = (messageId: string, updatedInvoice: InvoiceDetails) => {
+    setMessages((prev) =>
+      prev.map((m) =>
+        m.id === messageId ? { ...m, invoiceDetails: updatedInvoice } : m
+      )
+    );
+    setCrmProfile((prev) => ({
+      ...prev,
+      totalSpent: (prev.totalSpent || 0) + updatedInvoice.amount,
+      ticketStatus: 'resolved',
+    }));
+    showToast(`Malipo ya ${updatedInvoice.currency} ${updatedInvoice.amount.toLocaleString()} yamethibitishwa!`);
+  };
+
+  const handleTransferChat = (targetAgent: string) => {
+    setCrmProfile((prev) => ({
+      ...prev,
+      assignedAgentName: targetAgent,
+    }));
+    showToast(`Mazungumzo yamehamishiwa kwa ${targetAgent}`);
+  };
 
   // 3-Dots More Menu State
   const [isMoreMenuOpen, setIsMoreMenuOpen] = useState(false);
@@ -176,6 +280,7 @@ export const ChatRoom: React.FC<ChatRoomProps> = ({
         : undefined,
     };
 
+    const sentText = inputText.trim();
     setMessages((prev) => [...prev, newMsg]);
     setInputText('');
     setReplyingToMessage(null);
@@ -187,6 +292,40 @@ export const ChatRoom: React.FC<ChatRoomProps> = ({
         updatedAt: 'Just now',
       });
     }
+
+    // Realistic Contact Auto-reply Simulation
+    setTimeout(() => {
+      setIsContactTyping(true);
+      setTimeout(() => {
+        setIsContactTyping(false);
+        const contactReplies = [
+          `Nimekupata vizuri kabisa! 👍`,
+          `Sawa, naendelea kulifanyia kazi mara moja.`,
+          `Asante sana kwa taarifa! Ni jambo zuri sana. ✨`,
+          `Niko hapa kama unahitaji usaidizi wowote mwingine.`,
+          `Bila shaka! Tupo pamoja. 🙌`,
+          `Vizuri sana! Nitaangalia na kukupa mrejesho punde.`,
+        ];
+        const randomReply = contactReplies[Math.floor(Math.random() * contactReplies.length)];
+        const replyMsg: ChatMessage = {
+          id: `reply_${Date.now()}`,
+          conversationId: conversation.id,
+          senderId: otherUserId || 'user_sarah',
+          senderName: name,
+          text: randomReply,
+          messageType: 'text',
+          createdAt: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
+        };
+        setMessages((prev) => [...prev, replyMsg]);
+        if (onUpdateConversation) {
+          onUpdateConversation({
+            ...conversation,
+            lastMessage: randomReply,
+            updatedAt: 'Just now',
+          });
+        }
+      }, 1500);
+    }, 700);
   };
 
   const handleReadMessages = () => {
@@ -468,7 +607,9 @@ export const ChatRoom: React.FC<ChatRoomProps> = ({
                     </span>
                   )}
                 </h3>
-                <p className="text-[11px] text-emerald-400 font-medium">Online</p>
+                <p className={`text-[11px] font-medium transition-colors ${isContactTyping ? 'text-cyan-300 font-bold animate-pulse' : 'text-emerald-400'}`}>
+                  {isContactTyping ? 'anaandika...' : 'Online'}
+                </p>
               </div>
             </button>
           </div>
@@ -483,6 +624,43 @@ export const ChatRoom: React.FC<ChatRoomProps> = ({
               title="🔊 Sikiliza: Text-to-speech reading"
             >
               {isSpeaking ? <VolumeX className="w-4 h-4 text-cyan-400" /> : <Volume2 className="w-4 h-4" />}
+            </button>
+
+            {/* Mobijet Ticket Status Badge */}
+            <button
+              onClick={() => setIsCrmDrawerOpen(true)}
+              className={`hidden md:flex items-center gap-1.5 px-2.5 py-1 rounded-full text-[11px] font-bold border transition-all active:scale-95 ${
+                crmProfile.ticketStatus === 'resolved'
+                  ? 'bg-emerald-500/15 border-emerald-400/40 text-emerald-300'
+                  : crmProfile.ticketStatus === 'in_progress'
+                  ? 'bg-amber-500/15 border-amber-400/40 text-amber-300'
+                  : 'bg-cyan-500/15 border-cyan-400/40 text-cyan-300'
+              }`}
+              title="Tiketi ya Huduma & CRM ya Mteja (Customer Support Desk)"
+            >
+              <span className="w-1.5 h-1.5 rounded-full bg-current animate-pulse" />
+              <span>#{crmProfile.ticketId || 'TK-4821'}</span>
+              <span className="capitalize text-[10px] opacity-80">
+                {crmProfile.ticketStatus === 'resolved' ? 'Imekamilika' : (crmProfile.ticketStatus === 'in_progress' ? 'Inashughulikiwa' : 'Wazi')}
+              </span>
+            </button>
+
+            {/* Mobijet Customer CRM Drawer Button */}
+            <button
+              onClick={() => setIsCrmDrawerOpen(true)}
+              className="p-2 hover:bg-white/5 rounded-xl text-cyan-400 hover:text-cyan-200 transition-colors"
+              title="Fungua CRM ya Mteja, Lebo na Dokezo la Ndani"
+            >
+              <UserCheck className="w-4 h-4" />
+            </button>
+
+            {/* Mobijet Agent Earnings & CSAT Dashboard */}
+            <button
+              onClick={() => setIsAgentDashboardOpen(true)}
+              className="p-2 hover:bg-white/5 rounded-xl text-amber-400 hover:text-amber-200 transition-colors"
+              title="Dashibodi ya Wakala (Agent Performance & CSAT)"
+            >
+              <Award className="w-4 h-4" />
             </button>
 
             {/* In-chat Search Toggle */}
@@ -792,7 +970,19 @@ export const ChatRoom: React.FC<ChatRoomProps> = ({
                     </div>
                   )}
 
-                  <p>{msg.text}</p>
+                  {msg.messageType === 'invoice' && msg.invoiceDetails ? (
+                    <div>
+                      {msg.text && <p className="mb-2 text-slate-200">{msg.text}</p>}
+                      <InChatInvoiceCard
+                        message={msg}
+                        invoice={msg.invoiceDetails}
+                        isMe={isMe}
+                        onPayInvoice={handlePayInvoice}
+                      />
+                    </div>
+                  ) : (
+                    <p>{msg.text}</p>
+                  )}
 
                   <div className="flex items-center justify-end gap-1.5 mt-1 text-[10px] text-white/70">
                     {/* Star Icon */}
@@ -841,6 +1031,18 @@ export const ChatRoom: React.FC<ChatRoomProps> = ({
             );
           })
         )}
+
+        {/* Animated Typing Indicator Bubble */}
+        {isContactTyping && (
+          <div className="flex items-center gap-2 text-slate-300 text-xs px-3.5 py-2 rounded-2xl bg-[#171F36] border border-white/10 w-fit animate-in fade-in slide-in-from-bottom-1 shadow-md">
+            <div className="flex items-center gap-1">
+              <span className="w-1.5 h-1.5 rounded-full bg-cyan-400 animate-bounce" style={{ animationDelay: '0ms' }} />
+              <span className="w-1.5 h-1.5 rounded-full bg-cyan-400 animate-bounce" style={{ animationDelay: '150ms' }} />
+              <span className="w-1.5 h-1.5 rounded-full bg-cyan-400 animate-bounce" style={{ animationDelay: '300ms' }} />
+            </div>
+            <span className="text-[11px] text-cyan-300 font-medium">{name} anaandika...</span>
+          </div>
+        )}
       </div>
 
       {/* Reply Banner above Input Box */}
@@ -871,25 +1073,75 @@ export const ChatRoom: React.FC<ChatRoomProps> = ({
           <span>Umemzuia mtu huyu (Contact is blocked). Huwezi kutuma wala kupokea ujumbe.</span>
         </div>
       ) : (
-        <form
-          onSubmit={handleSend}
-          className="p-3 bg-[#0D1222] border-t border-white/[0.08] flex items-center gap-2 shrink-0"
-        >
-          <input
-            type="text"
-            value={inputText}
-            onChange={(e) => setInputText(e.target.value)}
-            placeholder={replyingToMessage ? "Andika jibu lako..." : "Type a message..."}
-            className="flex-1 bg-[#171F36] border border-white/[0.08] rounded-2xl px-4 py-2.5 text-xs text-white placeholder-slate-400 focus:outline-none focus:border-cyan-400 transition-colors"
+        <div className="relative">
+          {/* Quick Replies Menu Popover */}
+          <QuickRepliesMenu
+            isOpen={isQuickRepliesOpen}
+            onClose={() => setIsQuickRepliesOpen(false)}
+            onSelectReply={(text) => {
+              setInputText(text);
+              setIsQuickRepliesOpen(false);
+            }}
           />
-          <button
-            type="submit"
-            disabled={!inputText.trim()}
-            className="p-2.5 rounded-xl bg-gradient-to-r from-cyan-500 to-blue-600 text-white shadow-md hover:scale-105 active:scale-95 disabled:opacity-40 disabled:hover:scale-100 transition-all shrink-0"
+
+          <form
+            onSubmit={handleSend}
+            className="p-2.5 sm:p-3 bg-[#0D1222] border-t border-white/[0.08] flex items-center gap-1.5 sm:gap-2 shrink-0"
           >
-            <Send className="w-4 h-4" />
-          </button>
-        </form>
+            {/* Mobijet In-Chat Invoice Button */}
+            <button
+              type="button"
+              onClick={() => setIsInvoiceModalOpen(true)}
+              className="p-2 rounded-xl bg-cyan-500/10 hover:bg-cyan-500/20 text-cyan-400 border border-cyan-500/30 transition-all shrink-0 active:scale-95 shadow-sm"
+              title="Tuma Ankara / Ombi la Malipo (Send Invoice)"
+            >
+              <Receipt className="w-4 h-4" />
+            </button>
+
+            {/* Quick Replies Trigger Button */}
+            <button
+              type="button"
+              onClick={() => setIsQuickRepliesOpen(!isQuickRepliesOpen)}
+              className={`p-2 rounded-xl border transition-all shrink-0 active:scale-95 shadow-sm ${
+                isQuickRepliesOpen
+                  ? 'bg-amber-500/20 border-amber-400 text-amber-300'
+                  : 'bg-white/[0.03] hover:bg-white/[0.08] text-slate-400 hover:text-amber-300 border-white/5'
+              }`}
+              title="Majibu ya Haraka / Quick Replies (andika /)"
+            >
+              <Zap className="w-4 h-4" />
+            </button>
+
+            {/* Input field (typing / opens quick replies) */}
+            <div className="relative flex-1">
+              <input
+                type="text"
+                value={inputText}
+                onChange={(e) => {
+                  const val = e.target.value;
+                  setInputText(val);
+                  if (val.endsWith('/') && !isQuickRepliesOpen) {
+                    setIsQuickRepliesOpen(true);
+                  }
+                }}
+                placeholder={
+                  replyingToMessage
+                    ? "Andika jibu lako..."
+                    : "Type a message or / for quick replies..."
+                }
+                className="w-full bg-[#171F36] border border-white/[0.08] rounded-2xl pl-4 pr-3 py-2.5 text-xs text-white placeholder-slate-400 focus:outline-none focus:border-cyan-400 transition-colors"
+              />
+            </div>
+
+            <button
+              type="submit"
+              disabled={!inputText.trim()}
+              className="p-2.5 rounded-xl bg-gradient-to-r from-cyan-500 to-blue-600 text-white shadow-md hover:scale-105 active:scale-95 disabled:opacity-40 disabled:hover:scale-100 transition-all shrink-0"
+            >
+              <Send className="w-4 h-4" />
+            </button>
+          </form>
+        </div>
       )}
 
       {/* MESSAGE ACTION CONTEXT MENU (Triggered by holding/long-press or right-click) */}
@@ -1002,6 +1254,31 @@ export const ChatRoom: React.FC<ChatRoomProps> = ({
           </div>
         </div>
       )}
+
+      {/* MOBIJET IN-CHAT INVOICE MODAL */}
+      <InChatInvoiceModal
+        isOpen={isInvoiceModalOpen}
+        onClose={() => setIsInvoiceModalOpen(false)}
+        onSendInvoice={handleSendInvoice}
+        recipientName={name}
+      />
+
+      {/* MOBIJET CUSTOMER CRM & INTERNAL NOTES DRAWER */}
+      <CustomerCrmDrawer
+        isOpen={isCrmDrawerOpen}
+        onClose={() => setIsCrmDrawerOpen(false)}
+        crmProfile={crmProfile}
+        onUpdateProfile={(updated) => setCrmProfile(updated)}
+        onOpenSendInvoice={() => setIsInvoiceModalOpen(true)}
+        onTransferChat={handleTransferChat}
+      />
+
+      {/* MOBIJET AGENT DASHBOARD & CSAT MODAL */}
+      <AgentDashboardModal
+        isOpen={isAgentDashboardOpen}
+        onClose={() => setIsAgentDashboardOpen(false)}
+        agentName={currentUser.displayName || 'You'}
+      />
     </div>
   );
 };
