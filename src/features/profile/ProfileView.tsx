@@ -199,6 +199,25 @@ export const ProfileView: React.FC<ProfileViewProps> = ({
             <ChevronRight className="w-4 h-4 text-slate-500 group-hover:text-emerald-400 shrink-0 ml-1" />
           </button>
         </div>
+
+        {/* Super Admin Panel in Profile */}
+        <div className="w-full max-w-xs mt-2 text-left">
+          <button
+            onClick={onOpenAdmin}
+            className="w-full flex items-center justify-between p-3.5 rounded-2xl bg-gradient-to-r from-cyan-950/40 to-indigo-950/40 border border-cyan-500/30 hover:border-cyan-400 hover:bg-cyan-500/10 transition-all text-left group active:scale-95 shadow-sm"
+          >
+            <div className="flex items-center gap-3 min-w-0">
+              <div className="w-10 h-10 rounded-xl bg-cyan-500/20 text-cyan-400 flex items-center justify-center shrink-0 group-hover:scale-105 transition-transform">
+                <Shield className="w-5 h-5" />
+              </div>
+              <div className="min-w-0">
+                <p className="text-xs font-bold text-white group-hover:text-cyan-300 truncate">Super Admin Panel</p>
+                <p className="text-[10px] text-cyan-400/80 truncate">Usimamizi wa mfumo & watumiaji</p>
+              </div>
+            </div>
+            <ChevronRight className="w-4 h-4 text-cyan-400 shrink-0 ml-1" />
+          </button>
+        </div>
       </div>
 
       {/* Tabs Header (Posts, Status, Videos, Shop) */}

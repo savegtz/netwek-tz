@@ -15,6 +15,10 @@ export interface UserProfile {
   isOnline?: boolean;
   lastSeen?: string;
   createdAt?: string;
+  isSuspended?: boolean;
+  isBanned?: boolean;
+  walletBalance?: number;
+  role?: 'user' | 'admin' | 'superadmin';
 }
 
 export type MessageType =

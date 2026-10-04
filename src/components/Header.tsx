@@ -10,6 +10,7 @@ import {
   Video,
   Users,
   ChevronLeft,
+  ShieldCheck,
 } from 'lucide-react';
 import { UserProfile } from '../types';
 import { SafeImage } from './SafeImage';
@@ -160,6 +161,16 @@ export const Header: React.FC<HeaderProps> = ({
             <span className="text-[11px] font-medium hidden lg:inline">
               {!isFrameMode ? 'Web View' : 'Mobile View'}
             </span>
+          </button>
+
+          {/* Super Admin Control Panel Button */}
+          <button
+            onClick={onOpenAdmin}
+            className="flex items-center gap-1.5 px-2.5 sm:px-3 py-1.5 rounded-full bg-cyan-500/15 hover:bg-cyan-500/25 border border-cyan-500/40 text-cyan-300 hover:text-white text-xs font-bold shadow-sm transition-all active:scale-95"
+            title="Super Admin Panel (Usimamizi wa Mfumo)"
+          >
+            <ShieldCheck className="w-3.5 h-3.5 text-cyan-400" />
+            <span className="hidden sm:inline">Admin</span>
           </button>
 
           {/* Notifications Bell */}
