@@ -11,6 +11,7 @@ import {
   X,
   Layers,
 } from 'lucide-react';
+import { StatusIcon } from './StatusIcon';
 
 interface BottomNavProps {
   activeTab: string;
@@ -219,28 +220,32 @@ export const BottomNav: React.FC<BottomNavProps> = ({
           </span>
         </button>
 
-        {/* 2. Shop / Marketplace Tab */}
+        {/* 2. Status (Updates) Tab with WhatsApp Status Icon */}
         <button
           onClick={() => {
-            onSelectTab('shop');
+            onSelectTab('status');
             setServicesMenuOpen(false);
           }}
           className="flex-1 flex flex-col items-center justify-center gap-1 py-1 transition-all active:scale-95 group"
-          aria-label="Shop"
+          aria-label="Status"
         >
-          <Store
-            className={`w-5 h-5 transition-transform duration-200 ${
-              activeTab === 'shop'
-                ? 'text-[#3B82F6] stroke-[2.5] scale-105'
-                : 'text-slate-400 group-hover:text-slate-200 stroke-[1.8]'
-            }`}
-          />
+          <div className="relative">
+            <StatusIcon
+              className={`w-5 h-5 transition-transform duration-200 ${
+                activeTab === 'status'
+                  ? 'text-[#3B82F6] scale-105 stroke-[2.5]'
+                  : 'text-slate-400 group-hover:text-slate-200'
+              }`}
+            />
+            {/* Green new status indicator dot */}
+            <span className="absolute -top-0.5 -right-0.5 w-2 h-2 rounded-full bg-emerald-400 ring-2 ring-[#10131C] animate-pulse" />
+          </div>
           <span
             className={`text-[11px] font-medium transition-colors ${
-              activeTab === 'shop' ? 'text-[#3B82F6] font-semibold' : 'text-slate-400'
+              activeTab === 'status' ? 'text-[#3B82F6] font-semibold' : 'text-slate-400'
             }`}
           >
-            Shop
+            Status
           </span>
         </button>
 

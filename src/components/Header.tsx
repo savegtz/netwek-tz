@@ -13,6 +13,7 @@ import {
 } from 'lucide-react';
 import { UserProfile } from '../types';
 import { SafeImage } from './SafeImage';
+import { StatusIcon } from './StatusIcon';
 
 interface HeaderProps {
   currentUser: UserProfile;
@@ -41,6 +42,7 @@ export const Header: React.FC<HeaderProps> = ({
 }) => {
   const mainTabs = [
     { id: 'chats', label: 'Chats', icon: MessageCircle },
+    { id: 'status', label: 'Status', icon: StatusIcon },
     { id: 'discover', label: 'Discover', icon: Compass },
     { id: 'shop', label: 'Shop', icon: ShoppingBag },
     { id: 'profile', label: 'Profile', icon: Users },

@@ -22,6 +22,7 @@ import { ChatList } from './features/chat/ChatList';
 import { ChatRoom } from './features/chat/ChatRoom';
 import { GroupChatRoom } from './features/chat/GroupChatRoom';
 import { CreateStatusModal } from './features/status/CreateStatusModal';
+import { StatusFeed } from './features/status/StatusFeed';
 import { ShopMarketplace } from './features/shop/ShopMarketplace';
 import { ProfileView } from './features/profile/ProfileView';
 import { DiscoverView } from './features/discover/DiscoverView';
@@ -274,6 +275,14 @@ export default function App() {
                   </div>
                 )}
               </div>
+            )}
+
+            {/* View: Status Stories (Updates) */}
+            {activeTab === 'status' && (
+              <StatusFeed
+                currentUser={currentUser}
+                onOpenCreateMenu={() => setIsCreateMenuOpen(true)}
+              />
             )}
 
             {/* View: Shop / Marketplace */}

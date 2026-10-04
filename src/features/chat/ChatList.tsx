@@ -31,6 +31,7 @@ import { DirectChatContextMenu } from './components/DirectChatContextMenu';
 import { ChatPinModal, PinModalMode } from './components/ChatPinModal';
 import { ChatListStatusRow } from '../status/ChatListStatusRow';
 import { ProfilePicturePreviewModal } from './components/ProfilePicturePreviewModal';
+import { StatusIcon } from '../../components/StatusIcon';
 
 interface ChatListProps {
   currentUser: UserProfile;
@@ -632,6 +633,7 @@ export const ChatList: React.FC<ChatListProps> = ({
               : otherUser?.photoURL || '/assets/images/amina_avatar_1790280951312.jpg';
             const isOnline = otherUser?.isOnline;
             const isSelected = activeConversationId === conv.id;
+            const hasStatus = ['conv_fresh_kk', 'conv_1', 'conv_2', 'conv_4'].includes(conv.id) || conv.id.includes('fresh');
 
             return (
               <div
@@ -679,7 +681,7 @@ export const ChatList: React.FC<ChatListProps> = ({
                   onSelectConversation(conv);
                 }}
               >
-                {/* Avatar with status dot (Clicking opens enlarged Profile Picture Preview) */}
+                {/* Avatar with status dot and status icon badge */}
                 <div
                   onClick={(e) => {
                     e.stopPropagation();
@@ -697,9 +699,22 @@ export const ChatList: React.FC<ChatListProps> = ({
                     fallbackGradient={conv.isGroup ? 'from-purple-800 to-indigo-900' : 'from-cyan-800 to-blue-900'}
                     alt={title || ''}
                     className={`w-[50px] h-[50px] aspect-square rounded-[18px] object-cover ring-2 transition-all ${
-                      isSelected ? 'ring-cyan-400' : 'ring-white/10 group-hover/avatar:ring-cyan-400/80 group-hover/avatar:scale-105'
+                      isSelected
+                        ? 'ring-cyan-400'
+                        : hasStatus
+                        ? 'ring-2 ring-emerald-400 shadow-[0_0_10px_rgba(52,211,153,0.35)]'
+                        : 'ring-white/10 group-hover/avatar:ring-cyan-400/80 group-hover/avatar:scale-105'
                     }`}
                   />
+                  {/* Status Indicator Icon Badge */}
+                  {hasStatus && (
+                    <span
+                      className="absolute -top-1 -left-1 p-0.5 rounded-full bg-gradient-to-tr from-emerald-500 to-teal-400 text-white shadow-md ring-2 ring-[#070A12] flex items-center justify-center animate-pulse"
+                      title={`${title} ana status mpya`}
+                    >
+                      <StatusIcon className="w-2.5 h-2.5 text-white" size={10} />
+                    </span>
+                  )}
                   {isOnline && (
                     <span className="absolute -bottom-0.5 -right-0.5 w-3.5 h-3.5 rounded-full bg-emerald-500 ring-2 ring-[#070A12] shadow-sm" />
                   )}
@@ -821,7 +836,17 @@ export const ChatList: React.FC<ChatListProps> = ({
         )}
       </div>
 
-      {/* Floating Action Button (FAB) at bottom right */}
+      {/* Floating Action Buttons at bottom right */}
+      {/* 1. Quick Status Post FAB (WhatsApp Camera/Status Style) */}
+      <button
+        onClick={onOpenCreateStatus}
+        className="fixed sm:absolute bottom-36 md:bottom-22 right-5 w-10 h-10 rounded-xl bg-[#13192B] hover:bg-[#1C2640] text-emerald-400 shadow-lg border border-emerald-500/30 active:scale-90 transition-all z-30 flex items-center justify-center group"
+        title="Weka Hali Mpya (New Status)"
+      >
+        <StatusIcon className="w-5 h-5 text-emerald-400 group-hover:scale-110 transition-transform" />
+      </button>
+
+      {/* 2. New Chat FAB */}
       <button
         onClick={onStartNewChat}
         className="fixed sm:absolute bottom-20 md:bottom-6 right-4 w-12 h-12 rounded-2xl bg-gradient-to-tr from-cyan-400 via-blue-500 to-indigo-600 text-white shadow-xl shadow-cyan-500/30 border border-white/20 hover:scale-105 active:scale-90 transition-all z-30 flex items-center justify-center group"
