@@ -28,7 +28,36 @@ export type MessageType =
   | 'gif'
   | 'sticker'
   | 'invoice'
-  | 'payment_receipt';
+  | 'payment_receipt'
+  | 'video_note'
+  | 'poll'
+  | 'tip_gift'
+  | 'view_once_media';
+
+export interface PollOption {
+  id: string;
+  text: string;
+  votes: string[]; // userIds
+}
+
+export interface PollDetails {
+  id: string;
+  question: string;
+  options: PollOption[];
+  totalVotes: number;
+  isClosed?: boolean;
+}
+
+export interface TipDetails {
+  id: string;
+  amount: number;
+  currency: string;
+  note?: string;
+  senderName: string;
+  receiverName: string;
+  isOpened?: boolean;
+  openedAt?: string;
+}
 
 export interface InvoiceDetails {
   invoiceNumber: string;
@@ -101,6 +130,17 @@ export interface ChatMessage {
   audioDuration?: string;
   isTranscribing?: boolean;
   disappearingTimer?: string;
+  isViewOnce?: boolean;
+  isViewedOnce?: boolean;
+  pollDetails?: PollDetails;
+  tipDetails?: TipDetails;
+  isSilent?: boolean;
+  scheduledFor?: string;
+  translation?: {
+    originalText: string;
+    translatedText: string;
+    targetLang: string;
+  };
 }
 
 export interface Conversation {
