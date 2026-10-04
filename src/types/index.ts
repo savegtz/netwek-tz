@@ -93,10 +93,14 @@ export interface ChatMessage {
   reactions?: Record<string, string[]>; // emoji -> array of userIds
   readBy?: string[];
   createdAt: string;
-  deliveredAt?: string;
   editedAt?: string;
+  isEdited?: boolean;
   isStarred?: boolean;
   isPinned?: boolean;
+  transcription?: string;
+  audioDuration?: string;
+  isTranscribing?: boolean;
+  disappearingTimer?: string;
 }
 
 export interface Conversation {

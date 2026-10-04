@@ -3,15 +3,10 @@ import { Plus } from 'lucide-react';
 import { StatusItem, UserProfile } from '../../types';
 import { StatusStoryViewerModal } from './StatusStoryViewerModal';
 
-// Bundled local image assets matching the user's reference screenshot (Screenshot_20261003-232118.jpg)
-import waveWallpaper from '../../assets/images/status_wave_wallpaper_1791059420542.jpg';
-import alexPortrait from '../../assets/images/alex_portrait_1791059432462.jpg';
-import micWallpaper from '../../assets/images/status_mic_wallpaper_1791059446504.jpg';
-import sarahPortrait from '../../assets/images/sarah_portrait_1791059459448.jpg';
+// Bundled local image assets matching the user's reference
 import freshKkStatus from '../../assets/images/fresh_kk_status_1791078352206.jpg';
 import freshKkAvatar from '../../assets/images/fresh_kk_avatar_1791078365294.jpg';
 import aminaAvatar from '../../assets/images/amina_avatar_1790280951312.jpg';
-import beachWallpaper from '../../assets/images/zanzibar_beach_1790280962219.jpg';
 
 interface ChatListStatusRowProps {
   currentUser: UserProfile;
@@ -20,40 +15,6 @@ interface ChatListStatusRowProps {
 }
 
 export const INITIAL_CHAT_STATUSES: StatusItem[] = [
-  {
-    id: 'status_card_1',
-    authorId: 'user_alex',
-    authorName: 'Alex Kimani',
-    authorUsername: 'alex_k',
-    authorPhoto: alexPortrait,
-    type: 'photo',
-    mediaUrl: waveWallpaper,
-    text: 'Vibrant modern wave vibes! 🌊✨',
-    location: 'Nairobi, Kenya',
-    visibility: 'public',
-    likesCount: 1420,
-    commentsCount: 88,
-    sharesCount: 35,
-    createdAt: '15m ago',
-    expiresAt: new Date(Date.now() + 24 * 3600 * 1000).toISOString(),
-  },
-  {
-    id: 'status_card_2',
-    authorId: 'user_sarah',
-    authorName: 'Sarah Mwangi',
-    authorUsername: 'sarah_m',
-    authorPhoto: sarahPortrait,
-    type: 'photo',
-    mediaUrl: micWallpaper,
-    text: 'Late night studio recording session 🎙️🎶 New track coming soon!',
-    location: 'Dar es Salaam, Tanzania',
-    visibility: 'public',
-    likesCount: 2310,
-    commentsCount: 145,
-    sharesCount: 78,
-    createdAt: '35m ago',
-    expiresAt: new Date(Date.now() + 23 * 3600 * 1000).toISOString(),
-  },
   {
     id: 'status_card_fresh_kk',
     authorId: 'user_fresh_kk',
@@ -68,25 +29,8 @@ export const INITIAL_CHAT_STATUSES: StatusItem[] = [
     likesCount: 1840,
     commentsCount: 112,
     sharesCount: 46,
-    createdAt: '45m ago',
-    expiresAt: new Date(Date.now() + 22 * 3600 * 1000).toISOString(),
-  },
-  {
-    id: 'status_card_beach',
-    authorId: 'user_amina',
-    authorName: 'Amina Juma',
-    authorUsername: 'amina_j',
-    authorPhoto: aminaAvatar,
-    type: 'photo',
-    mediaUrl: beachWallpaper,
-    text: 'Good vibes only on the coast 💛🌊',
-    location: 'Zanzibar, Tanzania',
-    visibility: 'public',
-    likesCount: 1200,
-    commentsCount: 342,
-    sharesCount: 98,
-    createdAt: '2h ago',
-    expiresAt: new Date(Date.now() + 20 * 3600 * 1000).toISOString(),
+    createdAt: '10m ago',
+    expiresAt: new Date(Date.now() + 24 * 3600 * 1000).toISOString(),
   },
 ];
 

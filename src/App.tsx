@@ -35,6 +35,7 @@ import { AIAssistantModal } from './features/ai/AIAssistantModal';
 import { VideoCallScreen } from './features/calls/VideoCallScreen';
 import { NotificationsView } from './features/notifications/NotificationsView';
 import { AdminDevPanel } from './features/admin/AdminDevPanel';
+import freshKkAvatar from './assets/images/fresh_kk_avatar_1791078365294.jpg';
 
 export default function App() {
   const [currentUser, setCurrentUser] = useState<UserProfile>(INITIAL_USER);
@@ -154,10 +155,10 @@ export default function App() {
           }`}
         >
           {/* Active View Container */}
-          <div className="relative flex-1 flex flex-col overflow-y-auto overscroll-contain">
+          <div className="relative flex-1 flex flex-col min-h-0 h-full overflow-hidden">
             {/* View: Chats (Responsive dual-pane on Web View, single-pane on mobile) */}
             {activeTab === 'chats' && (
-              <div className="w-full h-full flex flex-1 overflow-hidden">
+              <div className="w-full h-full flex flex-1 min-h-0 overflow-hidden">
                 {/* Left Pane: Chat List */}
                 <div
                   className={`${
@@ -166,7 +167,7 @@ export default function App() {
                     isFrameMode
                       ? 'w-full'
                       : 'w-full md:w-80 lg:w-[380px] shrink-0 md:border-r md:border-white/[0.08]'
-                  } flex-col h-full bg-[#070A12] overflow-hidden`}
+                  } flex-col h-full min-h-0 bg-[#070A12] overflow-hidden`}
                 >
                   <ChatList
                     currentUser={currentUser}
@@ -402,12 +403,31 @@ export default function App() {
         </div>
       )}
 
-      {/* Fullscreen Video Call Screen */}
+      {/* Direct Voice & Video Call Modal */}
       {activeCallType && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/95 backdrop-blur-xl">
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-0 sm:p-4 bg-black/90 backdrop-blur-xl">
           <VideoCallScreen
-            remoteUserName="Sarah Mwangi"
-            remoteUserAvatar="/src/assets/images/amina_avatar_1790280951312.jpg"
+            callType={activeCallType}
+            remoteUserName={
+              activeConversation?.isGroup
+                ? activeConversation.groupName
+                : (activeConversation?.participantDetails &&
+                  activeConversation.participants.find((p) => p !== currentUser.id)
+                    ? activeConversation.participantDetails[
+                        activeConversation.participants.find((p) => p !== currentUser.id)!
+                      ]?.displayName
+                    : 'Fresh kk') || 'Fresh kk'
+            }
+            remoteUserAvatar={
+              activeConversation?.isGroup
+                ? activeConversation.groupAvatar
+                : (activeConversation?.participantDetails &&
+                  activeConversation.participants.find((p) => p !== currentUser.id)
+                    ? activeConversation.participantDetails[
+                        activeConversation.participants.find((p) => p !== currentUser.id)!
+                      ]?.photoURL
+                    : freshKkAvatar) || freshKkAvatar
+            }
             currentUser={currentUser}
             onEndCall={() => setActiveCallType(null)}
           />

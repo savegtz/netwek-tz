@@ -10,6 +10,7 @@ import {
   WalletTransaction,
   NotificationItem,
 } from '../../types';
+import freshKkAvatar from '../../assets/images/fresh_kk_avatar_1791078365294.jpg';
 
 export const INITIAL_USER: UserProfile = {
   id: 'current_user_id',
@@ -34,7 +35,7 @@ export const INITIAL_CONVERSATIONS: Conversation[] = [
     participantDetails: {
       user_fresh_kk: {
         displayName: 'Fresh kk',
-        photoURL: '/src/assets/images/fresh_kk_avatar_1791078365294.jpg',
+        photoURL: freshKkAvatar,
         username: 'fresh_kk',
         isOnline: true,
       },
@@ -46,96 +47,6 @@ export const INITIAL_CONVERSATIONS: Conversation[] = [
     updatedAt: '1m ago',
     unreadCount: 1,
     isFavorite: true,
-  },
-  {
-    id: 'conv_1',
-    participants: ['current_user_id', 'user_sarah'],
-    participantDetails: {
-      user_sarah: {
-        displayName: 'Sarah Mwangi',
-        photoURL: '/src/assets/images/sarah_avatar_1790802224123.jpg',
-        username: 'sarah_m',
-        isOnline: true,
-      },
-    },
-    isGroup: false,
-    lastMessage: 'Hey! How are you doing? 😊',
-    lastMessageSenderId: 'user_sarah',
-    lastMessageType: 'text',
-    updatedAt: '2m ago',
-    unreadCount: 1,
-  },
-  {
-    id: 'conv_2',
-    participants: ['current_user_id', 'user_design_team'],
-    isGroup: true,
-    groupName: 'Design Team',
-    groupAvatar: '/src/assets/images/team_design_1790802245828.jpg',
-    lastMessage: 'File uploaded: project_final.psd',
-    lastMessageSenderId: 'user_james',
-    lastMessageType: 'document',
-    updatedAt: '12m ago',
-    unreadCount: 0,
-  },
-  {
-    id: 'conv_3',
-    participants: ['current_user_id', 'user_family'],
-    isGroup: true,
-    groupName: 'Family Group',
-    groupAvatar: '/assets/images/concert_festival_1790280974630.jpg',
-    lastMessage: 'Mama: Karibu nyumbani!',
-    lastMessageSenderId: 'user_mama',
-    lastMessageType: 'text',
-    updatedAt: '18m ago',
-    unreadCount: 2,
-  },
-  {
-    id: 'conv_4',
-    participants: ['current_user_id', 'user_alex'],
-    participantDetails: {
-      user_alex: {
-        displayName: 'Alex Johnson',
-        photoURL: '/src/assets/images/alex_avatar_1790802235334.jpg',
-        username: 'alex_j',
-        isOnline: true,
-      },
-    },
-    isGroup: false,
-    lastMessage: 'Typing...',
-    lastMessageSenderId: 'user_alex',
-    lastMessageType: 'text',
-    updatedAt: '24m ago',
-    unreadCount: 0,
-  },
-  {
-    id: 'conv_5',
-    participants: ['current_user_id', 'user_market'],
-    participantDetails: {
-      user_market: {
-        displayName: 'Market Place Support',
-        photoURL: '/assets/images/wireless_earbuds_1790280984496.jpg',
-        username: 'marketplace_hq',
-        isOnline: false,
-      },
-    },
-    isGroup: false,
-    lastMessage: 'New product available: Wireless Earbuds',
-    lastMessageSenderId: 'user_market',
-    lastMessageType: 'text',
-    updatedAt: '32m ago',
-    unreadCount: 0,
-  },
-  {
-    id: 'conv_6',
-    participants: ['current_user_id', 'user_travel'],
-    isGroup: true,
-    groupName: 'Travel Buddies',
-    groupAvatar: '/assets/images/zanzibar_beach_1790280962219.jpg',
-    lastMessage: "Jane: Let's plan the Zanzibar trip",
-    lastMessageSenderId: 'user_jane',
-    lastMessageType: 'text',
-    updatedAt: '1h ago',
-    unreadCount: 0,
   },
 ];
 

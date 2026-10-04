@@ -30,7 +30,11 @@ import {
   Zap,
   Award,
   UserCheck,
-  DollarSign,
+  Play,
+  Pause,
+  FileText,
+  Pencil,
+  Radio,
 } from 'lucide-react';
 import { Conversation, ChatMessage, UserProfile, InvoiceDetails, CustomerCrmProfile } from '../../types';
 import { AIService } from '../../services/ai/aiService';
@@ -44,6 +48,7 @@ import { InChatInvoiceCard } from './components/InChatInvoiceCard';
 import { CustomerCrmDrawer } from './components/CustomerCrmDrawer';
 import { QuickRepliesMenu } from './components/QuickRepliesMenu';
 import { AgentDashboardModal } from './components/AgentDashboardModal';
+import freshKkAvatar from '../../assets/images/fresh_kk_avatar_1791078365294.jpg';
 
 interface ChatRoomProps {
   conversation: Conversation;
@@ -64,39 +69,50 @@ export const ChatRoom: React.FC<ChatRoomProps> = ({
 }) => {
   const otherUserId = conversation.participants.find((p) => p !== currentUser.id);
   const otherUser = otherUserId && conversation.participantDetails ? conversation.participantDetails[otherUserId] : null;
-  const name = otherUser?.displayName || (conversation.isGroup ? conversation.groupName || 'Chat' : 'Sarah Mwangi');
-  const avatar = otherUser?.photoURL || (name.toLowerCase().includes('fresh') ? '/src/assets/images/fresh_kk_avatar_1791078365294.jpg' : (name.toLowerCase().includes('sarah') ? '/src/assets/images/sarah_avatar_1790802224123.jpg' : (name.toLowerCase().includes('alex') ? '/src/assets/images/alex_avatar_1790802235334.jpg' : '/assets/images/amina_avatar_1790280951312.jpg')));
+  const name = otherUser?.displayName || (conversation.isGroup ? conversation.groupName || 'Chat' : 'Fresh kk');
+  const avatar = otherUser?.photoURL || freshKkAvatar;
 
   const [messages, setMessages] = useState<ChatMessage[]>([
     {
       id: 'm1',
       conversationId: conversation.id,
-      senderId: 'user_sarah',
+      senderId: otherUserId || 'user_fresh_kk',
       senderName: name,
-      text: 'Hey! How are you doing? 😊',
+      text: 'Habari kiongozi! Mzigo uko tayari kutumwa 👊',
       messageType: 'text',
       createdAt: '12:20 PM',
       reactions: { '❤️': ['current_user_id'] },
+    },
+    {
+      id: 'm_audio_1',
+      conversationId: conversation.id,
+      senderId: otherUserId || 'user_fresh_kk',
+      senderName: name,
+      text: 'Ujumbe wa sauti (Voice Note)',
+      messageType: 'audio',
+      audioDuration: '0:18',
+      transcription: 'Habari kiongozi! Mzigo wako umeshapakiwa na unakaribia kufika Dar es Salaam. Nithibitishie anuani ya kupokelea.',
+      createdAt: '12:22 PM',
     },
     {
       id: 'm2',
       conversationId: conversation.id,
       senderId: currentUser.id,
       senderName: 'You',
-      text: "I am doing great! Exploring Zenia's new features.",
+      text: "Safi sana! Nipo Kariakoo, nitalipa mara moja.",
       messageType: 'text',
-      createdAt: '12:22 PM',
+      createdAt: '12:23 PM',
       isPinned: true,
     },
     {
       id: 'm3',
       conversationId: conversation.id,
-      senderId: 'user_sarah',
+      senderId: otherUserId || 'user_fresh_kk',
       senderName: name,
-      text: 'The marketplace and video calls are super smooth!',
+      text: 'Karibu sana ndugu yangu! Nitakutumia ankara ya malipo hapa chini.',
       messageType: 'text',
       createdAt: '12:24 PM',
-      reactions: { '👍': ['user_sarah'] },
+      reactions: { '👍': ['user_fresh_kk'] },
     },
     {
       id: 'm_invoice_1',
@@ -123,6 +139,28 @@ export const ChatRoom: React.FC<ChatRoomProps> = ({
   const [isSpeaking, setIsSpeaking] = useState(false);
   const [isContactTyping, setIsContactTyping] = useState(false);
 
+  // Edit Message State (Feature 1)
+  const [editingMessage, setEditingMessage] = useState<ChatMessage | null>(null);
+
+  // Disappearing Messages Modal State (Feature 3)
+  const [isDisappearingModalOpen, setIsDisappearingModalOpen] = useState(false);
+  const [disappearingTimer, setDisappearingTimer] = useState<string | null>(null);
+
+  // Swipe-to-Reply State (Feature 4)
+  const [replyingToMessage, setReplyingToMessage] = useState<ChatMessage | null>(null);
+  const [swipingMessageId, setSwipingMessageId] = useState<string | null>(null);
+  const [swipeOffset, setSwipeOffset] = useState<number>(0);
+  const touchStartXRef = useRef<number>(0);
+  const touchStartYRef = useRef<number>(0);
+  const isSwipingHorizontallyRef = useRef<boolean>(false);
+
+  // Voice Note & Audio Transcription State (Feature 5)
+  const [playingAudioId, setPlayingAudioId] = useState<string | null>(null);
+  const [revealedTranscripts, setRevealedTranscripts] = useState<Record<string, boolean>>({
+    m_audio_1: false,
+  });
+  const [transcribingIds, setTranscribingIds] = useState<Record<string, boolean>>({});
+
   // Mobijet Agent & Invoicing State
   const [isInvoiceModalOpen, setIsInvoiceModalOpen] = useState(false);
   const [isCrmDrawerOpen, setIsCrmDrawerOpen] = useState(false);
@@ -131,76 +169,36 @@ export const ChatRoom: React.FC<ChatRoomProps> = ({
 
   // Customer CRM Profile State
   const [crmProfile, setCrmProfile] = useState<CustomerCrmProfile>({
-    customerId: otherUserId || 'cust_sarah',
+    customerId: otherUserId || 'cust_fresh_kk',
     customerName: name,
     phone: '+255 714 892 012',
-    email: 'sarah.mwangi@example.com',
+    email: 'fresh.kk@example.com',
     location: 'Dar es Salaam, Tanzania',
     joinedDate: 'Februari 2026',
     totalSpent: 485000,
     currency: 'TZS',
-    tags: ['VIP', 'Mteja wa Mara kwa Mara', 'Oda Inasubiri'],
+    tags: ['VIP Buyer', 'Dar Express', 'Tech Enthusiast'],
     ticketStatus: 'open',
     ticketPriority: 'high',
-    ticketId: 'TK-4821',
-    assignedAgentName: 'You (Agent)',
+    ticketId: 'TKT-9921',
+    assignedAgentName: 'Amina Kaunga',
     internalNotes: [
       {
-        id: 'n1',
-        authorName: 'Agent You',
-        text: 'Mteja anapendelea malipo ya M-Pesa na anataka mzigo upelekwe ofisini Kariakoo.',
-        createdAt: 'Jana saa 4:00',
-      },
-      {
-        id: 'n2',
-        authorName: 'Helpdesk',
-        text: 'Amethibitisha atatoa maoni chanya ya nyota 5 akipokea mzigo wake kwa wakati.',
-        createdAt: 'Leo saa 11:30',
+        id: 'note_1',
+        authorName: 'Amina Kaunga',
+        text: 'Mteja anataka mzigo ufikishwe kabla ya saa 10 jioni. Ameshawahi kununua mara tatu.',
+        createdAt: 'Leo, 11:45 AM',
       },
     ],
   });
 
-  const handleSendInvoice = (invoice: InvoiceDetails, noteMessage: string) => {
-    const invoiceMsg: ChatMessage = {
-      id: `inv_msg_${Date.now()}`,
-      conversationId: conversation.id,
-      senderId: currentUser.id,
-      senderName: 'You',
-      text: noteMessage,
-      messageType: 'invoice',
-      invoiceDetails: invoice,
-      createdAt: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
-    };
-    setMessages((prev) => [...prev, invoiceMsg]);
-    showToast(`Ankara #${invoice.invoiceNumber} ya ${invoice.currency} ${invoice.amount.toLocaleString()} imetumwa!`);
-  };
-
-  const handlePayInvoice = (messageId: string, updatedInvoice: InvoiceDetails) => {
-    setMessages((prev) =>
-      prev.map((m) =>
-        m.id === messageId ? { ...m, invoiceDetails: updatedInvoice } : m
-      )
-    );
-    setCrmProfile((prev) => ({
-      ...prev,
-      totalSpent: (prev.totalSpent || 0) + updatedInvoice.amount,
-      ticketStatus: 'resolved',
-    }));
-    showToast(`Malipo ya ${updatedInvoice.currency} ${updatedInvoice.amount.toLocaleString()} yamethibitishwa!`);
-  };
-
-  const handleTransferChat = (targetAgent: string) => {
-    setCrmProfile((prev) => ({
-      ...prev,
-      assignedAgentName: targetAgent,
-    }));
-    showToast(`Mazungumzo yamehamishiwa kwa ${targetAgent}`);
-  };
+  // Long press handling for context menu
+  const longPressTimeoutRef = useRef<NodeJS.Timeout | null>(null);
+  const isLongPressTriggeredRef = useRef(false);
 
   // 3-Dots More Menu State
   const [isMoreMenuOpen, setIsMoreMenuOpen] = useState(false);
   const [currentThemeId, setCurrentThemeId] = useState('doodle-green');
-  const [disappearingTimer, setDisappearingTimer] = useState<string | null>(null);
   const [customLists, setCustomLists] = useState<string[]>(['Family', 'Work', 'VIP', 'Close Friends']);
 
   // In-chat Search State
@@ -214,13 +212,10 @@ export const ChatRoom: React.FC<ChatRoomProps> = ({
   const [isSelectionMode, setIsSelectionMode] = useState(false);
   const [selectedMsgIds, setSelectedMsgIds] = useState<string[]>([]);
 
-  // Reply State
-  const [replyingToMessage, setReplyingToMessage] = useState<ChatMessage | null>(null);
-
   // Pinned Message state
   const [pinnedMessage, setPinnedMessage] = useState<ChatMessage | null>(null);
 
-  // Message Context Menu State (on long-press or right click on bubble)
+  // Message Context Menu State
   const [messageMenuState, setMessageMenuState] = useState<{
     isOpen: boolean;
     message: ChatMessage | null;
@@ -258,10 +253,107 @@ export const ChatRoom: React.FC<ChatRoomProps> = ({
 
   const activeTheme = CHAT_THEMES.find((t) => t.id === currentThemeId) || CHAT_THEMES[0];
 
+  // Feature 1: Start Editing Message
+  const handleStartEditMessage = (msg: ChatMessage) => {
+    setEditingMessage(msg);
+    setInputText(msg.text);
+    setReplyingToMessage(null);
+  };
+
+  const handleCancelEdit = () => {
+    setEditingMessage(null);
+    setInputText('');
+  };
+
+  // Feature 5: Toggle Audio Transcription
+  const handleToggleTranscription = (msgId: string) => {
+    if (revealedTranscripts[msgId]) {
+      setRevealedTranscripts((prev) => ({ ...prev, [msgId]: false }));
+      return;
+    }
+    setTranscribingIds((prev) => ({ ...prev, [msgId]: true }));
+    setTimeout(() => {
+      setTranscribingIds((prev) => ({ ...prev, [msgId]: false }));
+      setRevealedTranscripts((prev) => ({ ...prev, [msgId]: true }));
+    }, 650);
+  };
+
+  // Feature 5: Record & Send Voice Note
+  const handleRecordVoiceNote = () => {
+    const audioMsg: ChatMessage = {
+      id: `msg_audio_${Date.now()}`,
+      conversationId: conversation.id,
+      senderId: currentUser.id,
+      senderName: 'You',
+      text: '🎙️ Ujumbe wa sauti (Voice Note)',
+      messageType: 'audio',
+      audioDuration: '0:14',
+      transcription: 'Habari, nimepokea ankara na nakamilisha malipo sasa hivi kupitia M-Pesa.',
+      createdAt: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
+      disappearingTimer: disappearingTimer || undefined,
+    };
+    setMessages((prev) => [...prev, audioMsg]);
+    if (onUpdateConversation) {
+      onUpdateConversation({
+        ...conversation,
+        lastMessage: '🎙️ Ujumbe wa sauti',
+        updatedAt: 'Just now',
+      });
+    }
+    showToast('Ujumbe wa sauti umetumwa na kunukuliwa! 🎙️');
+  };
+
+  // Feature 3: Select Disappearing Duration
+  const handleSelectDisappearingDuration = (dur: string | null) => {
+    setDisappearingTimer(dur);
+    setIsDisappearingModalOpen(false);
+
+    const announcement: ChatMessage = {
+      id: `sys_${Date.now()}`,
+      conversationId: conversation.id,
+      senderId: 'system',
+      senderName: 'Mfumo',
+      text: dur
+        ? `⏱️ Ujumbe unaojifuta umewashwa (${dur}). Ujumbe wote mpya utatoweka kiotomatiki.`
+        : `⏱️ Ujumbe unaojifuta umezimwa na wewe.`,
+      messageType: 'text',
+      createdAt: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
+    };
+    setMessages((prev) => [...prev, announcement]);
+    showToast(dur ? `Ujumbe unaojifuta umewashwa (${dur})` : 'Ujumbe unaojifuta umezimwa');
+  };
+
   // Send message
   const handleSend = (e: React.FormEvent) => {
     e.preventDefault();
     if (!inputText.trim()) return;
+
+    // If in edit mode, save edited message
+    if (editingMessage) {
+      setMessages((prev) =>
+        prev.map((m) =>
+          m.id === editingMessage.id
+            ? {
+                ...m,
+                text: inputText.trim(),
+                isEdited: true,
+                editedAt: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
+              }
+            : m
+        )
+      );
+      if (onUpdateConversation) {
+        onUpdateConversation({
+          ...conversation,
+          lastMessage: inputText.trim(),
+          updatedAt: 'Just now',
+        });
+      }
+      showToast('Ujumbe umehaririwa kikamilifu! (Edited)');
+      setEditingMessage(null);
+      setInputText('');
+      return;
+    }
 
     const newMsg: ChatMessage = {
       id: `msg_${Date.now()}`,
@@ -271,6 +363,7 @@ export const ChatRoom: React.FC<ChatRoomProps> = ({
       text: inputText.trim(),
       messageType: 'text',
       createdAt: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
+      disappearingTimer: disappearingTimer || undefined,
       replyTo: replyingToMessage
         ? {
             id: replyingToMessage.id,
@@ -280,7 +373,6 @@ export const ChatRoom: React.FC<ChatRoomProps> = ({
         : undefined,
     };
 
-    const sentText = inputText.trim();
     setMessages((prev) => [...prev, newMsg]);
     setInputText('');
     setReplyingToMessage(null);
@@ -299,22 +391,22 @@ export const ChatRoom: React.FC<ChatRoomProps> = ({
       setTimeout(() => {
         setIsContactTyping(false);
         const contactReplies = [
-          `Nimekupata vizuri kabisa! 👍`,
-          `Sawa, naendelea kulifanyia kazi mara moja.`,
-          `Asante sana kwa taarifa! Ni jambo zuri sana. ✨`,
-          `Niko hapa kama unahitaji usaidizi wowote mwingine.`,
-          `Bila shaka! Tupo pamoja. 🙌`,
-          `Vizuri sana! Nitaangalia na kukupa mrejesho punde.`,
+          `Nimekupata vizuri kabisa kiongozi! 👍`,
+          `Sawa kabisa, mzigo uko tayari kutumwa mara moja.`,
+          `Asante sana kwa ushirikiano mzuri! ✨`,
+          `Niko hapa kama unahitaji kitu kingine chochote.`,
+          `Bila shaka! Tupo pamoja sana. 🙌`,
         ];
         const randomReply = contactReplies[Math.floor(Math.random() * contactReplies.length)];
         const replyMsg: ChatMessage = {
           id: `reply_${Date.now()}`,
           conversationId: conversation.id,
-          senderId: otherUserId || 'user_sarah',
+          senderId: otherUserId || 'user_fresh_kk',
           senderName: name,
           text: randomReply,
           messageType: 'text',
           createdAt: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
+          disappearingTimer: disappearingTimer || undefined,
         };
         setMessages((prev) => [...prev, replyMsg]);
         if (onUpdateConversation) {
@@ -324,22 +416,80 @@ export const ChatRoom: React.FC<ChatRoomProps> = ({
             updatedAt: 'Just now',
           });
         }
-      }, 1500);
-    }, 700);
+      }, 1400);
+    }, 600);
   };
 
-  const handleReadMessages = () => {
-    if (isSpeaking) {
-      AIService.stopSpeaking();
-      setIsSpeaking(false);
-      return;
+  // Touch Swipe-to-Reply & Long Press Handlers (Feature 4)
+  const handleMessageTouchStart = (msg: ChatMessage, e: React.TouchEvent) => {
+    touchStartXRef.current = e.touches[0].clientX;
+    touchStartYRef.current = e.touches[0].clientY;
+    isSwipingHorizontallyRef.current = false;
+    setSwipingMessageId(msg.id);
+    setSwipeOffset(0);
+
+    isLongPressTriggeredRef.current = false;
+    longPressTimeoutRef.current = setTimeout(() => {
+      isLongPressTriggeredRef.current = true;
+      if (typeof window !== 'undefined' && 'vibrate' in navigator) {
+        navigator.vibrate?.(45);
+      }
+      setMessageMenuState({
+        isOpen: true,
+        message: msg,
+        position: { x: touchStartXRef.current, y: touchStartYRef.current },
+      });
+      setSwipeOffset(0);
+      setSwipingMessageId(null);
+    }, 450);
+  };
+
+  const handleMessageTouchMove = (e: React.TouchEvent) => {
+    const currentX = e.touches[0].clientX;
+    const currentY = e.touches[0].clientY;
+    const deltaX = currentX - touchStartXRef.current;
+    const deltaY = currentY - touchStartYRef.current;
+
+    if (Math.abs(deltaY) > 8) {
+      if (longPressTimeoutRef.current) {
+        clearTimeout(longPressTimeoutRef.current);
+        longPressTimeoutRef.current = null;
+      }
+      if (!isSwipingHorizontallyRef.current) {
+        setSwipeOffset(0);
+        setSwipingMessageId(null);
+        return;
+      }
     }
-    const fullTranscript = messages.map((m) => `${m.senderName || 'User'}: ${m.text}`).join('. ');
-    AIService.speakScreenText(
-      fullTranscript,
-      () => setIsSpeaking(true),
-      () => setIsSpeaking(false)
-    );
+
+    // Swipe right for reply
+    if (deltaX > 15 && Math.abs(deltaX) > Math.abs(deltaY)) {
+      isSwipingHorizontallyRef.current = true;
+      if (longPressTimeoutRef.current) {
+        clearTimeout(longPressTimeoutRef.current);
+        longPressTimeoutRef.current = null;
+      }
+      setSwipeOffset(Math.min(deltaX, 70));
+    }
+  };
+
+  const handleMessageTouchEnd = (msg: ChatMessage) => {
+    if (longPressTimeoutRef.current) {
+      clearTimeout(longPressTimeoutRef.current);
+      longPressTimeoutRef.current = null;
+    }
+
+    if (swipeOffset >= 40) {
+      setReplyingToMessage(msg);
+      if (typeof window !== 'undefined' && 'vibrate' in navigator) {
+        navigator.vibrate?.(30);
+      }
+      showToast(`Unajibu ujumbe wa ${msg.senderName || 'Contact'}`);
+    }
+
+    setSwipeOffset(0);
+    setSwipingMessageId(null);
+    isSwipingHorizontallyRef.current = false;
   };
 
   // Message Menu Handlers
@@ -348,10 +498,8 @@ export const ChatRoom: React.FC<ChatRoomProps> = ({
   };
 
   const handleCopyMessage = (msg: ChatMessage) => {
-    if (navigator.clipboard) {
-      navigator.clipboard.writeText(msg.text);
-    }
-    showToast('Ujumbe umenakiliwa (Message copied)');
+    navigator.clipboard?.writeText(msg.text);
+    showToast('Ujumbe umenakiliwa (Copied to clipboard)');
   };
 
   const handleReactMessage = (msg: ChatMessage, emoji: string) => {
@@ -359,475 +507,304 @@ export const ChatRoom: React.FC<ChatRoomProps> = ({
       prev.map((m) => {
         if (m.id !== msg.id) return m;
         const currentReactions = { ...(m.reactions || {}) };
-        if (currentReactions[emoji]) {
-          delete currentReactions[emoji];
+        const existingUsers = currentReactions[emoji] || [];
+        const hasReacted = existingUsers.includes(currentUser.id);
+
+        if (hasReacted) {
+          currentReactions[emoji] = existingUsers.filter((id) => id !== currentUser.id);
+          if (currentReactions[emoji].length === 0) delete currentReactions[emoji];
         } else {
-          currentReactions[emoji] = [currentUser.id];
+          currentReactions[emoji] = [...existingUsers, currentUser.id];
         }
         return { ...m, reactions: currentReactions };
       })
     );
-    showToast(`Umeongeza mwitikio ${emoji}`);
-  };
-
-  const handleForwardMessage = (msg: ChatMessage, targetConvIds: string[]) => {
-    showToast(`Ujumbe umetumwa kwa mazungumzo ${targetConvIds.length}`);
   };
 
   const handlePinMessage = (msg: ChatMessage) => {
-    const isNowPinned = !msg.isPinned;
+    const willPin = !msg.isPinned;
     setMessages((prev) =>
-      prev.map((m) => (m.id === msg.id ? { ...m, isPinned: isNowPinned } : { ...m, isPinned: false }))
+      prev.map((m) => (m.id === msg.id ? { ...m, isPinned: willPin } : { ...m, isPinned: false }))
     );
-    showToast(isNowPinned ? 'Ujumbe umebandikwa juu (Message pinned)' : 'Ujumbe umetolewa juu (Unpinned)');
+    showToast(willPin ? 'Ujumbe umebandikwa juu (Pinned)' : 'Ujumbe umetolewa juu (Unpinned)');
   };
 
   const handleStarMessage = (msg: ChatMessage) => {
-    const isNowStarred = !msg.isStarred;
+    const willStar = !msg.isStarred;
     setMessages((prev) =>
-      prev.map((m) => (m.id === msg.id ? { ...m, isStarred: isNowStarred } : m))
+      prev.map((m) => (m.id === msg.id ? { ...m, isStarred: willStar } : m))
     );
-    showToast(isNowStarred ? 'Ujumbe umetiwa nyota (Starred)' : 'Nyota imeondolewa');
+    showToast(willStar ? 'Ujumbe umewekwa kwenye nyota ⭐' : 'Ujumbe umetolewa kwenye nyota');
   };
 
-  const handleReportMessage = (msg: ChatMessage, reason: string) => {
-    showToast(`Ujumbe umeripotiwa: ${reason}. Asante!`);
+  const handleDeleteMessage = (msg: ChatMessage) => {
+    setMessages((prev) => prev.filter((m) => m.id !== msg.id));
+    showToast('Ujumbe umefutwa (Deleted)');
   };
 
-  const handleDeleteMessage = (msg: ChatMessage, mode: 'me' | 'everyone') => {
-    if (mode === 'everyone') {
-      setMessages((prev) =>
-        prev.map((m) => (m.id === msg.id ? { ...m, text: '🚫 Ujumbe huu umefutwa (Deleted message)' } : m))
-      );
-      showToast('Ujumbe umefutwa kwa wote');
-    } else {
-      setMessages((prev) => prev.filter((m) => m.id !== msg.id));
-      showToast('Ujumbe umefutwa kwako');
-    }
-  };
-
-  // Ask Zenia AI handler
-  const handleOpenAskAI = async (msg: ChatMessage) => {
+  const handleOpenAskAI = (msg: ChatMessage) => {
     setAiModalMessage(msg);
-    setIsAILoading(true);
     setAiResponse('');
-    try {
-      const resp = await AIService.generateChatResponse([
-        {
-          role: 'user',
-          content: `Huu ni ujumbe kutoka kwa rafiki yangu: "${msg.text}". Tafadhali fafanua maana yake kwa ufupi na unipe majibu 2 bora ya kirafiki ninayoweza kumjibu mara moja.`,
-        },
-      ]);
-      setAiResponse(resp);
-    } catch {
-      setAiResponse(`Ufafanuzi: Ujumbe huu unauliza maendeleo yako.\n\nPendekezo la jibu:\n1. "Niko salama sana! Mambo yanaenda vizuri huku, vipi wewe?"\n2. "Kila kitu kiko shwari kabisa! Tuwasiliane baadaye kidogo."`);
-    } finally {
-      setIsAILoading(false);
-    }
   };
 
-  const handleRunAIQuery = async (prompt: string) => {
-    setIsAILoading(true);
-    try {
-      const resp = await AIService.generateChatResponse([{ role: 'user', content: prompt }]);
-      setAiResponse(resp);
-    } catch {
-      setAiResponse('Niko vizuri kabisa! Kazi zinaendelea vyema.');
-    } finally {
-      setIsAILoading(false);
-    }
+  const handleSendInvoice = (inv: InvoiceDetails) => {
+    const invoiceMsg: ChatMessage = {
+      id: `inv_msg_${Date.now()}`,
+      conversationId: conversation.id,
+      senderId: currentUser.id,
+      senderName: 'You',
+      text: `Ankara mpya ya TZS ${inv.amount.toLocaleString()}: ${inv.title}`,
+      messageType: 'invoice',
+      invoiceDetails: inv,
+      createdAt: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
+    };
+
+    setMessages((prev) => [...prev, invoiceMsg]);
+    setIsInvoiceModalOpen(false);
+    showToast(`Ankara ya TZS ${inv.amount.toLocaleString()} imetumwa!`);
   };
 
-  // Long press tracking for message bubbles
-  const messagePressTimeoutRef = useRef<NodeJS.Timeout | null>(null);
-  const isMessagePressTriggeredRef = useRef(false);
-
-  const handleMessageTouchStart = (msg: ChatMessage, e: React.TouchEvent) => {
-    isMessagePressTriggeredRef.current = false;
-    const touch = e.touches[0];
-    const x = touch.clientX;
-    const y = touch.clientY;
-
-    messagePressTimeoutRef.current = setTimeout(() => {
-      isMessagePressTriggeredRef.current = true;
-      if (typeof window !== 'undefined' && 'vibrate' in navigator) {
-        navigator.vibrate?.(45);
-      }
-      setMessageMenuState({
-        isOpen: true,
-        message: msg,
-        position: { x, y },
-      });
-    }, 450);
-  };
-
-  const handleMessageTouchMove = () => {
-    if (messagePressTimeoutRef.current) {
-      clearTimeout(messagePressTimeoutRef.current);
-      messagePressTimeoutRef.current = null;
-    }
-  };
-
-  const handleMessageTouchEnd = () => {
-    if (messagePressTimeoutRef.current) {
-      clearTimeout(messagePressTimeoutRef.current);
-      messagePressTimeoutRef.current = null;
-    }
-  };
-
-  // Selection actions
-  const toggleSelectMessage = (id: string) => {
-    setSelectedMsgIds((prev) =>
-      prev.includes(id) ? prev.filter((item) => item !== id) : [...prev, id]
+  const handlePayInvoice = (msgId: string) => {
+    setMessages((prev) =>
+      prev.map((m) => {
+        if (m.id === msgId && m.invoiceDetails) {
+          return {
+            ...m,
+            invoiceDetails: {
+              ...m.invoiceDetails,
+              status: 'paid',
+              paidAt: new Date().toLocaleTimeString(),
+              paidBy: currentUser.displayName,
+              paymentMethod: 'M-Pesa Express',
+            },
+          };
+        }
+        return m;
+      })
     );
+    showToast('Malipo yamethibitishwa kupitia M-Pesa!');
   };
 
-  const handleCopySelected = () => {
-    const textToCopy = messages
-      .filter((m) => selectedMsgIds.includes(m.id))
-      .map((m) => m.text)
-      .join('\n');
-    if (navigator.clipboard) {
-      navigator.clipboard.writeText(textToCopy);
-    }
-    showToast(`${selectedMsgIds.length} ujumbe umenakiliwa`);
-    setIsSelectionMode(false);
-    setSelectedMsgIds([]);
+  const handleTransferChat = (agentName: string) => {
+    showToast(`Mazungumzo yamehamishiwa kwa wakala "${agentName}"`);
   };
-
-  const handleDeleteSelected = () => {
-    setMessages((prev) => prev.filter((m) => !selectedMsgIds.includes(m.id)));
-    showToast(`${selectedMsgIds.length} ujumbe umefutwa`);
-    setIsSelectionMode(false);
-    setSelectedMsgIds([]);
-  };
-
-  const matchingMessageCount = searchQuery.trim()
-    ? messages.filter((m) => m.text.toLowerCase().includes(searchQuery.toLowerCase())).length
-    : 0;
 
   return (
-    <div className="w-full h-full flex flex-col bg-[#070A12] text-white select-none relative overflow-hidden">
-      {/* Toast Feedback */}
+    <div className="flex-1 flex flex-col h-full bg-[#070A12] text-white relative overflow-hidden select-none">
+      {/* Toast Feedback Banner */}
       {toastMessage && (
-        <div className="absolute top-16 left-4 right-4 z-50 bg-gradient-to-r from-cyan-950/95 to-[#101426]/95 border border-cyan-500/40 text-cyan-200 text-xs px-3.5 py-2.5 rounded-2xl shadow-2xl backdrop-blur-md flex items-center justify-between animate-in slide-in-from-top-2">
+        <div className="absolute top-2 left-4 right-4 z-40 bg-gradient-to-r from-cyan-900/90 to-[#121626]/95 border border-cyan-500/40 text-cyan-200 text-xs px-3.5 py-2 rounded-2xl shadow-xl backdrop-blur-md flex items-center justify-between animate-in slide-in-from-top-2 duration-200">
           <div className="flex items-center gap-2">
             <Check className="w-4 h-4 text-cyan-400 shrink-0" />
             <span>{toastMessage}</span>
           </div>
-          <button onClick={() => setToastMessage(null)} className="text-cyan-400 font-bold ml-2">
+          <button
+            onClick={() => setToastMessage(null)}
+            className="text-cyan-400/70 hover:text-cyan-200 text-xs ml-2 font-bold"
+          >
             ✕
           </button>
         </div>
       )}
 
-      {/* Top Header Normal vs Selection Mode */}
-      {isSelectionMode ? (
-        <div className="bg-[#0F1426] px-4 py-3 border-b border-cyan-500/30 flex items-center justify-between shrink-0 animate-in fade-in">
-          <div className="flex items-center gap-3">
-            <button
-              onClick={() => {
-                setIsSelectionMode(false);
-                setSelectedMsgIds([]);
-              }}
-              className="p-1 rounded-lg hover:bg-white/10 text-slate-300"
-            >
-              <X className="w-5 h-5" />
-            </button>
-            <span className="font-bold text-sm text-cyan-300">
-              {selectedMsgIds.length} selected
-            </span>
-          </div>
-          <div className="flex items-center gap-2">
-            <button
-              onClick={() => {
-                if (selectedMsgIds.length === messages.length) {
-                  setSelectedMsgIds([]);
-                } else {
-                  setSelectedMsgIds(messages.map((m) => m.id));
-                }
-              }}
-              className="text-xs px-2.5 py-1 rounded-lg bg-white/10 text-slate-200 hover:text-white"
-            >
-              {selectedMsgIds.length === messages.length ? 'Deselect All' : 'Select All'}
-            </button>
-            <button
-              onClick={handleCopySelected}
-              disabled={selectedMsgIds.length === 0}
-              className="p-2 rounded-xl hover:bg-white/10 text-slate-300 disabled:opacity-40"
-              title="Copy selected"
-            >
-              <Copy className="w-4 h-4" />
-            </button>
-            <button
-              onClick={handleDeleteSelected}
-              disabled={selectedMsgIds.length === 0}
-              className="p-2 rounded-xl hover:bg-rose-500/20 text-rose-400 disabled:opacity-40"
-              title="Delete selected"
-            >
-              <Trash2 className="w-4 h-4" />
-            </button>
-          </div>
-        </div>
-      ) : (
-        <div className="bg-[#0D1222] px-4 py-3 border-b border-white/[0.08] flex items-center justify-between shrink-0 relative">
-          <div className="flex items-center gap-2.5">
-            <button
-              onClick={onBack}
-              className="p-1.5 -ml-1 text-slate-300 hover:text-white rounded-xl hover:bg-white/5 transition-colors active:scale-95 md:hidden"
-              title="Back to Chats"
-            >
-              <ArrowLeft className="w-5 h-5" />
-            </button>
-            <button
-              type="button"
-              onClick={() => setIsContactInfoOpen(true)}
-              className="flex items-center gap-2.5 text-left group p-1 -ml-1 rounded-2xl hover:bg-white/5 active:scale-95 transition-all cursor-pointer focus:outline-none"
-              title="Bonyeza kuona taarifa za mawasiliano (Contact info)"
-            >
-              <div className="relative">
-                <SafeImage
-                  src={avatar}
-                  fallbackText={name}
-                  fallbackGradient="from-cyan-800 to-indigo-900"
-                  alt={name}
-                  className="w-10 h-10 aspect-square rounded-[14px] object-cover ring-2 ring-purple-500/30 group-hover:ring-cyan-400 group-hover:scale-105 transition-all shadow-sm"
-                />
-                <span className="absolute -bottom-0.5 -right-0.5 w-3 h-3 rounded-full bg-emerald-500 ring-2 ring-[#0D1222] shadow-sm" />
-              </div>
-              <div>
-                <h3 className="font-bold text-sm leading-tight text-white group-hover:text-cyan-300 transition-colors flex items-center gap-1.5">
-                  <span>{name}</span>
-                  {conversation.isLocked && (
-                    <span
-                      className="p-0.5 rounded bg-cyan-500/15 border border-cyan-500/30 text-cyan-400"
-                      title="Mazungumzo Yamelindwa kwa PIN"
-                    >
-                      <Lock className="w-3 h-3" />
-                    </span>
-                  )}
+      {/* Chat Room Top Navigation Header */}
+      <div className="p-3 bg-[#0D1222]/95 border-b border-white/[0.08] backdrop-blur-xl flex items-center justify-between z-20 shrink-0">
+        <div className="flex items-center gap-2.5 min-w-0">
+          <button
+            onClick={onBack}
+            className="p-1.5 hover:bg-white/10 rounded-xl transition-colors md:hidden text-slate-300 hover:text-white"
+          >
+            <ArrowLeft className="w-5 h-5" />
+          </button>
+
+          <div
+            onClick={() => setIsContactInfoOpen(true)}
+            className="flex items-center gap-2.5 cursor-pointer min-w-0 group"
+            title="Tazama Wasifu wa Mteja"
+          >
+            <div className="relative shrink-0">
+              <SafeImage
+                src={avatar}
+                fallbackText={name}
+                fallbackGradient="from-cyan-800 to-indigo-900"
+                alt={name}
+                className="w-10 h-10 aspect-square rounded-[14px] object-cover ring-2 ring-white/10 group-hover:ring-cyan-400/80 transition-all"
+              />
+              <span className="absolute -bottom-0.5 -right-0.5 w-3 h-3 rounded-full bg-emerald-500 ring-2 ring-[#0D1222]" />
+            </div>
+
+            <div className="min-w-0">
+              <div className="flex items-center gap-1.5">
+                <h3 className="font-bold text-sm text-white truncate group-hover:text-cyan-300 transition-colors">
+                  {name}
                 </h3>
-                <p className={`text-[11px] font-medium transition-colors ${isContactTyping ? 'text-cyan-300 font-bold animate-pulse' : 'text-emerald-400'}`}>
-                  {isContactTyping ? 'anaandika...' : 'Online'}
-                </p>
+                {disappearingTimer && (
+                  <span className="px-1.5 py-0.5 rounded text-[9px] font-bold bg-cyan-500/20 text-cyan-300 border border-cyan-500/30">
+                    ⏱️ {disappearingTimer}
+                  </span>
+                )}
               </div>
-            </button>
+              <p className="text-[11px] text-emerald-400 flex items-center gap-1">
+                <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse" />
+                <span>Online • Direct Chat</span>
+              </p>
+            </div>
           </div>
-
-          <div className="flex items-center gap-1 text-slate-300">
-            {/* Text to Speech Read Button */}
-            <button
-              onClick={handleReadMessages}
-              className={`p-2 rounded-xl transition-colors ${
-                isSpeaking ? 'bg-cyan-500/20 text-cyan-300' : 'hover:bg-white/5 text-slate-400 hover:text-white'
-              }`}
-              title="🔊 Sikiliza: Text-to-speech reading"
-            >
-              {isSpeaking ? <VolumeX className="w-4 h-4 text-cyan-400" /> : <Volume2 className="w-4 h-4" />}
-            </button>
-
-            {/* Mobijet Ticket Status Badge */}
-            <button
-              onClick={() => setIsCrmDrawerOpen(true)}
-              className={`hidden md:flex items-center gap-1.5 px-2.5 py-1 rounded-full text-[11px] font-bold border transition-all active:scale-95 ${
-                crmProfile.ticketStatus === 'resolved'
-                  ? 'bg-emerald-500/15 border-emerald-400/40 text-emerald-300'
-                  : crmProfile.ticketStatus === 'in_progress'
-                  ? 'bg-amber-500/15 border-amber-400/40 text-amber-300'
-                  : 'bg-cyan-500/15 border-cyan-400/40 text-cyan-300'
-              }`}
-              title="Tiketi ya Huduma & CRM ya Mteja (Customer Support Desk)"
-            >
-              <span className="w-1.5 h-1.5 rounded-full bg-current animate-pulse" />
-              <span>#{crmProfile.ticketId || 'TK-4821'}</span>
-              <span className="capitalize text-[10px] opacity-80">
-                {crmProfile.ticketStatus === 'resolved' ? 'Imekamilika' : (crmProfile.ticketStatus === 'in_progress' ? 'Inashughulikiwa' : 'Wazi')}
-              </span>
-            </button>
-
-            {/* Mobijet Customer CRM Drawer Button */}
-            <button
-              onClick={() => setIsCrmDrawerOpen(true)}
-              className="p-2 hover:bg-white/5 rounded-xl text-cyan-400 hover:text-cyan-200 transition-colors"
-              title="Fungua CRM ya Mteja, Lebo na Dokezo la Ndani"
-            >
-              <UserCheck className="w-4 h-4" />
-            </button>
-
-            {/* Mobijet Agent Earnings & CSAT Dashboard */}
-            <button
-              onClick={() => setIsAgentDashboardOpen(true)}
-              className="p-2 hover:bg-white/5 rounded-xl text-amber-400 hover:text-amber-200 transition-colors"
-              title="Dashibodi ya Wakala (Agent Performance & CSAT)"
-            >
-              <Award className="w-4 h-4" />
-            </button>
-
-            {/* In-chat Search Toggle */}
-            <button
-              onClick={() => setIsSearchOpen(!isSearchOpen)}
-              className={`p-2 rounded-xl transition-colors ${
-                isSearchOpen ? 'bg-cyan-500/20 text-cyan-300' : 'hover:bg-white/5 text-slate-300 hover:text-white'
-              }`}
-              title="Search in conversation"
-            >
-              <Search className="w-4 h-4" />
-            </button>
-
-            {/* Voice Call */}
-            <button
-              onClick={() => onStartCall('voice')}
-              className="p-2 hover:bg-white/5 rounded-xl text-slate-300 hover:text-white transition-colors"
-              title="Voice Call"
-            >
-              <Phone className="w-4 h-4" />
-            </button>
-
-            {/* Video Call */}
-            <button
-              onClick={() => onStartCall('video')}
-              className="p-2 hover:bg-white/5 rounded-xl text-cyan-400 transition-colors"
-              title="Video Call"
-            >
-              <Video className="w-4 h-4" />
-            </button>
-
-            {/* Three Dots (⋮) Header Action Button */}
-            <button
-              onClick={() => setIsMoreMenuOpen(!isMoreMenuOpen)}
-              className={`p-2 rounded-xl transition-colors ${
-                isMoreMenuOpen
-                  ? 'bg-white/15 text-white'
-                  : 'hover:bg-white/5 text-slate-300 hover:text-white'
-              }`}
-              title="More options"
-            >
-              <MoreVertical className="w-4 h-4" />
-            </button>
-          </div>
-
-          {/* 3-Dots Dropdown Menu */}
-          <ChatRoomMoreMenu
-            conversation={conversation}
-            messages={messages}
-            isOpen={isMoreMenuOpen}
-            onClose={() => setIsMoreMenuOpen(false)}
-            onOpenSearch={() => setIsSearchOpen(true)}
-            onToggleSelectMode={() => {
-              setIsSelectionMode(true);
-              setSelectedMsgIds([]);
-            }}
-            onMute={(dur) => {
-              if (onUpdateConversation) {
-                onUpdateConversation({ ...conversation, mutedUntil: dur });
-              }
-              showToast(dur ? `Taarifa zimezimwa (${dur})` : 'Taarifa zimewashwa (Unmuted)');
-            }}
-            onToggleFavorite={() => {
-              const nextFav = !conversation.isFavorite;
-              if (onUpdateConversation) {
-                onUpdateConversation({ ...conversation, isFavorite: nextFav });
-              }
-              showToast(nextFav ? 'Imeongezwa kwenye Vipendwa' : 'Imeondolewa kwenye Vipendwa');
-            }}
-            onAddToList={(listName) => {
-              const currentLists = conversation.lists || [];
-              const exists = currentLists.includes(listName);
-              const nextLists = exists
-                ? currentLists.filter((l) => l !== listName)
-                : [...currentLists, listName];
-              if (onUpdateConversation) {
-                onUpdateConversation({ ...conversation, lists: nextLists });
-              }
-              showToast(exists ? `Imeondolewa kwenye ${listName}` : `Imeongezwa kwenye ${listName}`);
-            }}
-            onCloseChat={onBack}
-            onStartCall={onStartCall}
-            onBlock={() => {
-              const nextBlocked = !conversation.isBlocked;
-              if (onUpdateConversation) {
-                onUpdateConversation({ ...conversation, isBlocked: nextBlocked });
-              }
-              showToast(nextBlocked ? 'Mtu huyu amezuiwa (Blocked)' : 'Mtu huyu ameruhusiwa (Unblocked)');
-            }}
-            onClearChat={() => {
-              setMessages([]);
-              if (onUpdateConversation) {
-                onUpdateConversation({
-                  ...conversation,
-                  lastMessage: 'Messages cleared',
-                  unreadCount: 0,
-                });
-              }
-              showToast('Jumbe zote zimefutwa (Chat cleared)');
-            }}
-            onDeleteChat={() => {
-              if (onDeleteConversation) {
-                onDeleteConversation(conversation.id);
-              }
-              onBack();
-            }}
-            currentThemeId={currentThemeId}
-            onSelectTheme={(themeId) => setCurrentThemeId(themeId)}
-            disappearingTimer={disappearingTimer}
-            onSetDisappearingTimer={(timer) => setDisappearingTimer(timer)}
-            customLists={customLists}
-            onCreateCustomList={(name) => {
-              if (!customLists.includes(name)) setCustomLists((c) => [...c, name]);
-            }}
-            onShowToast={showToast}
-            onOpenContactInfo={() => setIsContactInfoOpen(true)}
-          />
         </div>
-      )}
 
-      {/* Full Contact Info & Profile View (Opens on clicking Avatar, Name, or Contact Info) */}
-      <ContactInfoModal
-        isOpen={isContactInfoOpen}
-        onClose={() => setIsContactInfoOpen(false)}
-        conversation={conversation}
-        currentUser={currentUser}
-        messages={messages}
-        onStartCall={onStartCall}
-        onOpenSearch={() => setIsSearchOpen(true)}
-        onUpdateConversation={onUpdateConversation}
-        onDeleteConversation={onDeleteConversation}
-        onClearChat={() => {
-          setMessages([]);
-          if (onUpdateConversation) {
-            onUpdateConversation({
-              ...conversation,
-              lastMessage: 'Messages cleared',
-              unreadCount: 0,
-            });
-          }
-          showToast('Jumbe zote zimefutwa (Chat cleared)');
-        }}
-        currentThemeId={currentThemeId}
-        onSelectTheme={(themeId) => setCurrentThemeId(themeId)}
-        disappearingTimer={disappearingTimer}
-        onSetDisappearingTimer={(timer) => setDisappearingTimer(timer)}
-        customLists={customLists}
-        onCreateCustomList={(name) => {
-          if (!customLists.includes(name)) setCustomLists((c) => [...c, name]);
-        }}
-        onShowToast={showToast}
-      />
+        {/* Header Action Buttons (Features 3, 6) */}
+        <div className="flex items-center gap-1 sm:gap-1.5 text-slate-300">
+          {/* Feature 3: Disappearing Messages Quick Action */}
+          <button
+            onClick={() => setIsDisappearingModalOpen(true)}
+            className={`p-2 rounded-xl transition-all relative ${
+              disappearingTimer
+                ? 'bg-cyan-500/25 text-cyan-300 border border-cyan-500/40'
+                : 'hover:bg-white/5 text-slate-300 hover:text-white'
+            }`}
+            title={disappearingTimer ? `Ujumbe Unaojifuta: ${disappearingTimer}` : 'Washa Ujumbe Unaojifuta (Disappearing Messages)'}
+          >
+            <Clock className="w-4 h-4" />
+            {disappearingTimer && (
+              <span className="absolute top-1 right-1 w-2 h-2 rounded-full bg-cyan-400 animate-ping" />
+            )}
+          </button>
 
-      {/* Pinned Message Banner at top of chat */}
+          {/* CRM Drawer Trigger */}
+          <button
+            onClick={() => setIsCrmDrawerOpen(true)}
+            className="p-2 hover:bg-white/5 rounded-xl text-cyan-400 hover:text-cyan-200 transition-colors hidden sm:block"
+            title="Fungua CRM ya Mteja, Lebo na Dokezo la Ndani"
+          >
+            <UserCheck className="w-4 h-4" />
+          </button>
+
+          {/* In-chat Search Toggle */}
+          <button
+            onClick={() => setIsSearchOpen(!isSearchOpen)}
+            className={`p-2 rounded-xl transition-colors ${
+              isSearchOpen ? 'bg-cyan-500/20 text-cyan-300' : 'hover:bg-white/5 text-slate-300 hover:text-white'
+            }`}
+            title="Tafuta ndani ya mazungumzo"
+          >
+            <Search className="w-4 h-4" />
+          </button>
+
+          {/* Feature 6: Voice Call (Simu ya Sauti bila nambari) */}
+          <button
+            onClick={() => onStartCall('voice')}
+            className="p-2 hover:bg-white/5 rounded-xl text-slate-200 hover:text-white transition-colors"
+            title="Piga Simu ya Sauti (Voice Call)"
+          >
+            <Phone className="w-4 h-4" />
+          </button>
+
+          {/* Feature 6: Video Call (Simu ya Video) */}
+          <button
+            onClick={() => onStartCall('video')}
+            className="p-2 hover:bg-cyan-500/15 rounded-xl text-cyan-400 transition-colors"
+            title="Piga Simu ya Video (Video Call)"
+          >
+            <Video className="w-4 h-4" />
+          </button>
+
+          {/* Three Dots More Menu */}
+          <button
+            onClick={() => setIsMoreMenuOpen(!isMoreMenuOpen)}
+            className={`p-2 rounded-xl transition-colors ${
+              isMoreMenuOpen ? 'bg-white/15 text-white' : 'hover:bg-white/5 text-slate-300 hover:text-white'
+            }`}
+            title="Chaguo zaidi"
+          >
+            <MoreVertical className="w-4 h-4" />
+          </button>
+        </div>
+
+        {/* 3-Dots Dropdown Menu */}
+        <ChatRoomMoreMenu
+          conversation={conversation}
+          messages={messages}
+          isOpen={isMoreMenuOpen}
+          onClose={() => setIsMoreMenuOpen(false)}
+          onOpenSearch={() => setIsSearchOpen(true)}
+          onToggleSelectMode={() => {
+            setIsSelectionMode(true);
+            setSelectedMsgIds([]);
+          }}
+          onMute={(dur) => {
+            if (onUpdateConversation) {
+              onUpdateConversation({ ...conversation, mutedUntil: dur });
+            }
+            showToast(dur ? `Taarifa zimezimwa (${dur})` : 'Taarifa zimewashwa (Unmuted)');
+          }}
+          onToggleFavorite={() => {
+            const nextFav = !conversation.isFavorite;
+            if (onUpdateConversation) {
+              onUpdateConversation({ ...conversation, isFavorite: nextFav });
+            }
+            showToast(nextFav ? 'Imeongezwa kwenye Vipendwa' : 'Imeondolewa kwenye Vipendwa');
+          }}
+          onAddToList={(listName) => {
+            const currentLists = conversation.lists || [];
+            const exists = currentLists.includes(listName);
+            const nextLists = exists
+              ? currentLists.filter((l) => l !== listName)
+              : [...currentLists, listName];
+            if (onUpdateConversation) {
+              onUpdateConversation({ ...conversation, lists: nextLists });
+            }
+            showToast(exists ? `Imeondolewa kwenye ${listName}` : `Imeongezwa kwenye ${listName}`);
+          }}
+          onCloseChat={onBack}
+          onStartCall={onStartCall}
+          onBlock={() => {
+            const nextBlocked = !conversation.isBlocked;
+            if (onUpdateConversation) {
+              onUpdateConversation({ ...conversation, isBlocked: nextBlocked });
+            }
+            showToast(nextBlocked ? 'Mtu huyu amezuiwa' : 'Kizuizi kimeondolewa');
+          }}
+          onClearChat={() => {
+            setMessages([]);
+            if (onUpdateConversation) {
+              onUpdateConversation({
+                ...conversation,
+                lastMessage: 'Messages cleared',
+                unreadCount: 0,
+              });
+            }
+            showToast('Jumbe zote zimefutwa');
+          }}
+          onDeleteChat={() => {
+            if (onDeleteConversation) onDeleteConversation(conversation.id);
+            onBack();
+            showToast('Mazungumzo yamefutwa');
+          }}
+          currentThemeId={currentThemeId}
+          onSelectTheme={(themeId) => setCurrentThemeId(themeId)}
+          disappearingTimer={disappearingTimer}
+          onSetDisappearingTimer={(timer) => handleSelectDisappearingDuration(timer)}
+          customLists={customLists}
+          onCreateCustomList={(name) => {
+            if (!customLists.includes(name)) setCustomLists((c) => [...c, name]);
+          }}
+          onShowToast={showToast}
+        />
+      </div>
+
+      {/* Pinned Message Banner */}
       {pinnedMessage && (
         <div className="bg-[#12182B] border-b border-cyan-500/20 px-4 py-2 flex items-center justify-between z-10 animate-in slide-in-from-top-1">
           <div className="flex items-center gap-2 min-w-0">
             <Pin className="w-3.5 h-3.5 text-cyan-400 shrink-0 rotate-45" />
             <div className="min-w-0">
-              <span className="text-[10px] text-cyan-300 font-bold block">Pinned message</span>
+              <span className="text-[10px] text-cyan-300 font-bold block">Ujumbe uliobandikwa</span>
               <p className="text-xs text-slate-200 truncate">{pinnedMessage.text}</p>
             </div>
           </div>
           <button
             onClick={() => handlePinMessage(pinnedMessage)}
             className="p-1 rounded-full text-slate-400 hover:text-white"
-            title="Unpin message"
           >
             <X className="w-3.5 h-3.5" />
           </button>
@@ -843,14 +820,9 @@ export const ChatRoom: React.FC<ChatRoomProps> = ({
             autoFocus
             value={searchQuery}
             onChange={(e) => setSearchQuery(e.target.value)}
-            placeholder="Search in this chat..."
+            placeholder="Tafuta kwenye mazungumzo haya..."
             className="flex-1 bg-transparent text-xs text-white placeholder-slate-400 focus:outline-none"
           />
-          {searchQuery && (
-            <span className="text-[11px] text-cyan-400 font-mono px-2 py-0.5 rounded bg-cyan-500/10">
-              {matchingMessageCount} found
-            </span>
-          )}
           <button
             onClick={() => {
               setIsSearchOpen(false);
@@ -863,18 +835,18 @@ export const ChatRoom: React.FC<ChatRoomProps> = ({
         </div>
       )}
 
-      {/* Disappearing Messages Notice Banner */}
+      {/* Disappearing Messages Active Banner */}
       {disappearingTimer && (
         <div className="bg-cyan-950/40 border-b border-cyan-500/20 px-4 py-1.5 text-center text-[11px] text-cyan-300 font-medium flex items-center justify-center gap-1.5 shrink-0">
           <Clock className="w-3.5 h-3.5 text-cyan-400" />
-          <span>Disappearing messages is active ({disappearingTimer}). New messages will disappear.</span>
+          <span>Ujumbe unaojifuta umewashwa ({disappearingTimer}). Ujumbe wote mpya utatoweka.</span>
         </div>
       )}
 
-      {/* Messages Feed with Dynamic Theme Wallpaper */}
+      {/* Messages Feed */}
       <div
-        className={`flex-1 overflow-y-auto p-4 space-y-3 transition-colors duration-300 ${activeTheme.wallpaperClass}`}
-        style={activeTheme.wallpaperStyle}
+        className={`flex-1 min-h-0 overflow-y-auto p-4 space-y-3 transition-colors duration-300 overscroll-contain ${activeTheme.wallpaperClass}`}
+        style={{ ...activeTheme.wallpaperStyle, WebkitOverflowScrolling: 'touch' }}
       >
         {messages.length === 0 ? (
           <div className="h-full flex flex-col items-center justify-center text-slate-500 text-xs">
@@ -883,21 +855,47 @@ export const ChatRoom: React.FC<ChatRoomProps> = ({
         ) : (
           messages.map((msg) => {
             const isMe = msg.senderId === currentUser.id;
+            const isSystem = msg.senderId === 'system';
             const isSelected = selectedMsgIds.includes(msg.id);
             const isHighlighted =
               searchQuery.trim() && msg.text.toLowerCase().includes(searchQuery.toLowerCase());
             const reactionEntries = Object.entries(msg.reactions || {});
+            const isSwipingThis = swipingMessageId === msg.id;
+
+            if (isSystem) {
+              return (
+                <div key={msg.id} className="flex justify-center my-2">
+                  <div className="px-3.5 py-1 rounded-full bg-cyan-950/60 border border-cyan-500/20 text-[11px] text-cyan-300 font-medium text-center shadow-sm">
+                    {msg.text}
+                  </div>
+                </div>
+              );
+            }
 
             return (
               <div
                 key={msg.id}
-                onClick={() => {
-                  if (isSelectionMode) toggleSelectMessage(msg.id);
+                className={`relative flex items-end gap-2 group/msg ${
+                  isMe ? 'justify-end' : 'justify-start'
+                } ${isSelectionMode ? 'cursor-pointer hover:opacity-90' : ''}`}
+                style={{
+                  transform: isSwipingThis ? `translateX(${swipeOffset}px)` : 'none',
+                  transition: isSwipingThis ? 'none' : 'transform 0.15s ease-out',
                 }}
-                className={`flex items-end gap-2 group/msg ${isMe ? 'justify-end' : 'justify-start'} ${
-                  isSelectionMode ? 'cursor-pointer hover:opacity-90' : ''
-                }`}
               >
+                {/* Swipe-to-Reply Curved Icon Indicator (Feature 4) */}
+                {isSwipingThis && swipeOffset > 15 && (
+                  <div
+                    className="absolute -left-9 top-1/2 -translate-y-1/2 p-1.5 rounded-full bg-cyan-500 text-slate-950 shadow-lg flex items-center justify-center pointer-events-none transition-all"
+                    style={{
+                      opacity: Math.min(swipeOffset / 40, 1),
+                      transform: `translateY(-50%) scale(${Math.min(swipeOffset / 40, 1)})`,
+                    }}
+                  >
+                    <CornerUpLeft className="w-4 h-4 stroke-[3]" />
+                  </div>
+                )}
+
                 {/* Checkbox in selection mode */}
                 {isSelectionMode && (
                   <div className="self-center pr-1">
@@ -915,7 +913,7 @@ export const ChatRoom: React.FC<ChatRoomProps> = ({
                     fallbackText={name}
                     fallbackGradient="from-cyan-800 to-indigo-900"
                     alt={name}
-                    className="w-6 h-6 rounded-full object-cover shrink-0 ring-1 ring-white/10"
+                    className="w-7 h-7 rounded-[10px] object-cover shrink-0 ring-1 ring-white/10"
                   />
                 )}
 
@@ -932,17 +930,17 @@ export const ChatRoom: React.FC<ChatRoomProps> = ({
                       });
                     }}
                     className="opacity-0 group-hover/msg:opacity-100 p-1 rounded-full hover:bg-white/10 text-slate-400 hover:text-white transition-opacity self-center"
-                    title="Message actions"
+                    title="Chaguo la ujumbe"
                   >
                     <Smile className="w-4 h-4" />
                   </button>
                 )}
 
-                {/* Message Bubble (Supports Touch Long-Press and Right-Click) */}
+                {/* Message Bubble (Supports Touch Swipe-to-Reply and Right-Click) */}
                 <div
                   onTouchStart={(e) => handleMessageTouchStart(msg, e)}
                   onTouchMove={handleMessageTouchMove}
-                  onTouchEnd={handleMessageTouchEnd}
+                  onTouchEnd={() => handleMessageTouchEnd(msg)}
                   onContextMenu={(e) => {
                     e.preventDefault();
                     e.stopPropagation();
@@ -952,7 +950,7 @@ export const ChatRoom: React.FC<ChatRoomProps> = ({
                       position: { x: e.clientX, y: e.clientY },
                     });
                   }}
-                  className={`relative max-w-[80%] rounded-2xl p-3 text-xs leading-relaxed transition-all cursor-pointer ${
+                  className={`relative max-w-[85%] sm:max-w-[75%] rounded-2xl p-3 text-xs leading-relaxed transition-all cursor-pointer ${
                     isMe
                       ? `${activeTheme.userBubbleClass} rounded-br-none`
                       : `${activeTheme.otherBubbleClass} rounded-bl-none`
@@ -962,15 +960,96 @@ export const ChatRoom: React.FC<ChatRoomProps> = ({
                       : ''
                   }`}
                 >
-                  {/* Quoted Reply Preview inside bubble */}
+                  {/* Quoted Reply Preview inside bubble (Feature 4) */}
                   {msg.replyTo && (
-                    <div className="mb-1.5 p-2 rounded-xl bg-black/25 border-l-2 border-cyan-400 text-[11px] text-slate-300">
+                    <div className="mb-2 p-2 rounded-xl bg-black/30 border-l-2 border-cyan-400 text-[11px] text-slate-200">
                       <span className="font-bold text-cyan-300 block">{msg.replyTo.senderName}</span>
                       <p className="truncate opacity-80">{msg.replyTo.text}</p>
                     </div>
                   )}
 
-                  {msg.messageType === 'invoice' && msg.invoiceDetails ? (
+                  {/* Feature 5: Audio Message & Audio Transcription */}
+                  {msg.messageType === 'audio' ? (
+                    <div className="space-y-2 py-0.5">
+                      {/* Audio Player Card */}
+                      <div className="flex items-center gap-3 bg-black/25 p-2 rounded-xl border border-white/5">
+                        <button
+                          type="button"
+                          onClick={() => setPlayingAudioId(playingAudioId === msg.id ? null : msg.id)}
+                          className="w-8 h-8 rounded-full bg-cyan-500 hover:bg-cyan-400 text-slate-950 flex items-center justify-center shrink-0 shadow-md transition-transform active:scale-90"
+                        >
+                          {playingAudioId === msg.id ? (
+                            <Pause className="w-3.5 h-3.5 fill-slate-950" />
+                          ) : (
+                            <Play className="w-3.5 h-3.5 fill-slate-950 translate-x-0.5" />
+                          )}
+                        </button>
+
+                        {/* Waveform Equalizer */}
+                        <div className="flex-1 flex items-center gap-0.5 h-6">
+                          {[35, 65, 45, 85, 55, 75, 95, 50, 70, 85, 60, 40, 80, 45].map((h, i) => (
+                            <span
+                              key={i}
+                              className={`w-1 rounded-full transition-all duration-200 ${
+                                playingAudioId === msg.id
+                                  ? 'bg-cyan-400 animate-pulse'
+                                  : 'bg-white/40'
+                              }`}
+                              style={{
+                                height: `${h}%`,
+                                animationDelay: `${(i % 3) * 150}ms`,
+                              }}
+                            />
+                          ))}
+                        </div>
+
+                        <span className="text-[10px] font-mono text-cyan-200 shrink-0">
+                          {msg.audioDuration || '0:18'}
+                        </span>
+                      </div>
+
+                      {/* Transcribe Button */}
+                      <div className="flex items-center justify-between gap-2 pt-0.5">
+                        <button
+                          type="button"
+                          onClick={() => handleToggleTranscription(msg.id)}
+                          className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg bg-cyan-500/15 hover:bg-cyan-500/25 border border-cyan-500/30 text-cyan-300 hover:text-cyan-200 text-[10.5px] font-semibold transition-all active:scale-95"
+                        >
+                          <FileText className="w-3 h-3" />
+                          <span>
+                            {transcribingIds[msg.id]
+                              ? 'Inachanganua sauti...'
+                              : revealedTranscripts[msg.id]
+                              ? 'Ficha maandishi (Hide)'
+                              : '📝 Badili iwe maandishi (Soma)'}
+                          </span>
+                        </button>
+                      </div>
+
+                      {/* Revealed Audio Transcript */}
+                      {revealedTranscripts[msg.id] && (
+                        <div className="p-2.5 rounded-xl bg-cyan-950/40 border border-cyan-500/30 text-xs text-slate-100 animate-in fade-in slide-in-from-top-1">
+                          <div className="flex items-center justify-between text-[10px] text-cyan-300 font-bold mb-1">
+                            <span>🎙️ UNUKUZI WA SAUTI (TRANSCRIPT)</span>
+                            <button
+                              type="button"
+                              onClick={() => {
+                                navigator.clipboard?.writeText(msg.transcription || '');
+                                showToast('Maandishi yamenakiliwa! (Copied)');
+                              }}
+                              className="text-cyan-400 hover:underline flex items-center gap-1"
+                            >
+                              <Copy className="w-3 h-3" />
+                              <span>Nakili</span>
+                            </button>
+                          </div>
+                          <p className="leading-relaxed text-slate-200 italic">
+                            "{msg.transcription || 'Habari kiongozi! Mzigo uko tayari, nithibitishie anuani ya kupokelea.'}"
+                          </p>
+                        </div>
+                      )}
+                    </div>
+                  ) : msg.messageType === 'invoice' && msg.invoiceDetails ? (
                     <div>
                       {msg.text && <p className="mb-2 text-slate-200">{msg.text}</p>}
                       <InChatInvoiceCard
@@ -984,15 +1063,26 @@ export const ChatRoom: React.FC<ChatRoomProps> = ({
                     <p>{msg.text}</p>
                   )}
 
+                  {/* Message Bottom Metadata */}
                   <div className="flex items-center justify-end gap-1.5 mt-1 text-[10px] text-white/70">
-                    {/* Star Icon */}
-                    {msg.isStarred && (
-                      <Star className="w-3 h-3 text-yellow-400 fill-yellow-400 shrink-0" />
+                    {/* Feature 1: Edited indicator */}
+                    {msg.isEdited && (
+                      <span className="italic text-[9.5px] text-cyan-300 font-medium">
+                        (Imehaririwa)
+                      </span>
                     )}
-                    {/* Pin Icon */}
-                    {msg.isPinned && (
-                      <Pin className="w-3 h-3 text-cyan-300 rotate-45 shrink-0" />
+
+                    {/* Feature 3: Disappearing Timer Icon */}
+                    {msg.disappearingTimer && (
+                      <span title={`Ujumbe utatoweka (${msg.disappearingTimer})`}>
+                        <Clock className="w-3 h-3 text-cyan-400/80 shrink-0" />
+                      </span>
                     )}
+
+                    {/* Star & Pin Icons */}
+                    {msg.isStarred && <Star className="w-3 h-3 text-yellow-400 fill-yellow-400 shrink-0" />}
+                    {msg.isPinned && <Pin className="w-3 h-3 text-cyan-300 rotate-45 shrink-0" />}
+
                     <span>{msg.createdAt}</span>
                     {isMe && <CheckCheck className="w-3.5 h-3.5 text-cyan-200 shrink-0" />}
                   </div>
@@ -1009,7 +1099,7 @@ export const ChatRoom: React.FC<ChatRoomProps> = ({
                   )}
                 </div>
 
-                {/* Other side desktop hover button */}
+                {/* Other side desktop hover action */}
                 {!isMe && !isSelectionMode && (
                   <button
                     onClick={(e) => {
@@ -1022,7 +1112,7 @@ export const ChatRoom: React.FC<ChatRoomProps> = ({
                       });
                     }}
                     className="opacity-0 group-hover/msg:opacity-100 p-1 rounded-full hover:bg-white/10 text-slate-400 hover:text-white transition-opacity self-center"
-                    title="Message actions"
+                    title="Chaguo la ujumbe"
                   >
                     <Smile className="w-4 h-4" />
                   </button>
@@ -1032,7 +1122,7 @@ export const ChatRoom: React.FC<ChatRoomProps> = ({
           })
         )}
 
-        {/* Animated Typing Indicator Bubble */}
+        {/* Contact Typing Indicator */}
         {isContactTyping && (
           <div className="flex items-center gap-2 text-slate-300 text-xs px-3.5 py-2 rounded-2xl bg-[#171F36] border border-white/10 w-fit animate-in fade-in slide-in-from-bottom-1 shadow-md">
             <div className="flex items-center gap-1">
@@ -1045,14 +1135,36 @@ export const ChatRoom: React.FC<ChatRoomProps> = ({
         )}
       </div>
 
-      {/* Reply Banner above Input Box */}
-      {replyingToMessage && (
+      {/* Feature 1: Editing Message Banner */}
+      {editingMessage && (
+        <div className="bg-[#121E36] px-4 py-2 border-t border-emerald-500/30 flex items-center justify-between text-xs animate-in slide-in-from-bottom-2">
+          <div className="flex items-center gap-2 min-w-0">
+            <Pencil className="w-4 h-4 text-emerald-400 shrink-0" />
+            <div className="min-w-0">
+              <span className="font-bold text-emerald-300 text-[11px] block">
+                Kuhariri Ujumbe (Editing Message)
+              </span>
+              <p className="text-slate-300 truncate">{editingMessage.text}</p>
+            </div>
+          </div>
+          <button
+            onClick={handleCancelEdit}
+            className="p-1 rounded-full text-slate-400 hover:text-white"
+            title="Ghairi kuhariri"
+          >
+            <X className="w-4 h-4" />
+          </button>
+        </div>
+      )}
+
+      {/* Feature 4: Quoted Reply Banner above Input */}
+      {replyingToMessage && !editingMessage && (
         <div className="bg-[#101526] px-4 py-2 border-t border-cyan-500/20 flex items-center justify-between text-xs animate-in slide-in-from-bottom-2">
           <div className="flex items-center gap-2 min-w-0">
             <CornerUpLeft className="w-4 h-4 text-cyan-400 shrink-0" />
             <div className="min-w-0">
               <span className="font-bold text-cyan-300 text-[11px] block">
-                Replying to {replyingToMessage.senderName || 'Contact'}
+                Unajibu: {replyingToMessage.senderName || 'Contact'}
               </span>
               <p className="text-slate-300 truncate">{replyingToMessage.text}</p>
             </div>
@@ -1066,15 +1178,14 @@ export const ChatRoom: React.FC<ChatRoomProps> = ({
         </div>
       )}
 
-      {/* Input bar or Blocked Notice */}
+      {/* Bottom Input bar */}
       {conversation.isBlocked ? (
         <div className="p-3.5 bg-rose-950/40 border-t border-rose-500/20 text-center text-xs text-rose-300 font-medium flex items-center justify-center gap-2 shrink-0">
           <Ban className="w-4 h-4 text-rose-400 shrink-0" />
-          <span>Umemzuia mtu huyu (Contact is blocked). Huwezi kutuma wala kupokea ujumbe.</span>
+          <span>Umemzuia mtu huyu. Huwezi kutuma wala kupokea ujumbe.</span>
         </div>
       ) : (
-        <div className="relative">
-          {/* Quick Replies Menu Popover */}
+        <div className="relative shrink-0">
           <QuickRepliesMenu
             isOpen={isQuickRepliesOpen}
             onClose={() => setIsQuickRepliesOpen(false)}
@@ -1086,9 +1197,9 @@ export const ChatRoom: React.FC<ChatRoomProps> = ({
 
           <form
             onSubmit={handleSend}
-            className="p-2.5 sm:p-3 bg-[#0D1222] border-t border-white/[0.08] flex items-center gap-1.5 sm:gap-2 shrink-0"
+            className="p-2.5 sm:p-3 bg-[#0D1222] border-t border-white/[0.08] flex items-center gap-1.5 sm:gap-2"
           >
-            {/* Mobijet In-Chat Invoice Button */}
+            {/* Invoice Button */}
             <button
               type="button"
               onClick={() => setIsInvoiceModalOpen(true)}
@@ -1098,7 +1209,7 @@ export const ChatRoom: React.FC<ChatRoomProps> = ({
               <Receipt className="w-4 h-4" />
             </button>
 
-            {/* Quick Replies Trigger Button */}
+            {/* Quick Replies Button */}
             <button
               type="button"
               onClick={() => setIsQuickRepliesOpen(!isQuickRepliesOpen)}
@@ -1107,12 +1218,12 @@ export const ChatRoom: React.FC<ChatRoomProps> = ({
                   ? 'bg-amber-500/20 border-amber-400 text-amber-300'
                   : 'bg-white/[0.03] hover:bg-white/[0.08] text-slate-400 hover:text-amber-300 border-white/5'
               }`}
-              title="Majibu ya Haraka / Quick Replies (andika /)"
+              title="Majibu ya Haraka (andika /)"
             >
               <Zap className="w-4 h-4" />
             </button>
 
-            {/* Input field (typing / opens quick replies) */}
+            {/* Input field */}
             <div className="relative flex-1">
               <input
                 type="text"
@@ -1125,26 +1236,101 @@ export const ChatRoom: React.FC<ChatRoomProps> = ({
                   }
                 }}
                 placeholder={
-                  replyingToMessage
-                    ? "Andika jibu lako..."
-                    : "Type a message or / for quick replies..."
+                  editingMessage
+                    ? 'Rekebisha ujumbe wako hapa...'
+                    : replyingToMessage
+                    ? 'Andika jibu lako hapa...'
+                    : 'Andika ujumbe au / kwa majibu ya haraka...'
                 }
                 className="w-full bg-[#171F36] border border-white/[0.08] rounded-2xl pl-4 pr-3 py-2.5 text-xs text-white placeholder-slate-400 focus:outline-none focus:border-cyan-400 transition-colors"
               />
             </div>
 
-            <button
-              type="submit"
-              disabled={!inputText.trim()}
-              className="p-2.5 rounded-xl bg-gradient-to-r from-cyan-500 to-blue-600 text-white shadow-md hover:scale-105 active:scale-95 disabled:opacity-40 disabled:hover:scale-100 transition-all shrink-0"
-            >
-              <Send className="w-4 h-4" />
-            </button>
+            {/* Send or Voice Note Button (Feature 5) */}
+            {!inputText.trim() && !editingMessage ? (
+              <button
+                type="button"
+                onClick={handleRecordVoiceNote}
+                className="p-2.5 rounded-xl bg-cyan-500/15 hover:bg-cyan-500/25 border border-cyan-500/30 text-cyan-300 shadow-md hover:scale-105 active:scale-95 transition-all shrink-0"
+                title="Tuma Ujumbe wa Sauti (Voice Note)"
+              >
+                <Mic className="w-4 h-4" />
+              </button>
+            ) : (
+              <button
+                type="submit"
+                className="p-2.5 rounded-xl bg-gradient-to-r from-cyan-500 to-blue-600 text-white shadow-md hover:scale-105 active:scale-95 transition-all shrink-0"
+                title={editingMessage ? 'Hifadhi Mabadiliko (Save)' : 'Tuma Ujumbe'}
+              >
+                {editingMessage ? <Check className="w-4 h-4 stroke-[3]" /> : <Send className="w-4 h-4" />}
+              </button>
+            )}
           </form>
         </div>
       )}
 
-      {/* MESSAGE ACTION CONTEXT MENU (Triggered by holding/long-press or right-click) */}
+      {/* Feature 3: Disappearing Messages Selection Modal */}
+      {isDisappearingModalOpen && (
+        <div className="fixed inset-0 z-[60] flex items-center justify-center p-4 bg-black/80 backdrop-blur-md animate-in fade-in">
+          <div className="w-full max-w-sm bg-[#111628] border border-cyan-500/30 rounded-3xl p-5 shadow-2xl animate-in zoom-in-95">
+            <div className="flex items-center justify-between mb-4">
+              <div className="flex items-center gap-2.5">
+                <div className="w-9 h-9 rounded-2xl bg-cyan-500/20 text-cyan-400 flex items-center justify-center">
+                  <Clock className="w-5 h-5" />
+                </div>
+                <div>
+                  <h3 className="font-bold text-sm text-white">Ujumbe Unaojifuta</h3>
+                  <p className="text-[11px] text-cyan-300">Disappearing Messages</p>
+                </div>
+              </div>
+              <button
+                onClick={() => setIsDisappearingModalOpen(false)}
+                className="p-1 rounded-full text-slate-400 hover:text-white"
+              >
+                <X className="w-4 h-4" />
+              </button>
+            </div>
+
+            <p className="text-xs text-slate-300 mb-4 leading-relaxed">
+              Ukiwasha kipengele hiki, ujumbe wote mpya uliotumwa kwenye mazungumzo haya utatoweka kiotomatiki baada ya muda uliochaguliwa.
+            </p>
+
+            <div className="space-y-2 mb-4">
+              {[
+                { id: '24h', label: 'Saa 24 (24 Hours)' },
+                { id: '7d', label: 'Siku 7 (7 Days)' },
+                { id: '90d', label: 'Siku 90 (90 Days)' },
+                { id: null, label: 'Imezimwa (Off)' },
+              ].map((opt) => {
+                const isSelected = disappearingTimer === opt.id;
+                return (
+                  <button
+                    key={opt.label}
+                    onClick={() => handleSelectDisappearingDuration(opt.id)}
+                    className={`w-full p-3 rounded-2xl flex items-center justify-between text-left text-xs font-semibold transition-all ${
+                      isSelected
+                        ? 'bg-cyan-500/20 border border-cyan-400 text-white shadow-md'
+                        : 'bg-white/[0.03] hover:bg-white/[0.08] border border-transparent text-slate-300'
+                    }`}
+                  >
+                    <span>{opt.label}</span>
+                    {isSelected && <Check className="w-4 h-4 text-cyan-400 stroke-[3]" />}
+                  </button>
+                );
+              })}
+            </div>
+
+            <button
+              onClick={() => setIsDisappearingModalOpen(false)}
+              className="w-full py-2.5 rounded-xl bg-white/10 text-slate-300 hover:text-white text-xs font-semibold"
+            >
+              Funga (Close)
+            </button>
+          </div>
+        </div>
+      )}
+
+      {/* Message Action Menu */}
       {messageMenuState.isOpen && messageMenuState.message && (
         <MessageActionMenu
           message={messageMenuState.message}
@@ -1158,104 +1344,45 @@ export const ChatRoom: React.FC<ChatRoomProps> = ({
             })
           }
           onReply={handleReplyMessage}
+          onEdit={handleStartEditMessage}
           onCopy={handleCopyMessage}
           onReact={handleReactMessage}
-          onForward={handleForwardMessage}
+          onForward={() => {}}
           onPin={handlePinMessage}
           onAskAI={handleOpenAskAI}
           onStar={handleStarMessage}
-          onReport={handleReportMessage}
+          onReport={() => {}}
           onDelete={handleDeleteMessage}
           availableConversations={INITIAL_CONVERSATIONS}
         />
       )}
 
-      {/* ASK ZENIA AI MODAL */}
-      {aiModalMessage && (
-        <div className="fixed inset-0 z-[70] flex items-center justify-center p-4 bg-black/80 backdrop-blur-md">
-          <div className="w-full max-w-md bg-[#121626] border border-cyan-500/30 rounded-3xl p-6 shadow-2xl animate-in zoom-in-95 flex flex-col">
-            <div className="flex items-center justify-between mb-3">
-              <div className="flex items-center gap-2.5">
-                <div className="w-8 h-8 rounded-xl bg-gradient-to-tr from-cyan-500 to-indigo-600 flex items-center justify-center text-white shadow-md shadow-cyan-500/30">
-                  <Sparkles className="w-4 h-4" />
-                </div>
-                <div>
-                  <h3 className="font-bold text-sm text-white">Ask Zenia AI</h3>
-                  <p className="text-[11px] text-cyan-300">Smart message assistance</p>
-                </div>
-              </div>
-              <button
-                onClick={() => setAiModalMessage(null)}
-                className="p-1 rounded-full text-slate-400 hover:text-white"
-              >
-                <X className="w-4 h-4" />
-              </button>
-            </div>
-
-            <div className="p-3 rounded-2xl bg-black/40 border border-white/5 mb-3 text-xs text-slate-300 italic">
-              "{aiModalMessage.text}"
-            </div>
-
-            {/* Quick Actions */}
-            <div className="flex flex-wrap gap-1.5 mb-3">
-              {[
-                {
-                  label: '💬 Pendekeza jibu (Smart Reply)',
-                  prompt: `Pendekeza majibu 2 nadhifu ya kirafiki kwa ujumbe huu: "${aiModalMessage.text}"`,
-                },
-                {
-                  label: '💡 Fafanua (Explain)',
-                  prompt: `Fafanua kwa ufupi maana ya ujumbe huu: "${aiModalMessage.text}"`,
-                },
-                {
-                  label: '🌍 Tafsiri (Translate)',
-                  prompt: `Tafsiri ujumbe huu kati ya Kiswahili na Kiingereza: "${aiModalMessage.text}"`,
-                },
-              ].map((item) => (
-                <button
-                  key={item.label}
-                  onClick={() => handleRunAIQuery(item.prompt)}
-                  className="text-[11px] px-2.5 py-1.5 rounded-xl bg-white/5 hover:bg-cyan-500/20 hover:text-cyan-300 border border-white/5 text-slate-300 transition-colors"
-                >
-                  {item.label}
-                </button>
-              ))}
-            </div>
-
-            {/* AI Output Card */}
-            <div className="p-3.5 rounded-2xl bg-[#0B0F1C] border border-cyan-500/20 text-xs text-slate-200 min-h-[90px] mb-4 flex flex-col justify-between">
-              {isAILoading ? (
-                <div className="flex items-center gap-2 text-cyan-400 py-4 justify-center">
-                  <div className="w-4 h-4 border-2 border-cyan-400 border-t-transparent rounded-full animate-spin" />
-                  <span>Zenia AI inachakata...</span>
-                </div>
-              ) : (
-                <p className="whitespace-pre-line leading-relaxed">
-                  {aiResponse || 'Chagua kitendo hapo juu kupata msaada wa Zenia AI papo hapo.'}
-                </p>
-              )}
-            </div>
-
-            <div className="flex gap-2">
-              <button
-                onClick={() => {
-                  if (aiResponse) {
-                    setInputText(aiResponse);
-                    setAiModalMessage(null);
-                    showToast('Jibu limewekwa kwenye kisanduku cha ujumbe!');
-                  }
-                }}
-                disabled={!aiResponse || isAILoading}
-                className="flex-1 py-2.5 rounded-xl bg-gradient-to-r from-cyan-500 to-blue-600 hover:from-cyan-400 hover:to-blue-500 disabled:opacity-40 text-slate-950 font-bold text-xs"
-              >
-                Tumia kama Jibu (Use as Reply)
-              </button>
-            </div>
-          </div>
-        </div>
+      {/* Contact Profile Modal */}
+      {isContactInfoOpen && (
+        <ContactInfoModal
+          isOpen={isContactInfoOpen}
+          onClose={() => setIsContactInfoOpen(false)}
+          conversation={conversation}
+          currentUser={currentUser}
+          messages={messages}
+          onStartCall={onStartCall}
+          onOpenSearch={() => setIsSearchOpen(true)}
+          onUpdateConversation={onUpdateConversation}
+          onDeleteConversation={onDeleteConversation}
+          onClearChat={() => setMessages([])}
+          currentThemeId={currentThemeId}
+          onSelectTheme={(themeId) => setCurrentThemeId(themeId)}
+          disappearingTimer={disappearingTimer}
+          onSetDisappearingTimer={(timer) => handleSelectDisappearingDuration(timer)}
+          customLists={customLists}
+          onCreateCustomList={(n) => {
+            if (!customLists.includes(n)) setCustomLists((c) => [...c, n]);
+          }}
+          onShowToast={showToast}
+        />
       )}
 
-      {/* MOBIJET IN-CHAT INVOICE MODAL */}
+      {/* Mobijet In-Chat Invoice Modal */}
       <InChatInvoiceModal
         isOpen={isInvoiceModalOpen}
         onClose={() => setIsInvoiceModalOpen(false)}
@@ -1263,7 +1390,7 @@ export const ChatRoom: React.FC<ChatRoomProps> = ({
         recipientName={name}
       />
 
-      {/* MOBIJET CUSTOMER CRM & INTERNAL NOTES DRAWER */}
+      {/* Customer CRM Drawer */}
       <CustomerCrmDrawer
         isOpen={isCrmDrawerOpen}
         onClose={() => setIsCrmDrawerOpen(false)}
@@ -1273,7 +1400,7 @@ export const ChatRoom: React.FC<ChatRoomProps> = ({
         onTransferChat={handleTransferChat}
       />
 
-      {/* MOBIJET AGENT DASHBOARD & CSAT MODAL */}
+      {/* Agent Dashboard Modal */}
       <AgentDashboardModal
         isOpen={isAgentDashboardOpen}
         onClose={() => setIsAgentDashboardOpen(false)}

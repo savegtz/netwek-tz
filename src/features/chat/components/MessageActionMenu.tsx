@@ -16,6 +16,7 @@ import {
   Bot,
   Send,
   PinOff,
+  Pencil,
 } from 'lucide-react';
 import { ChatMessage, Conversation } from '../../../types';
 import { SafeImage } from '../../../components/SafeImage';
@@ -26,6 +27,7 @@ export interface MessageActionMenuProps {
   isOpen: boolean;
   onClose: () => void;
   onReply: (msg: ChatMessage) => void;
+  onEdit?: (msg: ChatMessage) => void;
   onCopy: (msg: ChatMessage) => void;
   onReact: (msg: ChatMessage, emoji: string) => void;
   onForward: (msg: ChatMessage, targetConvIds: string[]) => void;
@@ -50,6 +52,7 @@ export const MessageActionMenu: React.FC<MessageActionMenuProps> = ({
   isOpen,
   onClose,
   onReply,
+  onEdit,
   onCopy,
   onReact,
   onForward,
@@ -179,8 +182,22 @@ export const MessageActionMenu: React.FC<MessageActionMenuProps> = ({
             className="w-full flex items-center gap-3 px-3 py-2 rounded-xl hover:bg-white/10 text-left transition-colors group"
           >
             <CornerUpLeft className="w-4 h-4 text-slate-300 group-hover:text-white" />
-            <span className="font-medium text-white">Reply</span>
+            <span className="font-medium text-white">Reply (Jibu)</span>
           </button>
+
+          {/* Edit (If editable and text message) */}
+          {onEdit && (message.senderName === 'You' || message.senderId === 'current_user_id') && message.messageType === 'text' && (
+            <button
+              onClick={() => {
+                onEdit(message);
+                onClose();
+              }}
+              className="w-full flex items-center gap-3 px-3 py-2 rounded-xl hover:bg-emerald-500/15 text-left transition-colors group text-emerald-400"
+            >
+              <Pencil className="w-4 h-4 text-emerald-400 group-hover:scale-110 transition-transform" />
+              <span className="font-semibold text-emerald-300 group-hover:text-emerald-200">Hariri (Edit)</span>
+            </button>
+          )}
 
           {/* Copy */}
           <button

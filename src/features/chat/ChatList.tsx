@@ -32,6 +32,7 @@ import { ChatPinModal, PinModalMode } from './components/ChatPinModal';
 import { ChatListStatusRow } from '../status/ChatListStatusRow';
 import { ProfilePicturePreviewModal } from './components/ProfilePicturePreviewModal';
 import { StatusIcon } from '../../components/StatusIcon';
+import freshKkAvatar from '../../assets/images/fresh_kk_avatar_1791078365294.jpg';
 
 interface ChatListProps {
   currentUser: UserProfile;
@@ -422,8 +423,13 @@ export const ChatList: React.FC<ChatListProps> = ({
   const archivedCount = conversations.filter((c) => c.isArchived).length;
   const lockedCount = conversations.filter((c) => c.isLocked).length;
 
+  const DEMO_IDS = ['conv_1', 'conv_2', 'conv_3', 'conv_4', 'conv_5', 'conv_6'];
+
   const filteredConversations = conversations
     .filter((c) => {
+      // Exclude demo conversations as requested by user
+      if (DEMO_IDS.includes(c.id)) return false;
+
       const otherId = c.participants.find((p) => p !== currentUser.id) || '';
       const other = c.participantDetails?.[otherId];
       const name = c.isGroup ? c.groupName || '' : other?.displayName || 'Chat';
@@ -455,7 +461,7 @@ export const ChatList: React.FC<ChatListProps> = ({
     });
 
   return (
-    <div className="w-full flex flex-col bg-[#070A12] text-white flex-1 relative select-none">
+    <div className="w-full h-full min-h-0 flex flex-col bg-[#070A12] text-white flex-1 relative select-none overflow-hidden">
       {/* Toast Notification Banner */}
       {toastMessage && (
         <div className="absolute top-2 left-4 right-4 z-40 bg-gradient-to-r from-cyan-900/90 to-[#121626]/95 border border-cyan-500/40 text-cyan-200 text-xs px-3.5 py-2 rounded-2xl shadow-xl backdrop-blur-md flex items-center justify-between animate-in slide-in-from-top-2 duration-200">
@@ -617,8 +623,11 @@ export const ChatList: React.FC<ChatListProps> = ({
         </div>
       )}
 
-      {/* Conversation List */}
-      <div className="flex-1 overflow-y-auto px-2 divide-y divide-white/[0.04] pb-24 md:pb-6">
+      {/* Conversation List with Smooth Touch Scroll */}
+      <div
+        className="flex-1 min-h-0 overflow-y-auto px-2 divide-y divide-white/[0.04] pb-36 md:pb-12 overscroll-contain"
+        style={{ WebkitOverflowScrolling: 'touch', touchAction: 'pan-y' }}
+      >
         {filteredConversations.length === 0 ? (
           <div className="p-8 text-center text-slate-500 text-xs">
             Hakuna mazungumzo yaliyopatikana.
@@ -627,13 +636,15 @@ export const ChatList: React.FC<ChatListProps> = ({
           filteredConversations.map((conv) => {
             const otherUserId = conv.participants.find((p) => p !== currentUser.id);
             const otherUser = otherUserId && conv.participantDetails ? conv.participantDetails[otherUserId] : null;
-            const title = conv.isGroup ? conv.groupName : otherUser?.displayName || 'Direct Chat';
+            const title: string = (conv.isGroup ? conv.groupName : otherUser?.displayName) || 'Direct Chat';
             const avatar = conv.isGroup
               ? conv.groupAvatar || '/assets/images/amina_avatar_1790280951312.jpg'
-              : otherUser?.photoURL || '/assets/images/amina_avatar_1790280951312.jpg';
-            const isOnline = otherUser?.isOnline;
+              : (conv.id === 'conv_fresh_kk' || title.toLowerCase().includes('fresh'))
+              ? freshKkAvatar
+              : otherUser?.photoURL || freshKkAvatar;
+            const isOnline = otherUser?.isOnline ?? true;
             const isSelected = activeConversationId === conv.id;
-            const hasStatus = ['conv_fresh_kk', 'conv_1', 'conv_2', 'conv_4'].includes(conv.id) || conv.id.includes('fresh');
+            const hasStatus = conv.id === 'conv_fresh_kk' || title.toLowerCase().includes('fresh');
 
             return (
               <div
