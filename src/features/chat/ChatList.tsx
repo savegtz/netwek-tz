@@ -30,6 +30,7 @@ import { SafeImage } from '../../components/SafeImage';
 import { DirectChatContextMenu } from './components/DirectChatContextMenu';
 import { ChatPinModal, PinModalMode } from './components/ChatPinModal';
 import { ChatListStatusRow } from '../status/ChatListStatusRow';
+import { ProfilePicturePreviewModal } from './components/ProfilePicturePreviewModal';
 
 interface ChatListProps {
   currentUser: UserProfile;
@@ -82,6 +83,59 @@ export const ChatList: React.FC<ChatListProps> = ({
     conversation: null,
     position: { x: 0, y: 0 },
   });
+
+  // Profile Picture Preview Modal State (WhatsApp-style avatar tap)
+  const [profilePicModalState, setProfilePicModalState] = useState<{
+    isOpen: boolean;
+    conversation: Conversation | null;
+  }>({
+    isOpen: false,
+    conversation: null,
+  });
+
+  const handleUpdateAvatar = (convId: string, newAvatarUrl: string) => {
+    setConversations((prev) =>
+      prev.map((c) => {
+        if (c.id !== convId) return c;
+        if (c.isGroup) {
+          return { ...c, groupAvatar: newAvatarUrl };
+        } else {
+          const otherUserId = c.participants.find((p) => p !== currentUser.id);
+          const currentDetails = c.participantDetails || {};
+          const otherDetails = otherUserId ? currentDetails[otherUserId] : null;
+          return {
+            ...c,
+            participantDetails: {
+              ...currentDetails,
+              ...(otherUserId && otherDetails
+                ? { [otherUserId]: { ...otherDetails, photoURL: newAvatarUrl } }
+                : {}),
+            },
+          };
+        }
+      })
+    );
+    const updatedConv = conversations.find((c) => c.id === convId);
+    if (updatedConv && onUpdateConversation) {
+      if (updatedConv.isGroup) {
+        onUpdateConversation({ ...updatedConv, groupAvatar: newAvatarUrl });
+      } else {
+        const otherUserId = updatedConv.participants.find((p) => p !== currentUser.id);
+        const currentDetails = updatedConv.participantDetails || {};
+        const otherDetails = otherUserId ? currentDetails[otherUserId] : null;
+        onUpdateConversation({
+          ...updatedConv,
+          participantDetails: {
+            ...currentDetails,
+            ...(otherUserId && otherDetails
+              ? { [otherUserId]: { ...otherDetails, photoURL: newAvatarUrl } }
+              : {}),
+          },
+        });
+      }
+    }
+    showToast('Picha ya wasifu imebadilishwa kikamilifu! ✨');
+  };
 
   // Toast Notification state
   const [toastMessage, setToastMessage] = useState<string | null>(null);
@@ -625,22 +679,32 @@ export const ChatList: React.FC<ChatListProps> = ({
                   onSelectConversation(conv);
                 }}
               >
-                {/* Avatar with status dot */}
-                <div className="relative shrink-0">
+                {/* Avatar with status dot (Clicking opens enlarged Profile Picture Preview) */}
+                <div
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    setProfilePicModalState({
+                      isOpen: true,
+                      conversation: conv,
+                    });
+                  }}
+                  className="relative shrink-0 cursor-pointer active:scale-90 transition-transform group/avatar"
+                  title={`Gusa kuona picha ya wasifu ya ${title}`}
+                >
                   <SafeImage
                     src={avatar}
                     fallbackText={title}
                     fallbackGradient={conv.isGroup ? 'from-purple-800 to-indigo-900' : 'from-cyan-800 to-blue-900'}
                     alt={title || ''}
-                    className={`w-12 h-12 rounded-full object-cover ring-2 transition-all ${
-                      isSelected ? 'ring-cyan-400' : 'ring-white/10 group-hover:ring-cyan-500/40'
+                    className={`w-[50px] h-[50px] aspect-square rounded-[18px] object-cover ring-2 transition-all ${
+                      isSelected ? 'ring-cyan-400' : 'ring-white/10 group-hover/avatar:ring-cyan-400/80 group-hover/avatar:scale-105'
                     }`}
                   />
                   {isOnline && (
-                    <span className="absolute bottom-0 right-0 w-3 h-3 rounded-full bg-emerald-500 ring-2 ring-[#070A12]" />
+                    <span className="absolute -bottom-0.5 -right-0.5 w-3.5 h-3.5 rounded-full bg-emerald-500 ring-2 ring-[#070A12] shadow-sm" />
                   )}
                   {conv.isGroup && (
-                    <span className="absolute -top-1 -right-1 w-4 h-4 rounded-full bg-purple-600 text-white flex items-center justify-center text-[9px] shadow-sm">
+                    <span className="absolute -top-1 -right-1 w-4 h-4 rounded-md bg-purple-600 text-white flex items-center justify-center text-[9px] shadow-sm">
                       <Users className="w-2.5 h-2.5" />
                     </span>
                   )}
@@ -815,6 +879,17 @@ export const ChatList: React.FC<ChatListProps> = ({
         onPinChanged={(_newPin) => {
           showToast('PIN mpya ya usalama imehifadhiwa kikamilifu! 🔒');
         }}
+      />
+
+      {/* Enlarged Profile Picture Preview Modal (WhatsApp Reference) */}
+      <ProfilePicturePreviewModal
+        isOpen={profilePicModalState.isOpen}
+        onClose={() => setProfilePicModalState({ isOpen: false, conversation: null })}
+        conversation={profilePicModalState.conversation}
+        onOpenChat={(conv) => onSelectConversation(conv)}
+        onStartCall={(_type, conv) => onSelectConversation(conv)}
+        onOpenInfo={(conv) => onSelectConversation(conv)}
+        onUpdateAvatar={handleUpdateAvatar}
       />
     </div>
   );

@@ -177,7 +177,7 @@ export const Header: React.FC<HeaderProps> = ({
           {/* User Profile Avatar with SafeImage */}
           <button
             onClick={() => onSelectTab('profile')}
-            className={`flex items-center gap-1.5 p-1 pl-1 pr-2 rounded-full border transition-all active:scale-95 ${
+            className={`flex items-center gap-1.5 p-1 pl-1 pr-2 rounded-2xl border transition-all active:scale-95 ${
               activeTab === 'profile'
                 ? 'bg-cyan-500/20 border-cyan-400/50 ring-2 ring-cyan-500/30'
                 : 'bg-white/5 border-white/10 hover:border-white/20'
@@ -190,9 +190,9 @@ export const Header: React.FC<HeaderProps> = ({
                 fallbackText={currentUser.displayName}
                 fallbackGradient="from-cyan-700 to-purple-800"
                 alt={currentUser.displayName}
-                className="w-7 h-7 rounded-full object-cover ring-2 ring-purple-500/50"
+                className="w-7 h-7 aspect-square rounded-[10px] object-cover ring-2 ring-purple-500/50"
               />
-              <span className="absolute bottom-0 right-0 w-2 h-2 rounded-full bg-emerald-500 ring-2 ring-[#080B14]" />
+              <span className="absolute -bottom-0.5 -right-0.5 w-2.5 h-2.5 rounded-full bg-emerald-500 ring-2 ring-[#080B14]" />
             </div>
             <span className="text-xs font-semibold text-slate-200 hidden sm:block">
               {currentUser.displayName.split(' ')[0]}

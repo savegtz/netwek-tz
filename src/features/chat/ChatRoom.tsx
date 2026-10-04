@@ -64,8 +64,8 @@ export const ChatRoom: React.FC<ChatRoomProps> = ({
 }) => {
   const otherUserId = conversation.participants.find((p) => p !== currentUser.id);
   const otherUser = otherUserId && conversation.participantDetails ? conversation.participantDetails[otherUserId] : null;
-  const name = otherUser?.displayName || 'Sarah Mwangi';
-  const avatar = otherUser?.photoURL || (name.toLowerCase().includes('sarah') ? '/src/assets/images/sarah_avatar_1790802224123.jpg' : (name.toLowerCase().includes('alex') ? '/src/assets/images/alex_avatar_1790802235334.jpg' : '/assets/images/amina_avatar_1790280951312.jpg'));
+  const name = otherUser?.displayName || (conversation.isGroup ? conversation.groupName || 'Chat' : 'Sarah Mwangi');
+  const avatar = otherUser?.photoURL || (name.toLowerCase().includes('fresh') ? '/src/assets/images/fresh_kk_avatar_1791078365294.jpg' : (name.toLowerCase().includes('sarah') ? '/src/assets/images/sarah_avatar_1790802224123.jpg' : (name.toLowerCase().includes('alex') ? '/src/assets/images/alex_avatar_1790802235334.jpg' : '/assets/images/amina_avatar_1790280951312.jpg')));
 
   const [messages, setMessages] = useState<ChatMessage[]>([
     {
@@ -591,9 +591,9 @@ export const ChatRoom: React.FC<ChatRoomProps> = ({
                   fallbackText={name}
                   fallbackGradient="from-cyan-800 to-indigo-900"
                   alt={name}
-                  className="w-9 h-9 rounded-full object-cover ring-2 ring-purple-500/30 group-hover:ring-cyan-400 group-hover:scale-105 transition-all"
+                  className="w-10 h-10 aspect-square rounded-[14px] object-cover ring-2 ring-purple-500/30 group-hover:ring-cyan-400 group-hover:scale-105 transition-all shadow-sm"
                 />
-                <span className="absolute bottom-0 right-0 w-2.5 h-2.5 rounded-full bg-emerald-500 ring-2 ring-[#0D1222]" />
+                <span className="absolute -bottom-0.5 -right-0.5 w-3 h-3 rounded-full bg-emerald-500 ring-2 ring-[#0D1222] shadow-sm" />
               </div>
               <div>
                 <h3 className="font-bold text-sm leading-tight text-white group-hover:text-cyan-300 transition-colors flex items-center gap-1.5">

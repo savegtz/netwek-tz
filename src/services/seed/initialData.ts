@@ -29,6 +29,25 @@ export const INITIAL_USER: UserProfile = {
 
 export const INITIAL_CONVERSATIONS: Conversation[] = [
   {
+    id: 'conv_fresh_kk',
+    participants: ['current_user_id', 'user_fresh_kk'],
+    participantDetails: {
+      user_fresh_kk: {
+        displayName: 'Fresh kk',
+        photoURL: '/src/assets/images/fresh_kk_avatar_1791078365294.jpg',
+        username: 'fresh_kk',
+        isOnline: true,
+      },
+    },
+    isGroup: false,
+    lastMessage: 'Habari kiongozi! Mzigo uko tayari kutumwa 👊',
+    lastMessageSenderId: 'user_fresh_kk',
+    lastMessageType: 'text',
+    updatedAt: '1m ago',
+    unreadCount: 1,
+    isFavorite: true,
+  },
+  {
     id: 'conv_1',
     participants: ['current_user_id', 'user_sarah'],
     participantDetails: {

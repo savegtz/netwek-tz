@@ -398,7 +398,7 @@ export const GroupChatRoom: React.FC<GroupChatRoomProps> = ({
               className="flex items-center gap-2.5 text-left group p-1 -ml-1 rounded-2xl hover:bg-white/5 active:scale-95 transition-all cursor-pointer focus:outline-none"
               title="Bonyeza kuona taarifa za kikundi (Group info)"
             >
-              <div className="w-9 h-9 rounded-full bg-gradient-to-tr from-cyan-400 via-indigo-500 to-purple-600 p-0.5 flex items-center justify-center font-bold text-xs text-white group-hover:scale-105 group-hover:ring-2 group-hover:ring-cyan-400 transition-all">
+              <div className="w-10 h-10 aspect-square rounded-[14px] bg-gradient-to-tr from-cyan-400 via-indigo-500 to-purple-600 p-0.5 flex items-center justify-center font-bold text-xs text-white group-hover:scale-105 group-hover:ring-2 group-hover:ring-cyan-400 transition-all shadow-sm">
                 DT
               </div>
               <div>
