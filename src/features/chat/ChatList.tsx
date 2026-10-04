@@ -151,6 +151,68 @@ export const ChatList: React.FC<ChatListProps> = ({
     }, 3200);
   };
 
+  // Listen for live conversation updates from Firestore and BroadcastChannel
+  useEffect(() => {
+    const handleBroadcast = (event: MessageEvent) => {
+      if (event.data && event.data.type === 'NEW_MESSAGE') {
+        const { conversationId, message } = event.data;
+        setConversations((prev) =>
+          prev.map((c) =>
+            c.id === conversationId
+              ? {
+                  ...c,
+                  lastMessage: message.text || (message.messageType === 'audio' ? 'Ujumbe wa sauti' : 'Ujumbe mpya'),
+                  lastMessageType: message.messageType,
+                  lastMessageSenderId: message.senderId,
+                  updatedAt: message.createdAt || 'Sasa hivi',
+                }
+              : c
+          )
+        );
+      }
+    };
+
+    let bc: BroadcastChannel | null = null;
+    if (typeof window !== 'undefined' && 'BroadcastChannel' in window) {
+      bc = new BroadcastChannel('zenia_live_chat_sync');
+      bc.addEventListener('message', handleBroadcast);
+    }
+
+    // Also subscribe to Firestore conversations collection
+    let unsubFirestore: (() => void) | null = null;
+    try {
+      unsubFirestore = onSnapshot(collection(db, 'conversations'), (snapshot) => {
+        if (!snapshot.empty) {
+          const remoteMap: Record<string, any> = {};
+          snapshot.forEach((d) => {
+            remoteMap[d.id] = d.data();
+          });
+
+          setConversations((prev) =>
+            prev.map((c) => {
+              if (remoteMap[c.id]) {
+                const r = remoteMap[c.id];
+                return {
+                  ...c,
+                  lastMessage: r.lastMessage || c.lastMessage,
+                  lastMessageType: r.lastMessageType || c.lastMessageType,
+                  lastMessageSenderId: r.lastMessageSenderId || c.lastMessageSenderId,
+                  updatedAt: r.updatedAt || c.updatedAt,
+                };
+              }
+              return c;
+            })
+          );
+        }
+      });
+    } catch (_) {}
+
+    return () => {
+      if (bc) bc.removeEventListener('message', handleBroadcast);
+      if (unsubFirestore) unsubFirestore();
+    };
+  }, []);
+
   // Long press handling for touch & mouse devices
   const longPressTimeoutRef = useRef<NodeJS.Timeout | null>(null);
   const isLongPressTriggeredRef = useRef(false);

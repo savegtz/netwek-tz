@@ -21,6 +21,7 @@ import { AuthModal } from './features/auth/AuthModal';
 import { ChatList } from './features/chat/ChatList';
 import { ChatRoom } from './features/chat/ChatRoom';
 import { GroupChatRoom } from './features/chat/GroupChatRoom';
+import { StartNewChatModal } from './features/chat/components/StartNewChatModal';
 import { CreateStatusModal } from './features/status/CreateStatusModal';
 import { StatusFeed } from './features/status/StatusFeed';
 import { ShopMarketplace } from './features/shop/ShopMarketplace';
@@ -45,12 +46,46 @@ export default function App() {
   // Modals & Subscreens
   const [isAuthOpen, setIsAuthOpen] = useState(false);
   const [isCreateMenuOpen, setIsCreateMenuOpen] = useState(false);
+  const [isNewChatModalOpen, setIsNewChatModalOpen] = useState(false);
   const [isAIOpen, setIsAIOpen] = useState(false);
   const [isAdminOpen, setIsAdminOpen] = useState(false);
   const [isNotificationsOpen, setIsNotificationsOpen] = useState(false);
   const [activeCallType, setActiveCallType] = useState<'video' | 'voice' | null>(null);
   const [createStatusType, setCreateStatusType] = useState<StatusType | 'ai' | null>(null);
   const [isFrameMode, setIsFrameMode] = useState<boolean>(false); // Full-width responsive web view by default
+
+  const handleSelectUserToChat = (targetUser: {
+    id: string;
+    displayName: string;
+    username: string;
+    photoURL?: string;
+  }) => {
+    const convId = `conv_${[currentUser.id, targetUser.id].sort().join('_')}`;
+    const newConv: Conversation = {
+      id: convId,
+      participants: [currentUser.id, targetUser.id],
+      participantDetails: {
+        [targetUser.id]: {
+          displayName: targetUser.displayName,
+          username: targetUser.username,
+          photoURL: targetUser.photoURL,
+          isOnline: true,
+        },
+        [currentUser.id]: {
+          displayName: currentUser.displayName,
+          username: currentUser.username,
+          photoURL: currentUser.photoURL,
+          isOnline: true,
+        },
+      },
+      isGroup: false,
+      lastMessage: 'Mazungumzo ya moja kwa moja yameanzishwa 💬',
+      updatedAt: 'Sasa hivi',
+      unreadCount: 0,
+    };
+    setActiveConversation(newConv);
+    setActiveTab('chats');
+  };
 
   // Firebase Auth sync
   useEffect(() => {
@@ -173,7 +208,7 @@ export default function App() {
                     currentUser={currentUser}
                     activeConversationId={activeConversation?.id}
                     onSelectConversation={(conv) => setActiveConversation(conv)}
-                    onStartNewChat={() => setIsCreateMenuOpen(true)}
+                    onStartNewChat={() => setIsNewChatModalOpen(true)}
                     onOpenProfile={() => setActiveTab('profile')}
                     onOpenCreateStatus={() => setIsCreateMenuOpen(true)}
                     onUpdateConversation={(updated) => {
@@ -222,6 +257,7 @@ export default function App() {
                           currentUser={currentUser}
                           onBack={() => setActiveConversation(null)}
                           onStartCall={(type) => setActiveCallType(type)}
+                          onSwitchUser={(u) => setCurrentUser(u)}
                           onUpdateConversation={(updated) => {
                             if (activeConversation?.id === updated.id) {
                               setActiveConversation(updated);
@@ -382,6 +418,13 @@ export default function App() {
         isOpen={isAdminOpen}
         onClose={() => setIsAdminOpen(false)}
         currentUser={currentUser}
+      />
+
+      <StartNewChatModal
+        isOpen={isNewChatModalOpen}
+        onClose={() => setIsNewChatModalOpen(false)}
+        currentUser={currentUser}
+        onSelectUserToChat={handleSelectUserToChat}
       />
 
       {/* Notifications Drawer */}

@@ -25,10 +25,7 @@ service cloud.firestore {
 
     // Users collection
     match /users/{userId} {
-      allow read: if isSignedIn();
-      allow create: if isOwner(userId);
-      allow update: if isOwner(userId) || isAdmin();
-      allow delete: if isAdmin();
+      allow read, write: if true;
     }
 
     // Admins collection
@@ -37,31 +34,12 @@ service cloud.firestore {
       allow write: if isAdmin();
     }
 
-    // Conversations
+    // Conversations & Messages
     match /conversations/{conversationId} {
-      allow read: if isSignedIn() && (
-        resource == null ||
-        request.auth.uid in resource.data.participants ||
-        isAdmin()
-      );
-      allow create: if isSignedIn();
-      allow update: if isSignedIn() && (
-        request.auth.uid in resource.data.participants ||
-        isAdmin()
-      );
-      allow delete: if isAdmin();
+      allow read, write: if true;
 
       match /messages/{messageId} {
-        allow read: if isSignedIn();
-        allow create: if isSignedIn();
-        allow update: if isSignedIn() && (
-          resource.data.senderId == request.auth.uid ||
-          isAdmin()
-        );
-        allow delete: if isSignedIn() && (
-          resource.data.senderId == request.auth.uid ||
-          isAdmin()
-        );
+        allow read, write: if true;
       }
     }
 

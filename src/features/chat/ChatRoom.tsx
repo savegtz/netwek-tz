@@ -72,6 +72,9 @@ import { SendTipModal } from './components/SendTipModal';
 import { CreatePollModal } from './components/CreatePollModal';
 import { ScheduleMessageModal } from './components/ScheduleMessageModal';
 import { LiveAudioSpaceModal } from './components/LiveAudioSpaceModal';
+import { ChatSyncService } from '../../services/chat/chatSyncService';
+import { AVAILABLE_CONTACTS } from './components/StartNewChatModal';
+import { ArrowLeftRight } from 'lucide-react';
 import freshKkAvatar from '../../assets/images/fresh_kk_avatar_1791078365294.jpg';
 
 interface ChatRoomProps {
@@ -81,6 +84,7 @@ interface ChatRoomProps {
   onStartCall: (type: 'video' | 'voice') => void;
   onUpdateConversation?: (conv: Conversation) => void;
   onDeleteConversation?: (convId: string) => void;
+  onSwitchUser?: (user: UserProfile) => void;
 }
 
 export const ChatRoom: React.FC<ChatRoomProps> = ({
@@ -90,6 +94,7 @@ export const ChatRoom: React.FC<ChatRoomProps> = ({
   onStartCall,
   onUpdateConversation,
   onDeleteConversation,
+  onSwitchUser,
 }) => {
   const otherUserId = conversation.participants.find((p) => p !== currentUser.id);
   const otherUser = otherUserId && conversation.participantDetails ? conversation.participantDetails[otherUserId] : null;
@@ -309,6 +314,67 @@ export const ChatRoom: React.FC<ChatRoomProps> = ({
     setPinnedMessage(foundPin || null);
   }, [messages]);
 
+  // Real-time Firestore & BroadcastChannel message sync
+  useEffect(() => {
+    const unsub = ChatSyncService.subscribeMessages(
+      conversation.id,
+      messages,
+      (liveMsgs) => {
+        setMessages(liveMsgs);
+      }
+    );
+    return () => unsub();
+  }, [conversation.id]);
+
+  const handleToggleSenderPersona = () => {
+    if (!onSwitchUser) return;
+    if (currentUser.id === otherUserId) {
+      // Switch back to Amina Kaunga
+      onSwitchUser({
+        id: 'current_user_id',
+        email: 'savegamour@gmail.com',
+        displayName: 'Amina Kaunga',
+        username: 'amina_kaunga',
+        photoURL: '/assets/images/amina_avatar_1790280951312.jpg',
+        accountType: 'creator',
+        verified: true,
+        followersCount: 12400,
+        followingCount: 245,
+        postsCount: 3200,
+        isOnline: true,
+      });
+      showToast('Sasa unaongea kama Amina Kaunga! 👤');
+    } else {
+      // Switch to other contact (e.g. Fresh kk)
+      const contactObj = AVAILABLE_CONTACTS.find((c) => c.id === otherUserId) || {
+        id: otherUserId || 'user_fresh_kk',
+        displayName: name,
+        username: (otherUser?.username || name).toLowerCase().replace(/\s+/g, '_'),
+        photoURL: avatar,
+        accountType: 'business' as const,
+        verified: true,
+        followersCount: 18400,
+        followingCount: 310,
+        postsCount: 420,
+        isOnline: true,
+      };
+      onSwitchUser({
+        id: contactObj.id,
+        email: `${contactObj.username}@zenia.app`,
+        displayName: contactObj.displayName,
+        username: contactObj.username,
+        photoURL: contactObj.photoURL,
+        accountType: 'business',
+        verified: true,
+        followersCount: 18400,
+        followingCount: 310,
+        postsCount: 420,
+        isOnline: true,
+      });
+      showToast(`Sasa unaongea kama ${contactObj.displayName}! 👤`);
+    }
+  };
+
   const activeTheme = CHAT_THEMES.find((t) => t.id === currentThemeId) || CHAT_THEMES[0];
 
   // Feature 1: Open and dismiss View-Once media
@@ -326,11 +392,9 @@ export const ChatRoom: React.FC<ChatRoomProps> = ({
 
   const handleCloseViewOnce = () => {
     if (activeViewOnceMedia) {
-      setMessages((prev) =>
-        prev.map((m) =>
-          m.id === activeViewOnceMedia.msgId ? { ...m, isViewedOnce: true } : m
-        )
-      );
+      ChatSyncService.updateMessage(conversation.id, activeViewOnceMedia.msgId, {
+        isViewedOnce: true,
+      });
       showToast('Picha ya siri imejifuta kabisa.');
     }
     setActiveViewOnceMedia(null);
@@ -339,18 +403,18 @@ export const ChatRoom: React.FC<ChatRoomProps> = ({
   // Feature 2: Send Round Cam Video Note
   const handleSendVideoNote = () => {
     const newVideoNote: ChatMessage = {
-      id: `vn_${Date.now()}`,
+      id: `vn_${Date.now()}_${Math.random().toString(36).substring(2, 6)}`,
       conversationId: conversation.id,
       senderId: currentUser.id,
-      senderName: 'You',
+      senderName: currentUser.displayName || 'You',
       text: '⭕ Ujumbe wa Video ya Duara',
       messageType: 'video_note',
-      mediaUrl: '/src/assets/images/fresh_kk_avatar_1791078365294.jpg',
+      mediaUrl: currentUser.photoURL || freshKkAvatar,
       audioDuration: '0:10',
       createdAt: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
       isSilent: isSilentMode,
     };
-    setMessages((prev) => [...prev, newVideoNote]);
+    ChatSyncService.sendMessage(conversation.id, newVideoNote);
     showToast('Video fupi ya duara imetumwa! ⭕📹');
   };
 
@@ -371,34 +435,29 @@ export const ChatRoom: React.FC<ChatRoomProps> = ({
       id: `msg_${tip.id}`,
       conversationId: conversation.id,
       senderId: currentUser.id,
-      senderName: 'You',
+      senderName: currentUser.displayName || 'You',
       text: `🎁 Zawadi ya TZS ${tip.amount.toLocaleString()}`,
       messageType: 'tip_gift',
       tipDetails: tip,
       createdAt: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
       isSilent: isSilentMode,
     };
-    setMessages((prev) => [...prev, tipMsg]);
+    ChatSyncService.sendMessage(conversation.id, tipMsg);
     showToast(`Pesa ya Chai ya TZS ${tip.amount.toLocaleString()} imetumwa! 🎁`);
   };
 
   // Feature 4: Claim / Open Tip Gift
   const handleOpenTipGift = (msgId: string) => {
-    setMessages((prev) =>
-      prev.map((m) => {
-        if (m.id === msgId && m.tipDetails) {
-          return {
-            ...m,
-            tipDetails: {
-              ...m.tipDetails,
-              isOpened: true,
-              openedAt: new Date().toLocaleTimeString(),
-            },
-          };
-        }
-        return m;
-      })
-    );
+    const target = messages.find((m) => m.id === msgId);
+    if (target?.tipDetails) {
+      ChatSyncService.updateMessage(conversation.id, msgId, {
+        tipDetails: {
+          ...target.tipDetails,
+          isOpened: true,
+          openedAt: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
+        },
+      });
+    }
     showToast('🎉 Zawadi imefunguliwa! TZS zimeongezwa kwenye Zenia Wallet yako.');
   };
 
@@ -417,7 +476,6 @@ export const ChatRoom: React.FC<ChatRoomProps> = ({
     setIsTranslatingId(msgId);
     setTimeout(() => {
       setIsTranslatingId(null);
-      // Realistic translation lookup
       let translated = '';
       if (text.includes('Habari')) {
         translated = 'Hello leader! Your package is ready to be dispatched 👊';
@@ -439,52 +497,48 @@ export const ChatRoom: React.FC<ChatRoomProps> = ({
       id: `msg_${poll.id}`,
       conversationId: conversation.id,
       senderId: currentUser.id,
-      senderName: 'You',
+      senderName: currentUser.displayName || 'You',
       text: `📊 Kura: ${poll.question}`,
       messageType: 'poll',
       pollDetails: poll,
       createdAt: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
       isSilent: isSilentMode,
     };
-    setMessages((prev) => [...prev, pollMsg]);
+    ChatSyncService.sendMessage(conversation.id, pollMsg);
     showToast('Kura ya maoni imechapishwa! 📊');
   };
 
   // Feature 7: Vote on Poll
   const handleVoteOnPoll = (msgId: string, optionId: string) => {
-    setMessages((prev) =>
-      prev.map((m) => {
-        if (m.id !== msgId || !m.pollDetails) return m;
+    const targetMsg = messages.find((m) => m.id === msgId);
+    if (!targetMsg || !targetMsg.pollDetails) return;
 
-        const updatedOptions = m.pollDetails.options.map((opt) => {
-          const hasVoted = opt.votes.includes(currentUser.id);
-          if (opt.id === optionId) {
-            return {
-              ...opt,
-              votes: hasVoted
-                ? opt.votes.filter((uid) => uid !== currentUser.id)
-                : [...opt.votes, currentUser.id],
-            };
-          } else {
-            return {
-              ...opt,
-              votes: opt.votes.filter((uid) => uid !== currentUser.id),
-            };
-          }
-        });
-
-        const totalVotes = updatedOptions.reduce((sum, opt) => sum + opt.votes.length, 0);
-
+    const updatedOptions = targetMsg.pollDetails.options.map((opt) => {
+      const hasVoted = opt.votes.includes(currentUser.id);
+      if (opt.id === optionId) {
         return {
-          ...m,
-          pollDetails: {
-            ...m.pollDetails,
-            options: updatedOptions,
-            totalVotes,
-          },
+          ...opt,
+          votes: hasVoted
+            ? opt.votes.filter((uid) => uid !== currentUser.id)
+            : [...opt.votes, currentUser.id],
         };
-      })
-    );
+      } else {
+        return {
+          ...opt,
+          votes: opt.votes.filter((uid) => uid !== currentUser.id),
+        };
+      }
+    });
+
+    const totalVotes = updatedOptions.reduce((sum, opt) => sum + opt.votes.length, 0);
+
+    ChatSyncService.updateMessage(conversation.id, msgId, {
+      pollDetails: {
+        ...targetMsg.pollDetails,
+        options: updatedOptions,
+        totalVotes,
+      },
+    });
     showToast('Kura yako imerekodiwa! 🗳️');
   };
 
@@ -507,18 +561,11 @@ export const ChatRoom: React.FC<ChatRoomProps> = ({
     if (!inputText.trim()) return;
 
     if (editingMessage) {
-      setMessages((prev) =>
-        prev.map((m) =>
-          m.id === editingMessage.id
-            ? {
-                ...m,
-                text: inputText.trim(),
-                isEdited: true,
-                editedAt: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
-              }
-            : m
-        )
-      );
+      ChatSyncService.updateMessage(conversation.id, editingMessage.id, {
+        text: inputText.trim(),
+        isEdited: true,
+        editedAt: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
+      });
       showToast('Ujumbe umehaririwa! (Edited)');
       setEditingMessage(null);
       setInputText('');
@@ -526,10 +573,10 @@ export const ChatRoom: React.FC<ChatRoomProps> = ({
     }
 
     const newMsg: ChatMessage = {
-      id: `msg_${Date.now()}`,
+      id: `msg_${Date.now()}_${Math.random().toString(36).substring(2, 6)}`,
       conversationId: conversation.id,
       senderId: currentUser.id,
-      senderName: 'You',
+      senderName: currentUser.displayName || 'You',
       text: inputText.trim(),
       messageType: 'text',
       createdAt: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
@@ -544,35 +591,11 @@ export const ChatRoom: React.FC<ChatRoomProps> = ({
         : undefined,
     };
 
-    setMessages((prev) => [...prev, newMsg]);
+    // Save and sync in real time across Firestore and all tabs/devices
+    ChatSyncService.sendMessage(conversation.id, newMsg);
     setInputText('');
     setReplyingToMessage(null);
-
-    // Realistic Contact auto-reply
-    setTimeout(() => {
-      setIsContactTyping(true);
-      setTimeout(() => {
-        setIsContactTyping(false);
-        const contactReplies = [
-          `Nimekupata vizuri kabisa kiongozi! 👊`,
-          `Sawa kabisa, mzigo uko tayari kutumwa mara moja.`,
-          `Asante sana kwa ushirikiano mzuri! ✨`,
-          `Niko hapa kama unahitaji kitu kingine chochote. 🙌`,
-        ];
-        const randomReply = contactReplies[Math.floor(Math.random() * contactReplies.length)];
-        const replyMsg: ChatMessage = {
-          id: `reply_${Date.now()}`,
-          conversationId: conversation.id,
-          senderId: otherUserId || 'user_fresh_kk',
-          senderName: name,
-          text: randomReply,
-          messageType: 'text',
-          createdAt: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
-          disappearingTimer: disappearingTimer || undefined,
-        };
-        setMessages((prev) => [...prev, replyMsg]);
-      }, 1300);
-    }, 500);
+    showToast('Ujumbe umetumwa! 🚀');
   };
 
   // Swipe-to-reply touch handlers
@@ -795,6 +818,30 @@ export const ChatRoom: React.FC<ChatRoomProps> = ({
           }}
           onShowToast={showToast}
         />
+      </div>
+
+      {/* Real-time Multi-User Persona Switcher Banner */}
+      <div className="bg-[#0A0E1C] border-b border-white/[0.08] px-3.5 py-1.5 flex items-center justify-between text-xs z-10 shrink-0">
+        <div className="flex items-center gap-2 truncate">
+          <span className="w-2 h-2 rounded-full bg-emerald-400 animate-pulse shrink-0" />
+          <span className="text-[11px] text-slate-300 truncate">
+            Unaandika kama:{' '}
+            <strong className="text-cyan-300 font-bold">{currentUser.displayName}</strong>{' '}
+            <span className="text-slate-500 font-mono text-[10px]">(@{currentUser.username})</span>
+          </span>
+        </div>
+
+        {onSwitchUser && (
+          <button
+            type="button"
+            onClick={handleToggleSenderPersona}
+            className="px-2.5 py-1 rounded-xl bg-cyan-500/15 hover:bg-cyan-500/25 border border-cyan-500/40 text-cyan-300 hover:text-white font-bold text-[11px] flex items-center gap-1.5 active:scale-95 transition-all shrink-0 ml-2"
+            title="Badili mtumiaji ili ujaribu kutuma na kupokea ujumbe kutoka upande wa pili"
+          >
+            <ArrowLeftRight className="w-3.5 h-3.5 text-cyan-400" />
+            <span>Badili kwenda {currentUser.id === otherUserId ? 'Amina Kaunga' : name}</span>
+          </button>
+        )}
       </div>
 
       {/* Scheduled Messages Banner (Feature 3) */}
