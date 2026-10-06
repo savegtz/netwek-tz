@@ -36,25 +36,25 @@ export const CreateMenuModal: React.FC<CreateMenuModalProps> = ({
   if (!isOpen) return null;
 
   const createItems = [
+    { id: 'food', label: 'Food Status', icon: Utensils, color: 'from-amber-500/30 to-orange-600/30 border-amber-500/50 text-amber-400' },
+    { id: 'poll', label: 'Create Poll', icon: BarChart2, color: 'from-blue-500/30 to-indigo-600/30 border-blue-500/50 text-blue-400' },
+    { id: 'product', label: 'Product Status', icon: ShoppingBag, color: 'from-emerald-500/30 to-green-600/30 border-emerald-500/50 text-emerald-400' },
+    { id: 'event', label: 'Event Status', icon: Calendar, color: 'from-purple-500/30 to-pink-600/30 border-purple-500/50 text-purple-400' },
+
     { id: 'photo', label: 'Photo Status', icon: Camera, color: 'from-emerald-500/30 to-teal-600/30 border-emerald-500/50 text-emerald-400' },
     { id: 'video', label: 'Video Status', icon: Video, color: 'from-purple-500/30 to-indigo-600/30 border-purple-500/50 text-purple-400' },
     { id: 'text', label: 'Text Status', icon: Type, color: 'from-indigo-500/30 to-blue-600/30 border-indigo-500/50 text-indigo-400' },
     { id: 'voice', label: 'Voice Status', icon: Mic, color: 'from-cyan-500/30 to-blue-600/30 border-cyan-500/50 text-cyan-400' },
 
+    { id: 'ride', label: 'Ride Request', icon: Car, color: 'from-sky-500/30 to-blue-600/30 border-sky-500/50 text-sky-400' },
+    { id: 'job', label: 'Job Listing', icon: Briefcase, color: 'from-amber-500/30 to-orange-600/30 border-amber-500/50 text-amber-400' },
     { id: 'music', label: 'Music', icon: Music, color: 'from-red-500/30 to-rose-600/30 border-red-500/50 text-red-400' },
-    { id: 'poll', label: 'Poll', icon: BarChart2, color: 'from-blue-500/30 to-indigo-600/30 border-blue-500/50 text-blue-400' },
-    { id: 'quiz', label: 'Quiz', icon: CheckSquare, color: 'from-teal-500/30 to-emerald-600/30 border-teal-500/50 text-teal-400' },
     { id: 'giveaway', label: 'Giveaway', icon: Gift, color: 'from-amber-500/30 to-yellow-600/30 border-amber-500/50 text-amber-400' },
 
-    { id: 'product', label: 'Product', icon: ShoppingBag, color: 'from-emerald-500/30 to-green-600/30 border-emerald-500/50 text-emerald-400' },
-    { id: 'food', label: 'Food', icon: Utensils, color: 'from-pink-500/30 to-rose-600/30 border-pink-500/50 text-pink-400' },
-    { id: 'event', label: 'Event', icon: Calendar, color: 'from-purple-500/30 to-pink-600/30 border-purple-500/50 text-purple-400' },
-    { id: 'job', label: 'Job', icon: Briefcase, color: 'from-amber-500/30 to-orange-600/30 border-amber-500/50 text-amber-400' },
-
+    { id: 'quiz', label: 'Quiz', icon: CheckSquare, color: 'from-teal-500/30 to-emerald-600/30 border-teal-500/50 text-teal-400' },
     { id: 'property', label: 'Property', icon: Home, color: 'from-cyan-500/30 to-teal-600/30 border-cyan-500/50 text-cyan-400' },
-    { id: 'ride', label: 'Ride', icon: Car, color: 'from-blue-500/30 to-sky-600/30 border-blue-500/50 text-blue-400' },
-    { id: 'live', label: 'Live', icon: Radio, color: 'from-pink-500/30 to-purple-600/30 border-pink-500/50 text-pink-400' },
-    { id: 'advertisement', label: 'Advertisement', icon: Megaphone, color: 'from-yellow-500/30 to-amber-600/30 border-yellow-500/50 text-yellow-400' },
+    { id: 'live', label: 'Live Space', icon: Radio, color: 'from-pink-500/30 to-purple-600/30 border-pink-500/50 text-pink-400' },
+    { id: 'advertisement', label: 'Ad Campaign', icon: Megaphone, color: 'from-yellow-500/30 to-amber-600/30 border-yellow-500/50 text-yellow-400' },
   ];
 
   return (

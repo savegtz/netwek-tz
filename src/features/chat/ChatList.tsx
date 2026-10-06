@@ -26,7 +26,7 @@ import {
 } from 'firebase/firestore';
 import { db, auth } from '../../services/firebase/config';
 import { handleFirestoreError, OperationType } from '../../services/firebase/firestoreError';
-import { Conversation, UserProfile } from '../../types';
+import { Conversation, UserProfile, StatusItem } from '../../types';
 import { INITIAL_CONVERSATIONS } from '../../services/seed/initialData';
 import { SafeImage } from '../../components/SafeImage';
 import { DirectChatContextMenu } from './components/DirectChatContextMenu';
@@ -52,6 +52,13 @@ interface ChatListProps {
   onUpdateConversation?: (conv: Conversation) => void;
   onDeleteConversation?: (convId: string) => void;
   onOpenCreateStatus?: () => void;
+  customStatuses?: StatusItem[];
+  onStartChatWithBusiness?: (
+    businessId: string,
+    businessName: string,
+    initialMessage?: string,
+    avatar?: string
+  ) => void;
 }
 
 export const ChatList: React.FC<ChatListProps> = ({
@@ -64,6 +71,8 @@ export const ChatList: React.FC<ChatListProps> = ({
   onUpdateConversation,
   onDeleteConversation,
   onOpenCreateStatus,
+  customStatuses,
+  onStartChatWithBusiness,
 }) => {
   const [conversations, setConversations] = useState<Conversation[]>(INITIAL_CONVERSATIONS);
   const [searchQuery, setSearchQuery] = useState('');
@@ -563,6 +572,8 @@ export const ChatList: React.FC<ChatListProps> = ({
       {/* WhatsApp Modern Status Icons Carousel (Placed ABOVE search as requested) */}
       <ChatListStatusRow
         currentUser={currentUser}
+        customStatuses={customStatuses}
+        onStartChatWithBusiness={onStartChatWithBusiness}
         onOpenCreateStatus={() => {
           if (onOpenCreateStatus) {
             onOpenCreateStatus();

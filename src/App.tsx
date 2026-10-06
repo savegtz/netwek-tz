@@ -247,6 +247,8 @@ export default function App() {
                     onStartNewChatWithUser={handleSelectUserToChat}
                     onOpenProfile={() => setActiveTab('profile')}
                     onOpenCreateStatus={() => setIsCreateMenuOpen(true)}
+                    customStatuses={customStatuses}
+                    onStartChatWithBusiness={handleStartChatWithBusiness}
                     onUpdateConversation={(updated) => {
                       if (activeConversation?.id === updated.id) {
                         setActiveConversation(updated);
