@@ -219,6 +219,7 @@ export interface StatusItem {
   metadata?: {
     pollQuestion?: string;
     pollOptions?: { id: string; text: string; votes: number }[];
+    pollSettings?: { allowMultiple?: boolean; anonymous?: boolean; duration?: string };
     quizQuestion?: string;
     quizOptions?: string[];
     quizCorrectIndex?: number;
@@ -230,6 +231,63 @@ export interface StatusItem {
     audioUrl?: string;
     trackTitle?: string;
     discount?: string;
+
+    // Food Story & Ordering
+    foodName?: string;
+    restaurantName?: string;
+    regularPrice?: number;
+    offerPrice?: number;
+    rating?: number;
+    ratingBreakdown?: {
+      taste: number;
+      presentation: number;
+      service: number;
+      value: number;
+    };
+    specialOfferLabel?: string;
+    validUntil?: string;
+    actionButtons?: ('order_now' | 'chat_now' | 'buy_now' | 'get_ticket' | 'join_ride')[];
+
+    // Product Story
+    productName?: string;
+    productCategory?: string;
+    salePrice?: number;
+    discountBadge?: string;
+    stockRemaining?: number;
+    variants?: {
+      sizes?: string[];
+      colors?: string[];
+      storages?: string[];
+    };
+
+    // Event Story
+    eventName?: string;
+    eventDate?: string;
+    eventStartTime?: string;
+    eventEndTime?: string;
+    isRecurring?: boolean;
+    ticketTiers?: {
+      name: string;
+      price: number;
+      color?: string;
+    }[];
+    capacity?: number;
+    ticketsSold?: number;
+    lineup?: string[];
+
+    // Ride Story
+    vehicleType?: string;
+    numberPlate?: string;
+    vehicleColor?: string;
+    pickupLocation?: string;
+    destination?: string;
+    distanceKm?: number;
+    departureTime?: string;
+    availableSeats?: number;
+    contributionPerPerson?: number;
+    isFreeRide?: boolean;
+    driverRating?: number;
+    driverRidesCount?: number;
   };
 }
 

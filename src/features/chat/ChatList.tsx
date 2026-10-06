@@ -16,6 +16,8 @@ import {
   Unlock,
   KeyRound,
   ShieldCheck,
+  UserPlus,
+  MessageSquarePlus,
 } from 'lucide-react';
 import {
   collection,
@@ -32,6 +34,7 @@ import { ChatPinModal, PinModalMode } from './components/ChatPinModal';
 import { ChatListStatusRow } from '../status/ChatListStatusRow';
 import { ProfilePicturePreviewModal } from './components/ProfilePicturePreviewModal';
 import { StatusIcon } from '../../components/StatusIcon';
+import { AVAILABLE_CONTACTS } from './components/StartNewChatModal';
 import freshKkAvatar from '../../assets/images/fresh_kk_avatar_1791078365294.jpg';
 
 interface ChatListProps {
@@ -39,6 +42,12 @@ interface ChatListProps {
   activeConversationId?: string;
   onSelectConversation: (conv: Conversation) => void;
   onStartNewChat: () => void;
+  onStartNewChatWithUser?: (targetUser: {
+    id: string;
+    displayName: string;
+    username: string;
+    photoURL?: string;
+  }) => void;
   onOpenProfile?: () => void;
   onUpdateConversation?: (conv: Conversation) => void;
   onDeleteConversation?: (convId: string) => void;
@@ -50,6 +59,7 @@ export const ChatList: React.FC<ChatListProps> = ({
   activeConversationId,
   onSelectConversation,
   onStartNewChat,
+  onStartNewChatWithUser,
   onOpenProfile,
   onUpdateConversation,
   onDeleteConversation,
@@ -522,6 +532,16 @@ export const ChatList: React.FC<ChatListProps> = ({
       return 0;
     });
 
+  const matchingContacts = searchQuery.trim()
+    ? AVAILABLE_CONTACTS.filter(
+        (c) =>
+          c.id !== currentUser.id &&
+          (c.displayName.toLowerCase().includes(searchQuery.toLowerCase()) ||
+            c.username.toLowerCase().includes(searchQuery.toLowerCase()) ||
+            c.bio.toLowerCase().includes(searchQuery.toLowerCase()))
+      )
+    : [];
+
   return (
     <div className="w-full h-full min-h-0 flex flex-col bg-[#070A12] text-white flex-1 relative select-none overflow-hidden">
       {/* Toast Notification Banner */}
@@ -555,7 +575,7 @@ export const ChatList: React.FC<ChatListProps> = ({
         }}
       />
 
-      {/* Search Input Bar & PIN Security Key */}
+      {/* Search Input Bar, Dedicated "Tafuta Mtu" Button & PIN Security Key */}
       <div className="px-3.5 pt-2 pb-1.5 flex items-center gap-2">
         <div className="relative flex-1 flex items-center">
           <Search className="w-4 h-4 text-slate-400 absolute left-3 pointer-events-none" />
@@ -563,7 +583,7 @@ export const ChatList: React.FC<ChatListProps> = ({
             type="text"
             value={searchQuery}
             onChange={(e) => setSearchQuery(e.target.value)}
-            placeholder="Search conversations, friends..."
+            placeholder="Tafuta mtu (@username), marafiki, au chats..."
             className="w-full bg-[#0E1324] border border-white/[0.08] focus:border-cyan-400/80 rounded-xl pl-9 pr-8 py-2 text-xs text-white placeholder-slate-400 focus:outline-none focus:ring-1 focus:ring-cyan-400/40 transition-all shadow-inner"
           />
           {searchQuery && (
@@ -575,6 +595,16 @@ export const ChatList: React.FC<ChatListProps> = ({
             </button>
           )}
         </div>
+
+        {/* Dedicated "Tafuta Mtu" (Find People) Button */}
+        <button
+          onClick={onStartNewChat}
+          className="px-2.5 py-2 rounded-xl bg-cyan-500/15 border border-cyan-500/40 hover:bg-cyan-500/25 text-cyan-300 font-bold transition-all shrink-0 active:scale-95 shadow-sm flex items-center gap-1.5 text-xs"
+          title="Tafuta watu na anza mazungumzo mapya"
+        >
+          <UserPlus className="w-4 h-4 text-cyan-400" />
+          <span className="hidden sm:inline text-[11px]">Tafuta Mtu</span>
+        </button>
 
         {/* PIN Security Key Button */}
         <button
@@ -690,9 +720,73 @@ export const ChatList: React.FC<ChatListProps> = ({
         className="flex-1 min-h-0 overflow-y-auto px-2 divide-y divide-white/[0.04] pb-36 md:pb-12 overscroll-contain"
         style={{ WebkitOverflowScrolling: 'touch', touchAction: 'pan-y' }}
       >
-        {filteredConversations.length === 0 ? (
-          <div className="p-8 text-center text-slate-500 text-xs">
-            Hakuna mazungumzo yaliyopatikana.
+        {/* If searching, render Global Directory People results first! */}
+        {searchQuery.trim().length > 0 && matchingContacts.length > 0 && (
+          <div className="p-3 mb-2 bg-[#0C1122] rounded-2xl border border-cyan-500/25 shadow-md">
+            <div className="flex items-center justify-between mb-2">
+              <span className="text-[11px] font-bold text-cyan-400 uppercase tracking-wider flex items-center gap-1.5">
+                <UserPlus className="w-3.5 h-3.5" />
+                <span>Watu Walio Patikana ({matchingContacts.length})</span>
+              </span>
+              <span className="text-[10px] text-slate-400">Gusa kuanza kuchat</span>
+            </div>
+            <div className="space-y-1.5">
+              {matchingContacts.map((contact) => (
+                <div
+                  key={contact.id}
+                  onClick={() => {
+                    if (onStartNewChatWithUser) {
+                      onStartNewChatWithUser(contact);
+                    } else {
+                      onStartNewChat();
+                    }
+                  }}
+                  className="p-2.5 rounded-xl bg-white/[0.03] hover:bg-cyan-500/15 border border-white/5 hover:border-cyan-500/30 flex items-center justify-between cursor-pointer transition-all group"
+                >
+                  <div className="flex items-center gap-2.5 min-w-0">
+                    <div className="relative shrink-0">
+                      <SafeImage
+                        src={contact.photoURL}
+                        fallbackText={contact.displayName}
+                        fallbackGradient="from-cyan-800 to-indigo-900"
+                        alt={contact.displayName}
+                        className="w-9 h-9 rounded-xl object-cover ring-1 ring-white/10 group-hover:ring-cyan-400"
+                      />
+                      {contact.isOnline && (
+                        <span className="absolute -bottom-0.5 -right-0.5 w-2 h-2 rounded-full bg-emerald-500 ring-2 ring-[#0C1122]" />
+                      )}
+                    </div>
+                    <div className="min-w-0">
+                      <h4 className="font-bold text-xs text-white group-hover:text-cyan-300 truncate">
+                        {contact.displayName}
+                      </h4>
+                      <p className="text-[10px] text-cyan-400/80 font-mono truncate">
+                        @{contact.username} • {contact.bio}
+                      </p>
+                    </div>
+                  </div>
+
+                  <span className="px-2.5 py-1 rounded-lg bg-cyan-500/20 text-cyan-300 font-bold text-[11px] group-hover:bg-cyan-500 group-hover:text-slate-950 transition-all shrink-0 ml-2">
+                    Chat
+                  </span>
+                </div>
+              ))}
+            </div>
+          </div>
+        )}
+
+        {filteredConversations.length === 0 && matchingContacts.length === 0 ? (
+          <div className="p-8 text-center text-slate-400 text-xs">
+            <UserPlus className="w-8 h-8 text-slate-500 mx-auto mb-2 opacity-50" />
+            <p className="font-semibold text-slate-300">Hakuna mazungumzo au watu waliopatikana</p>
+            <p className="text-[11px] text-slate-500 mt-1">Gusa kitufe hapa chini kutafuta mtu na kuanza chat mpya.</p>
+            <button
+              onClick={onStartNewChat}
+              className="mt-3 px-4 py-2 rounded-xl bg-cyan-500/20 hover:bg-cyan-500/30 border border-cyan-500/40 text-cyan-300 font-bold text-xs inline-flex items-center gap-1.5 transition-all"
+            >
+              <UserPlus className="w-3.5 h-3.5" />
+              <span>Tafuta Mtu & Anza Chat</span>
+            </button>
           </div>
         ) : (
           filteredConversations.map((conv) => {
@@ -898,13 +992,14 @@ export const ChatList: React.FC<ChatListProps> = ({
         )}
       </div>
 
-      {/* Floating Action Button (FAB) at bottom right */}
+      {/* Floating Action Button (FAB) at bottom right: Anza Chat Mpya */}
       <button
         onClick={onStartNewChat}
-        className="fixed sm:absolute bottom-20 md:bottom-6 right-4 w-12 h-12 rounded-2xl bg-gradient-to-tr from-cyan-400 via-blue-500 to-indigo-600 text-white shadow-xl shadow-cyan-500/30 border border-white/20 hover:scale-105 active:scale-90 transition-all z-30 flex items-center justify-center group"
-        title="Ujumbe Mpya (New Chat)"
+        className="fixed sm:absolute bottom-20 md:bottom-6 right-4 px-4 py-3 rounded-full bg-gradient-to-r from-cyan-400 via-blue-500 to-indigo-600 text-slate-950 hover:text-white font-extrabold text-xs shadow-2xl shadow-cyan-500/40 border border-white/20 hover:scale-105 active:scale-95 transition-all z-30 flex items-center gap-2 group"
+        title="Tafuta mtu au anza chat mpya (New Chat)"
       >
-        <Edit3 className="w-5 h-5 stroke-[2.4] group-hover:scale-110 transition-transform" />
+        <MessageSquarePlus className="w-5 h-5 text-slate-950 group-hover:text-white stroke-[2.5] transition-colors" />
+        <span className="tracking-wide">Chat Mpya</span>
       </button>
 
       {/* Context Menu for 1-on-1 Person-to-Person Chat */}

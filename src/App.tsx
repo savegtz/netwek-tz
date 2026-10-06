@@ -7,7 +7,7 @@ import React, { useState, useEffect } from 'react';
 import { onAuthStateChanged } from 'firebase/auth';
 import { doc, getDoc, setDoc } from 'firebase/firestore';
 import { auth, db } from './services/firebase/config';
-import { UserProfile, Conversation, StatusType } from './types';
+import { UserProfile, Conversation, StatusType, StatusItem } from './types';
 import { INITIAL_USER, INITIAL_CONVERSATIONS } from './services/seed/initialData';
 import { MessageSquare, Plus, Sparkles, ShieldCheck, Lock } from 'lucide-react';
 
@@ -52,6 +52,7 @@ export default function App() {
   const [isNotificationsOpen, setIsNotificationsOpen] = useState(false);
   const [activeCallType, setActiveCallType] = useState<'video' | 'voice' | null>(null);
   const [createStatusType, setCreateStatusType] = useState<StatusType | 'ai' | null>(null);
+  const [customStatuses, setCustomStatuses] = useState<StatusItem[]>([]);
   const [isFrameMode, setIsFrameMode] = useState<boolean>(false); // Full-width responsive web view by default
 
   const handleSelectUserToChat = (targetUser: {
@@ -159,6 +160,40 @@ export default function App() {
     setActiveTab('chats');
   };
 
+  const handleStartChatWithBusiness = (
+    businessId: string,
+    businessName: string,
+    initialMessage?: string,
+    avatar?: string
+  ) => {
+    const convId = `conv_${businessId}_${currentUser.id}`;
+    const businessConv: Conversation = {
+      id: convId,
+      participants: [currentUser.id, businessId],
+      participantDetails: {
+        [businessId]: {
+          displayName: businessName,
+          photoURL:
+            avatar ||
+            'https://images.unsplash.com/photo-1555396273-367ea4eb4db5?w=500&auto=format&fit=crop&q=80',
+          username: businessName.toLowerCase().replace(/[^a-z0-9]/g, '_'),
+          isOnline: true,
+        },
+        [currentUser.id]: {
+          displayName: currentUser.displayName,
+          photoURL: currentUser.photoURL,
+          username: currentUser.username,
+          isOnline: true,
+        },
+      },
+      isGroup: false,
+      lastMessage: initialMessage || 'Habari! Nahitaji huduma / maelezo zaidi.',
+      updatedAt: 'Just now',
+    };
+    setActiveConversation(businessConv);
+    setActiveTab('chats');
+  };
+
   return (
     <div className="h-[100dvh] w-full bg-[#06080F] text-slate-100 flex flex-col font-sans selection:bg-cyan-500 selection:text-white overflow-hidden">
       {/* Top Application Header (Hidden inside active chat room on mobile, always visible on desktop) */}
@@ -209,6 +244,7 @@ export default function App() {
                     activeConversationId={activeConversation?.id}
                     onSelectConversation={(conv) => setActiveConversation(conv)}
                     onStartNewChat={() => setIsNewChatModalOpen(true)}
+                    onStartNewChatWithUser={handleSelectUserToChat}
                     onOpenProfile={() => setActiveTab('profile')}
                     onOpenCreateStatus={() => setIsCreateMenuOpen(true)}
                     onUpdateConversation={(updated) => {
@@ -319,6 +355,8 @@ export default function App() {
               <StatusFeed
                 currentUser={currentUser}
                 onOpenCreateMenu={() => setIsCreateMenuOpen(true)}
+                onStartChatWithBusiness={handleStartChatWithBusiness}
+                customStatuses={customStatuses}
               />
             )}
 
@@ -355,6 +393,7 @@ export default function App() {
                   else if (type === 'business') setActiveTab('shop');
                   else setActiveTab('chats');
                 }}
+                onStartChatWithUser={handleSelectUserToChat}
               />
             )}
 
@@ -400,7 +439,8 @@ export default function App() {
         onClose={() => setCreateStatusType(null)}
         statusType={createStatusType}
         currentUser={currentUser}
-        onStatusCreated={() => {
+        onStatusCreated={(newStatus) => {
+          setCustomStatuses((prev) => [newStatus, ...prev]);
           setActiveTab('status');
         }}
       />
