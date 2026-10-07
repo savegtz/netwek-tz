@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import {
   X,
   Camera,
@@ -25,8 +25,19 @@ import {
   Search,
   Bookmark,
   Share2,
-  Heart,
   Ticket,
+  Briefcase,
+  Building2,
+  Gift,
+  HelpCircle,
+  Home,
+  Radio,
+  Megaphone,
+  Bed,
+  Bath,
+  Trophy,
+  Lightbulb,
+  Zap,
 } from 'lucide-react';
 import { StatusItem, StatusType, UserProfile } from '../../types';
 import { doc, setDoc } from 'firebase/firestore';
@@ -53,6 +64,29 @@ export const CreateStatusModal: React.FC<CreateStatusModalProps> = ({
   const [activeType, setActiveType] = useState<StatusType>(
     statusType === 'ai' ? 'ai_generated' : (statusType || 'food')
   );
+
+  useEffect(() => {
+    if (statusType) {
+      const targetType = statusType === 'ai' ? 'ai_generated' : statusType;
+      setActiveType(targetType);
+      if (targetType === 'giveaway') {
+        setMediaUrl('https://images.unsplash.com/photo-1511707171634-5f897ff02aa9?w=1200&auto=format&fit=crop&q=80');
+        setCaption('🎁 MEGA GIVEAWAY! Shinda iPhone 15 Pro Max mpya kabisa!\nFuata maelekezo hapo chini kujiunga na bahati nasibu sasa! 🔥✨\n#GiveawayDar #WinBig #FreshKK');
+      } else if (targetType === 'quiz') {
+        setMediaUrl('https://images.unsplash.com/photo-1606326608606-aa0b62935f2b?w=1200&auto=format&fit=crop&q=80');
+        setCaption('🧠 QUIZ TIME! Pima uelewa wako na ushinde pointi & zawadi papo hapo!\n#TriviaTanzania #QuizChallenge #ElimuNaBurudani');
+      } else if (targetType === 'property') {
+        setMediaUrl('https://images.unsplash.com/photo-1600596542815-ffad4c1539a9?w=1200&auto=format&fit=crop&q=80');
+        setCaption('🏡 INAPANGISHWA: Luxury 3-Bedroom Villa Masaki!\nIna swimming pool, full AC, na ulinzi wa masaa 24. Wahi sasa!\n#DarRealEstate #MasakiApartments #NyumbaZaKifahari');
+      } else if (targetType === 'live') {
+        setMediaUrl('https://images.unsplash.com/photo-1590602847861-f357a9332bbc?w=1200&auto=format&fit=crop&q=80');
+        setCaption('🎙️ LIVE SPACE: Dar Tech & Creators Talk 2026!\nTujumuike pamoja kujadili fursa za mtandaoni na ubunifu wa kidijitali. Usikose!');
+      } else if (targetType === 'advertisement') {
+        setMediaUrl('https://images.unsplash.com/photo-1557804506-669a67965ba0?w=1200&auto=format&fit=crop&q=80');
+        setCaption('📢 TANGAZO RASMI: Vodacom 5G Internet — Kasi Bila Kikomo!\nTumia mtandao wenye kasi ya ajabu ukiwa popote nchini. Bonyeza link hapa chini kuanza!');
+      }
+    }
+  }, [statusType]);
 
   // Common Fields
   const [caption, setCaption] = useState(
@@ -178,6 +212,416 @@ export const CreateStatusModal: React.FC<CreateStatusModalProps> = ({
   const [eventTicketsSold, setEventTicketsSold] = useState(327);
   const [eventLineup, setEventLineup] = useState('🎤 Harmonize, 🎧 DJ Fresh, 🎤 Rayvanny, 🍔 Food Festival, 🎮 Games');
 
+  // ==================== JOB STATUS SPECIFIC ====================
+  const [jobCompanyName, setJobCompanyName] = useState('Zebra Restaurant');
+  const [jobTitle, setJobTitle] = useState('Waiter / Waitress');
+  const [jobDescription, setJobDescription] = useState(
+    'We are looking for an experienced waiter/waitress to join our team...'
+  );
+  const [jobLocation, setJobLocation] = useState('Masaki, Dar es Salaam');
+  const [jobSalaryMin, setJobSalaryMin] = useState(400000);
+  const [jobSalaryMax, setJobSalaryMax] = useState(600000);
+  const [jobShowSalary, setJobShowSalary] = useState(true);
+  const [jobIsSalaryNegotiable, setJobIsSalaryNegotiable] = useState(false);
+  const [jobEmploymentType, setJobEmploymentType] = useState<
+    'Full Time' | 'Part Time' | 'Contract' | 'Temporary' | 'Internship' | 'Freelance'
+  >('Full Time');
+  const [jobRequirements, setJobRequirements] = useState<string[]>([
+    'Certificate/Diploma',
+    '1+ year experience',
+    'Good communication',
+    'Customer service skills',
+  ]);
+  const [newRequirementText, setNewRequirementText] = useState('');
+  const [jobDeadline, setJobDeadline] = useState('20 October 2026');
+  const [jobActionButtons, setJobActionButtons] = useState<{ apply: boolean; chat: boolean }>({
+    apply: true,
+    chat: true,
+  });
+
+  const popularJobTitles = [
+    {
+      title: 'Waiter / Waitress',
+      company: 'Zebra Restaurant',
+      desc: 'We are looking for an experienced waiter/waitress to join our team...',
+      loc: 'Masaki, Dar es Salaam',
+      min: 400000,
+      max: 600000,
+      negotiable: false,
+      type: 'Full Time' as const,
+      reqs: ['Certificate/Diploma', '1+ year experience', 'Good communication', 'Customer service skills'],
+      img: 'https://images.unsplash.com/photo-1517248135467-4c7edcad34c4?w=1200&auto=format&fit=crop&q=80',
+      deadline: '20 October 2026',
+    },
+    {
+      title: 'Chef',
+      company: 'Zebra Restaurant',
+      desc: 'Looking for an experienced, passionate Chef to prepare high-quality grilled dishes, burgers & continental specialties.',
+      loc: 'Masaki, Dar es Salaam',
+      min: 800000,
+      max: 1200000,
+      negotiable: false,
+      type: 'Full Time' as const,
+      reqs: ['Culinary Certificate/Diploma', '2+ years kitchen experience', 'HACCP food hygiene', 'Fast kitchen prep'],
+      img: 'https://images.unsplash.com/photo-1577219491135-ce391730fb2c?w=1200&auto=format&fit=crop&q=80',
+      deadline: '25 October 2026',
+    },
+    {
+      title: 'Driver',
+      company: 'Zebra Logistics',
+      desc: 'Reliable and punctual professional driver needed for executive trips and delivery transport across Dar es Salaam.',
+      loc: 'Mikocheni, Dar es Salaam',
+      min: 500000,
+      max: 700000,
+      negotiable: false,
+      type: 'Full Time' as const,
+      reqs: ['Class C driving license', '3+ years driving experience', 'Knowledge of Dar routes', 'Defensive driving certificate'],
+      img: 'https://images.unsplash.com/photo-1449965408869-eaa3f722e40d?w=1200&auto=format&fit=crop&q=80',
+      deadline: '18 October 2026',
+    },
+    {
+      title: 'Accountant',
+      company: 'Zebra Group',
+      desc: 'Experienced accountant to manage financial records, daily reconciliations, and TRA tax compliance.',
+      loc: 'Posta, Dar es Salaam',
+      min: 900000,
+      max: 1500000,
+      negotiable: false,
+      type: 'Full Time' as const,
+      reqs: ['Degree in Accounting/Finance', 'CPA / Tally / QuickBooks', '2+ years experience', 'Tax compliance knowledge'],
+      img: 'https://images.unsplash.com/photo-1554224155-8d04cb21cd6c?w=1200&auto=format&fit=crop&q=80',
+      deadline: '22 October 2026',
+    },
+    {
+      title: 'Sales Representative',
+      company: 'Zebra Foods & Distribution',
+      desc: 'Dynamic sales representative to generate corporate orders, liaise with retail partners, and hit revenue targets.',
+      loc: 'Kariakoo, Dar es Salaam',
+      min: 450000,
+      max: 800000,
+      negotiable: false,
+      type: 'Full Time' as const,
+      reqs: ['Diploma in Marketing/Business', 'Strong negotiation skills', 'Customer relationship building', 'Target driven'],
+      img: 'https://images.unsplash.com/photo-1556742049-0a67c5574f73?w=1200&auto=format&fit=crop&q=80',
+      deadline: '24 October 2026',
+    },
+    {
+      title: 'Software Developer',
+      company: 'Swahili Tech Labs',
+      desc: 'Full-stack software developer proficient in React, TypeScript, Node.js and REST APIs to build modern mobile web applications.',
+      loc: 'Oysterbay, Dar es Salaam',
+      min: 1200000,
+      max: 2000000,
+      negotiable: false,
+      type: 'Full Time' as const,
+      reqs: ['BSc in Computer Science or equivalent', '2+ years experience in React/Node', 'Git & Cloud deployment', 'Team player'],
+      img: 'https://images.unsplash.com/photo-1498050108023-c5249f4df085?w=1200&auto=format&fit=crop&q=80',
+      deadline: '30 October 2026',
+    },
+    {
+      title: 'Security Guard',
+      company: 'Apex Security Dar',
+      desc: 'Dedicated security officer for premise surveillance, visitor registration, and 24/7 security patrol.',
+      loc: 'Sinza, Dar es Salaam',
+      min: 350000,
+      max: 500000,
+      negotiable: false,
+      type: 'Full Time' as const,
+      reqs: ['Form 4 certificate', 'Security training certificate', 'Physically fit', 'Good discipline & integrity'],
+      img: 'https://images.unsplash.com/photo-1582139329536-e7284fece509?w=1200&auto=format&fit=crop&q=80',
+      deadline: '19 October 2026',
+    },
+    {
+      title: 'Manager',
+      company: 'Zebra Restaurant & Lounge',
+      desc: 'Operations Manager to supervise hospitality staff, oversee guest satisfaction, manage inventory, and lead daily operations.',
+      loc: 'Masaki, Dar es Salaam',
+      min: 1200000,
+      max: 1800000,
+      negotiable: false,
+      type: 'Full Time' as const,
+      reqs: ['Degree in Hospitality or Business', '3+ years supervisory experience', 'Leadership & problem solving', 'Staff mentoring'],
+      img: 'https://images.unsplash.com/photo-1556740738-b6a63e27c4df?w=1200&auto=format&fit=crop&q=80',
+      deadline: '28 October 2026',
+    },
+  ];
+
+  const handleSelectJobTitle = (title: string) => {
+    setJobTitle(title);
+    const found = popularJobTitles.find((j) => j.title.toLowerCase() === title.toLowerCase());
+    if (found) {
+      setJobCompanyName(found.company);
+      setJobDescription(found.desc);
+      setJobLocation(found.loc);
+      setJobSalaryMin(found.min);
+      setJobSalaryMax(found.max);
+      setJobEmploymentType(found.type);
+      setJobRequirements(found.reqs);
+      setMediaUrl(found.img);
+      setJobDeadline(found.deadline);
+      setCaption(found.desc);
+    }
+  };
+
+  const calculateDaysRemaining = (deadlineStr: string) => {
+    const deadlineDate = new Date(deadlineStr);
+    if (!isNaN(deadlineDate.getTime())) {
+      const diffTime = deadlineDate.getTime() - Date.now();
+      const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
+      return Math.max(0, diffDays);
+    }
+    return 13;
+  };
+
+  // ==================== 1. GIVEAWAY SPECIFIC ====================
+  const [giveawayTitle, setGiveawayTitle] = useState('WIN IPHONE 15 PRO MAX! 🎁');
+  const [giveawayPrizes, setGiveawayPrizes] = useState('iPhone 15 Pro Max, Apple Watch Ultra, AirPods Pro 2');
+  const [giveawayWinnersCount, setGiveawayWinnersCount] = useState(3);
+  const [giveawayDeadline, setGiveawayDeadline] = useState('25 October 2026');
+  const [giveawayRequirements, setGiveawayRequirements] = useState<string[]>([
+    'Follow account hii',
+    'Like & Repost status hii',
+    'Tag marafiki 3 kwenye comments',
+  ]);
+  const [giveawayActionButtons, setGiveawayActionButtons] = useState({ enter: true, chat: true });
+
+  const popularGiveaways = [
+    {
+      title: 'WIN IPHONE 15 PRO MAX! 🎁',
+      prizes: 'iPhone 15 Pro Max (256GB Titanium)',
+      winners: 1,
+      deadline: '25 October 2026',
+      img: 'https://images.unsplash.com/photo-1511707171634-5f897ff02aa9?w=1200&auto=format&fit=crop&q=80',
+      caption: '🎁 MEGA GIVEAWAY! Shinda iPhone 15 Pro Max mpya kabisa!\nFuata vigezo hapo chini kujiunga na bahati nasibu sasa! 🔥✨\n#GiveawayDar #iPhone15Pro #FreshKK',
+    },
+    {
+      title: 'TSh 500,000 CASH GIVEAWAY 💰',
+      prizes: 'TSh 500,000 Cash kupitia M-Pesa / Mixx',
+      winners: 5,
+      deadline: '20 October 2026',
+      img: 'https://images.unsplash.com/photo-1553729459-efe14ef6055d?w=1200&auto=format&fit=crop&q=80',
+      caption: '💰 ZAWADI YA PESA TASLIMU! Washindi 5 watajishindia TSh 100,000 kila mmoja leo!\nJiunge sasa papo hapo.\n#CashGiveaway #DarEsSalaam',
+    },
+    {
+      title: 'PLAYSTATION 5 SLIM EDITION 🎮',
+      prizes: 'PS5 Slim + 2 Controllers + EA FC 26',
+      winners: 1,
+      deadline: '30 October 2026',
+      img: 'https://images.unsplash.com/photo-1606813907291-d86efa9b94db?w=1200&auto=format&fit=crop&q=80',
+      caption: '🎮 GAMERS GIVEAWAY! Shinda PlayStation 5 mpya kabisa na michezo 2!\nBonyeza [Enter Giveaway] hapa chini kujiandikisha.\n#PS5Giveaway #GamingTZ',
+    },
+    {
+      title: 'FREE DINNER FOR 2 AT ZEBRA 🍽️',
+      prizes: 'VIP 3-Course Dinner for 2 + Drinks at Zebra Restaurant Masaki',
+      winners: 2,
+      deadline: '18 October 2026',
+      img: 'https://images.unsplash.com/photo-1517248135467-4c7edcad34c4?w=1200&auto=format&fit=crop&q=80',
+      caption: '🍽️ CHAKULA CHA BURE ZEBRA MASAKI! Washindi 2 wataenda na wapenzi/marafiki zao kula bure!\n#ZebraRestaurant #FreeDinner #FoodieTZ',
+    },
+  ];
+
+  // ==================== 2. QUIZ SPECIFIC ====================
+  const [quizCategory, setQuizCategory] = useState('General Knowledge');
+  const [quizQuestion, setQuizQuestion] = useState('Tanzania ilipata Uhuru mwaka gani?');
+  const [quizOptions, setQuizOptions] = useState<string[]>(['1961', '1962', '1963', '1964']);
+  const [quizCorrectIndex, setQuizCorrectIndex] = useState(0);
+  const [quizTimeSeconds, setQuizTimeSeconds] = useState(30);
+  const [quizPoints, setQuizPoints] = useState(50);
+  const [quizActionButtons, setQuizActionButtons] = useState({ play: true, chat: true });
+
+  const popularQuizzes = [
+    {
+      category: 'Historia & Taifa',
+      q: 'Tanzania ilipata Uhuru mwaka gani?',
+      opts: ['1961', '1962', '1963', '1964'],
+      correct: 0,
+      time: 30,
+      pts: 50,
+      img: 'https://images.unsplash.com/photo-1606326608606-aa0b62935f2b?w=1200&auto=format&fit=crop&q=80',
+    },
+    {
+      category: 'Michezo & Soka',
+      q: 'Nani mfungaji bora wa muda wote wa Taifa Stars?',
+      opts: ['Mbwana Samatta', 'Mrisho Ngassa', 'Simon Msuva', 'John Bocco'],
+      correct: 1,
+      time: 20,
+      pts: 100,
+      img: 'https://images.unsplash.com/photo-1508098682722-e99c43a406b2?w=1200&auto=format&fit=crop&q=80',
+    },
+    {
+      category: 'Jiografia',
+      q: 'Mlima mrefu zaidi barani Afrika unapatikana nchi gani?',
+      opts: ['Kenya', 'Tanzania', 'Uganda', 'Ethiopia'],
+      correct: 1,
+      time: 15,
+      pts: 50,
+      img: 'https://images.unsplash.com/photo-1589556264800-08ae9e129a8c?w=1200&auto=format&fit=crop&q=80',
+    },
+    {
+      category: 'Teknolojia & AI',
+      q: 'Lugha gani rasmi inayotumika kuunda Android Apps za kisasa?',
+      opts: ['Kotlin', 'Swift', 'PHP', 'Ruby'],
+      correct: 0,
+      time: 20,
+      pts: 75,
+      img: 'https://images.unsplash.com/photo-1526374965328-7f61d4dc18c5?w=1200&auto=format&fit=crop&q=80',
+    },
+  ];
+
+  // ==================== 3. PROPERTY SPECIFIC ====================
+  const [propertyListingType, setPropertyListingType] = useState<'For Rent' | 'For Sale'>('For Rent');
+  const [propertyTitle, setPropertyTitle] = useState('Luxury 3-Bedroom Apartment in Masaki');
+  const [propertyPrice, setPropertyPrice] = useState(1800000);
+  const [propertyCurrency, setPropertyCurrency] = useState('TSh');
+  const [propertyLocation, setPropertyLocation] = useState('Masaki Peninsula, Dar es Salaam');
+  const [propertyBeds, setPropertyBeds] = useState(3);
+  const [propertyBaths, setPropertyBaths] = useState(2);
+  const [propertyParking, setPropertyParking] = useState(2);
+  const [propertyArea, setPropertyArea] = useState(180);
+  const [propertyAmenities, setPropertyAmenities] = useState<string[]>([
+    'Air Conditioning (AC)',
+    'Swimming Pool',
+    '24/7 Security & CCTV',
+    'Standby Generator',
+    'Ocean View Balcony',
+  ]);
+  const [propertyActionButtons, setPropertyActionButtons] = useState({ book: true, chat: true });
+
+  const popularProperties = [
+    {
+      type: 'For Rent' as const,
+      title: 'Luxury 3-Bedroom Apartment in Masaki',
+      price: 1800000,
+      beds: 3,
+      baths: 2,
+      parking: 2,
+      area: 180,
+      loc: 'Masaki, Dar es Salaam',
+      img: 'https://images.unsplash.com/photo-1600596542815-ffad4c1539a9?w=1200&auto=format&fit=crop&q=80',
+      caption: '🏡 INAPANGISHWA: Luxury 3-Bedroom Villa Masaki!\nIna swimming pool, full AC, na ulinzi wa masaa 24. Karibu kutembelea leo!',
+    },
+    {
+      type: 'For Sale' as const,
+      title: 'Modern Beachfront Villa Mbezi Beach',
+      price: 450000000,
+      beds: 4,
+      baths: 3,
+      parking: 4,
+      area: 350,
+      loc: 'Mbezi Beach, Dar es Salaam',
+      img: 'https://images.unsplash.com/photo-1600585154340-be6161a56a0c?w=1200&auto=format&fit=crop&q=80',
+      caption: '🏖️ INAUZWA: Nyumba ya kifahari yenye bustani na beach view Mbezi Beach! Hati miliki ipo safi.',
+    },
+    {
+      type: 'For Rent' as const,
+      title: 'Prime Office Space CBD Posta',
+      price: 2500000,
+      beds: 1,
+      baths: 2,
+      parking: 5,
+      area: 220,
+      loc: 'Posta Mpya, Dar es Salaam',
+      img: 'https://images.unsplash.com/photo-1497366216548-37526070297c?w=1200&auto=format&fit=crop&q=80',
+      caption: '🏢 INAPANGISHWA: Ofisi ya kisasa katikati ya jiji Posta! Generator, elevators, na fiber internet.',
+    },
+    {
+      type: 'For Sale' as const,
+      title: 'Kiwanja Kilichopimwa Kigamboni 1000sqm',
+      price: 35000000,
+      beds: 0,
+      baths: 0,
+      parking: 0,
+      area: 1000,
+      loc: 'Kigamboni, Dar es Salaam',
+      img: 'https://images.unsplash.com/photo-1500382017468-9049fed747ef?w=1200&auto=format&fit=crop&q=80',
+      caption: '📐 KIWANJA KINAUZWA: Kigamboni karibu na barabara kuu, umeme na maji yapo tayari!',
+    },
+  ];
+
+  // ==================== 4. LIVE SPACE SPECIFIC ====================
+  const [spaceTopic, setSpaceTopic] = useState('Dar Tech & Creators Talk 2026');
+  const [spaceSubtitle, setSpaceSubtitle] = useState('Fursa za kidijitali, biashara za mtandaoni na ubunifu');
+  const [spaceCategory, setSpaceCategory] = useState('Technology & Business');
+  const [spaceScheduleType, setSpaceScheduleType] = useState<'now' | 'schedule'>('now');
+  const [spaceDate, setSpaceDate] = useState('Today');
+  const [spaceTime, setSpaceTime] = useState('8:30 PM');
+  const [spaceSpeakers, setSpaceSpeakers] = useState('Host: Fresh KK, Jane Mollel, DJ Fresh');
+  const [spaceListenersCount, setSpaceListenersCount] = useState(1240);
+  const [spaceActionButtons, setSpaceActionButtons] = useState({ join: true, remind: true });
+
+  const popularLiveSpaces = [
+    {
+      topic: 'Dar Tech & Creators Talk 2026',
+      sub: 'Fursa za kidijitali, biashara za mtandaoni na ubunifu',
+      cat: 'Tech & Business',
+      schedule: 'now' as const,
+      time: 'LIVE NOW 🔴',
+      img: 'https://images.unsplash.com/photo-1590602847861-f357a9332bbc?w=1200&auto=format&fit=crop&q=80',
+      caption: '🎙️ LIVE SPACE: Tujumuike pamoja live sasa kujadili fursa za AI na biashara za mtandaoni!',
+    },
+    {
+      topic: 'Zebra Acoustic & Saxophone Vibes 🎷',
+      sub: 'Live music jam session na mazungumzo ya muziki',
+      cat: 'Music & Vibes',
+      schedule: 'now' as const,
+      time: 'LIVE NOW 🔴',
+      img: 'https://images.unsplash.com/photo-1511671782779-c97d3d27a1d4?w=1200&auto=format&fit=crop&q=80',
+      caption: '🎶 Karibu kwenye Live Space yetu ya leo jioni! Muziki mzuri wa acoustic na maongezi live.',
+    },
+    {
+      topic: 'Afya ya Akili & Uongozi wa Biashara',
+      sub: 'Mbinu za kupunguza stress na kujenga tija kazini',
+      cat: 'Health & Wellness',
+      schedule: 'schedule' as const,
+      time: 'Kesho 7:00 PM',
+      img: 'https://images.unsplash.com/photo-1573496359142-b8d87734a5a2?w=1200&auto=format&fit=crop&q=80',
+      caption: '🧠 Kesho saa 1 jioni tutakuwa live na wataalamu wa afya. Weka reminder yako sasa!',
+    },
+  ];
+
+  // ==================== 5. AD CAMPAIGN SPECIFIC ====================
+  const [adHeadline, setAdHeadline] = useState('Vodacom 5G Internet — Kasi Bila Kikomo! 🚀');
+  const [adSubtitle, setAdSubtitle] = useState('Pata GB 50 za kasi ya juu kwa wiki nzima kwa TSh 10,000 tu!');
+  const [adGoal, setAdGoal] = useState<'visit' | 'shop' | 'install' | 'call' | 'coupon'>('visit');
+  const [adCtaText, setAdCtaText] = useState('🌐 Visit Website');
+  const [adTargetLocation, setAdTargetLocation] = useState('Dar es Salaam, Arusha & Mwanza');
+  const [adDailyBudget, setAdDailyBudget] = useState(25000);
+  const [adDurationDays, setAdDurationDays] = useState(7);
+  const [adActionButtons, setAdActionButtons] = useState({ cta: true, chat: true });
+
+  const popularAdCampaigns = [
+    {
+      headline: 'Vodacom 5G Internet — Kasi Bila Kikomo! 🚀',
+      sub: 'Pata GB 50 za kasi ya 5G kwa wiki nzima kwa TSh 10,000 tu!',
+      goal: 'visit' as const,
+      cta: '🌐 Visit Website',
+      budget: 25000,
+      days: 7,
+      img: 'https://images.unsplash.com/photo-1557804506-669a67965ba0?w=1200&auto=format&fit=crop&q=80',
+      caption: '📢 TANGAZO: Furahia kasi ya 5G popote Tanzania! Jiunge sasa kwa ofa maalum ya wiki.',
+    },
+    {
+      headline: 'Zebra Special Weekend 30% OFF 🍔',
+      sub: 'Punguzo la 30% kwenye vyakula vyote vya jioni wikendi hii!',
+      goal: 'coupon' as const,
+      cta: '🎟️ Claim 30% Coupon',
+      budget: 15000,
+      days: 3,
+      img: 'https://images.unsplash.com/photo-1555396273-367ea4eb4db5?w=1200&auto=format&fit=crop&q=80',
+      caption: '🔥 OFA MAALUM: Weekend hii kula burgers na grilled chicken kwa 30% discount Masaki!',
+    },
+    {
+      headline: 'Samsung Galaxy S24 Ultra Official Launch 📱',
+      sub: 'Oda leo upate bure Galaxy Buds na Wireless Charger!',
+      goal: 'shop' as const,
+      cta: '🛍️ Shop Now',
+      budget: 50000,
+      days: 7,
+      img: 'https://images.unsplash.com/photo-1610945415295-d9bbf067e59c?w=1200&auto=format&fit=crop&q=80',
+      caption: '📱 Pata Galaxy S24 Ultra yenye Galaxy AI sasa kutoka maduka rasmi ya Samsung Dar.',
+    },
+  ];
+
   if (!isOpen) return null;
 
   const handleUseCurrentLocation = () => {
@@ -205,16 +649,28 @@ export const CreateStatusModal: React.FC<CreateStatusModalProps> = ({
     const newStatus: StatusItem = {
       id: `status_${Date.now()}`,
       authorId: currentUser.id,
-      authorName: activeType === 'food' ? 'Zebra Restaurant' : currentUser.displayName,
-      authorUsername: activeType === 'food' ? 'zebra_restaurant' : currentUser.username,
+      authorName:
+        activeType === 'food'
+          ? 'Zebra Restaurant'
+          : activeType === 'job'
+          ? jobCompanyName
+          : currentUser.displayName,
+      authorUsername:
+        activeType === 'food'
+          ? 'zebra_restaurant'
+          : activeType === 'job'
+          ? jobCompanyName.toLowerCase().replace(/[^a-z0-9]/g, '_')
+          : currentUser.username,
       authorPhoto:
         activeType === 'food'
           ? 'https://images.unsplash.com/photo-1555396273-367ea4eb4db5?w=200&auto=format&fit=crop&q=80'
+          : activeType === 'job'
+          ? 'https://images.unsplash.com/photo-1517248135467-4c7edcad34c4?w=200&auto=format&fit=crop&q=80'
           : currentUser.photoURL || freshKkAvatar,
       type: activeType,
       mediaUrl,
       text: caption,
-      location: locationName,
+      location: activeType === 'job' ? jobLocation : locationName,
       visibility: 'public',
       likesCount: 245,
       commentsCount: 32,
@@ -233,9 +689,76 @@ export const CreateStatusModal: React.FC<CreateStatusModalProps> = ({
         rating: 4.8,
         ratingBreakdown: { taste: 5.0, presentation: 4.8, service: 4.7, value: 4.9 },
         actionButtons: [
-          ...(foodActionButtons.order ? (['order_now'] as const) : []),
-          ...(foodActionButtons.chat ? (['chat_now'] as const) : []),
+          ...(activeType === 'food' && foodActionButtons.order ? (['order_now'] as const) : []),
+          ...(activeType === 'food' && foodActionButtons.chat ? (['chat_now'] as const) : []),
+          ...(activeType === 'job' && jobActionButtons.apply ? (['apply_now'] as const) : []),
+          ...(activeType === 'job' && jobActionButtons.chat ? (['chat_now'] as const) : []),
+          ...(activeType === 'giveaway' && giveawayActionButtons.enter ? (['join_giveaway'] as const) : []),
+          ...(activeType === 'giveaway' && giveawayActionButtons.chat ? (['chat_now'] as const) : []),
+          ...(activeType === 'quiz' && quizActionButtons.play ? (['submit_quiz'] as const) : []),
+          ...(activeType === 'quiz' && quizActionButtons.chat ? (['chat_now'] as const) : []),
+          ...(activeType === 'property' && propertyActionButtons.book ? (['property_details'] as const) : []),
+          ...(activeType === 'property' && propertyActionButtons.chat ? (['chat_now'] as const) : []),
+          ...(activeType === 'live' && spaceActionButtons.join ? (['join_live_space'] as const) : []),
+          ...(activeType === 'advertisement' && adActionButtons.cta ? (['run_ad'] as const) : []),
+          ...(activeType === 'advertisement' && adActionButtons.chat ? (['chat_now'] as const) : []),
         ],
+
+        // Job metadata
+        companyName: activeType === 'job' ? jobCompanyName : undefined,
+        jobTitle: activeType === 'job' ? jobTitle : undefined,
+        jobDescription: activeType === 'job' ? jobDescription : undefined,
+        salaryMin: activeType === 'job' && jobShowSalary && !jobIsSalaryNegotiable ? jobSalaryMin : undefined,
+        salaryMax: activeType === 'job' && jobShowSalary && !jobIsSalaryNegotiable ? jobSalaryMax : undefined,
+        showSalary: activeType === 'job' ? jobShowSalary : undefined,
+        isSalaryNegotiable: activeType === 'job' ? jobIsSalaryNegotiable : undefined,
+        employmentType: activeType === 'job' ? jobEmploymentType : undefined,
+        requirements: activeType === 'job' ? jobRequirements : undefined,
+        deadlineDate: activeType === 'job' ? jobDeadline : undefined,
+        daysRemaining: activeType === 'job' ? calculateDaysRemaining(jobDeadline) : undefined,
+        isClosed: activeType === 'job' ? calculateDaysRemaining(jobDeadline) <= 0 : undefined,
+
+        // Giveaway metadata
+        giveawayTitle: activeType === 'giveaway' ? giveawayTitle : undefined,
+        giveawayPrizes: activeType === 'giveaway' ? giveawayPrizes : undefined,
+        winnersCount: activeType === 'giveaway' ? giveawayWinnersCount : undefined,
+        giveawayDeadline: activeType === 'giveaway' ? giveawayDeadline : undefined,
+        entrySteps: activeType === 'giveaway' ? giveawayRequirements : undefined,
+        participantsCount: activeType === 'giveaway' ? 428 : undefined,
+
+        // Quiz metadata
+        quizQuestion: activeType === 'quiz' ? quizQuestion : undefined,
+        quizOptions: activeType === 'quiz' ? quizOptions : undefined,
+        quizCorrectIndex: activeType === 'quiz' ? quizCorrectIndex : undefined,
+        quizTimeSeconds: activeType === 'quiz' ? quizTimeSeconds : undefined,
+        quizPoints: activeType === 'quiz' ? quizPoints : undefined,
+
+        // Property metadata
+        propertyType: activeType === 'property' ? propertyListingType : undefined,
+        propertyTitle: activeType === 'property' ? propertyTitle : undefined,
+        propertyLocation: activeType === 'property' ? propertyLocation : undefined,
+        propertyPrice: activeType === 'property' ? propertyPrice : undefined,
+        propertyCurrency: activeType === 'property' ? propertyCurrency : undefined,
+        bedrooms: activeType === 'property' ? propertyBeds : undefined,
+        bathrooms: activeType === 'property' ? propertyBaths : undefined,
+        parkingSpaces: activeType === 'property' ? propertyParking : undefined,
+        areaSqMeters: activeType === 'property' ? propertyArea : undefined,
+
+        // Live Space metadata
+        spaceTitle: activeType === 'live' ? spaceTopic : undefined,
+        spaceSubtitle: activeType === 'live' ? spaceSubtitle : undefined,
+        spaceTopic: activeType === 'live' ? spaceCategory : undefined,
+        spaceDate: activeType === 'live' ? (spaceScheduleType === 'now' ? 'Leo (Today)' : spaceDate) : undefined,
+        spaceTime: activeType === 'live' ? (spaceScheduleType === 'now' ? 'LIVE NOW 🔴' : spaceTime) : undefined,
+        listenersCount: activeType === 'live' ? spaceListenersCount : undefined,
+        isLiveNow: activeType === 'live' ? spaceScheduleType === 'now' : undefined,
+        hostName: activeType === 'live' ? currentUser.displayName : undefined,
+        hostAvatar: activeType === 'live' ? (currentUser.photoURL || freshKkAvatar) : undefined,
+
+        // Ad Campaign metadata
+        adHeadline: activeType === 'advertisement' ? adHeadline : undefined,
+        adSubtitle: activeType === 'advertisement' ? adSubtitle : undefined,
+        adBulletPoints: activeType === 'advertisement' ? [adCtaText, adTargetLocation, `Bajeti: TSh ${adDailyBudget.toLocaleString()}/siku`] : undefined,
 
         // Poll metadata
         pollQuestion: activeType === 'poll' ? pollQuestion : undefined,
@@ -301,18 +824,43 @@ export const CreateStatusModal: React.FC<CreateStatusModalProps> = ({
         <div className="p-4 bg-[#0E1528] border-b border-white/10 flex items-center justify-between shrink-0">
           <div className="flex items-center gap-2.5">
             <div className="w-9 h-9 rounded-xl bg-cyan-500/20 text-cyan-400 flex items-center justify-center font-bold">
+              {activeType === 'job' && <Briefcase className="w-5 h-5 text-amber-400" />}
               {activeType === 'food' && <Utensils className="w-5 h-5 text-amber-400" />}
               {activeType === 'poll' && <BarChart2 className="w-5 h-5 text-blue-400" />}
               {activeType === 'product' && <ShoppingBag className="w-5 h-5 text-emerald-400" />}
               {activeType === 'event' && <Calendar className="w-5 h-5 text-purple-400" />}
-              {!['food', 'poll', 'product', 'event'].includes(activeType) && <Camera className="w-5 h-5" />}
+              {activeType === 'giveaway' && <Gift className="w-5 h-5 text-amber-400" />}
+              {activeType === 'quiz' && <HelpCircle className="w-5 h-5 text-teal-400" />}
+              {activeType === 'property' && <Home className="w-5 h-5 text-cyan-400" />}
+              {activeType === 'live' && <Radio className="w-5 h-5 text-pink-400" />}
+              {activeType === 'advertisement' && <Megaphone className="w-5 h-5 text-yellow-400" />}
+              {!['food', 'poll', 'product', 'event', 'job', 'giveaway', 'quiz', 'property', 'live', 'advertisement'].includes(activeType) && <Camera className="w-5 h-5" />}
             </div>
             <div>
               <h3 className="font-extrabold text-sm sm:text-base text-white capitalize">
-                Weka {activeType === 'food' ? '🍕 Food' : activeType === 'poll' ? '📊 Poll' : activeType === 'product' ? '🛍️ Product' : '🎪 Event'} Status
+                Weka {
+                  activeType === 'job' ? '💼 Job Listing' :
+                  activeType === 'food' ? '🍕 Food Status' :
+                  activeType === 'poll' ? '📊 Poll Status' :
+                  activeType === 'product' ? '🛍️ Product Status' :
+                  activeType === 'event' ? '🎪 Event Status' :
+                  activeType === 'giveaway' ? '🎁 Giveaway Status' :
+                  activeType === 'quiz' ? '❓ Quiz Status' :
+                  activeType === 'property' ? '🏠 Property Status' :
+                  activeType === 'live' ? '🎙️ Live Space Status' :
+                  activeType === 'advertisement' ? '📢 Ad Campaign' : 'Status'
+                }
               </h3>
               <p className="text-[11px] text-slate-400">
-                Picha, Bei, Ofa, Countdown & Vitufe vya Action
+                {
+                  activeType === 'job' ? 'Kampuni, Job Title, Mshahara, Masharti & Apply Now' :
+                  activeType === 'giveaway' ? 'Zawadi, Washindi, Masharti ya Kujiunga & Tiketi' :
+                  activeType === 'quiz' ? 'Maswali, Chaguzi A-D, Jibu Sahihi & Pointi' :
+                  activeType === 'property' ? 'Kupanga / Kuuza, Bei, Vyumba & Book Inspection' :
+                  activeType === 'live' ? 'Mada, Wasemaji, Muda & Jiunge Live Audio' :
+                  activeType === 'advertisement' ? 'Tangazo Rasmi, Lengo, Bajeti & Call To Action' :
+                  'Picha, Bei, Ofa, Countdown & Vitufe vya Action'
+                }
               </p>
             </div>
           </div>
@@ -342,10 +890,16 @@ export const CreateStatusModal: React.FC<CreateStatusModalProps> = ({
         {/* Tab Switcher */}
         <div className="px-4 py-2 bg-[#0B1020] border-b border-white/5 flex items-center gap-1.5 overflow-x-auto scrollbar-none shrink-0">
           {[
+            { id: 'job', label: '💼 Job Listing', color: 'text-amber-400' },
             { id: 'food', label: '🍕 Food Status', color: 'text-amber-400' },
-            { id: 'poll', label: '📊 Create Poll', color: 'text-blue-400' },
-            { id: 'product', label: '🛍️ Product Status', color: 'text-emerald-400' },
-            { id: 'event', label: '🎪 Event Status', color: 'text-purple-400' },
+            { id: 'poll', label: '📊 Poll', color: 'text-blue-400' },
+            { id: 'product', label: '🛍️ Product', color: 'text-emerald-400' },
+            { id: 'event', label: '🎪 Event', color: 'text-purple-400' },
+            { id: 'giveaway', label: '🎁 Giveaway', color: 'text-amber-400' },
+            { id: 'quiz', label: '❓ Quiz', color: 'text-teal-400' },
+            { id: 'property', label: '🏠 Property', color: 'text-cyan-400' },
+            { id: 'live', label: '🎙️ Live Space', color: 'text-pink-400' },
+            { id: 'advertisement', label: '📢 Ad Campaign', color: 'text-yellow-400' },
           ].map((tab) => (
             <button
               key={tab.id}
@@ -368,7 +922,7 @@ export const CreateStatusModal: React.FC<CreateStatusModalProps> = ({
             <div className="flex items-center justify-between">
               <span className="text-xs font-bold text-white flex items-center gap-1.5">
                 <Camera className="w-4 h-4 text-cyan-400" />
-                <span>Add {activeType === 'food' ? 'Food' : activeType === 'poll' ? 'Poll' : activeType === 'product' ? 'Product' : 'Event'} Media</span>
+                <span>Add {activeType === 'job' ? 'Job / Company' : activeType === 'food' ? 'Food' : activeType === 'poll' ? 'Poll' : activeType === 'product' ? 'Product' : 'Event'} Media</span>
               </span>
               <span className="text-[10px] text-slate-400">
                 • Photos: Max 10 • Video: Max 1
@@ -431,6 +985,375 @@ export const CreateStatusModal: React.FC<CreateStatusModalProps> = ({
               className="w-full bg-[#182038] border border-white/10 rounded-xl px-3 py-2 text-xs text-white placeholder-slate-500 font-mono"
             />
           </div>
+
+          {/* ============================================================== */}
+          {/* JOB LISTING FORM */}
+          {/* ============================================================== */}
+          {activeType === 'job' && (
+            <div className="space-y-4">
+              {/* 1. Jina Kampuni / Biashara */}
+              <div className="p-4 rounded-2xl bg-[#12192F] border border-amber-500/20 space-y-3">
+                <div className="flex items-center justify-between">
+                  <span className="text-xs font-bold text-amber-400 uppercase tracking-wider flex items-center gap-1.5">
+                    <Building2 className="w-4 h-4 text-amber-400" />
+                    <span>Jina la Kampuni / Biashara</span>
+                  </span>
+                  <span className="text-[10px] text-slate-400">Employer / Business Name</span>
+                </div>
+                <input
+                  type="text"
+                  required
+                  value={jobCompanyName}
+                  onChange={(e) => setJobCompanyName(e.target.value)}
+                  placeholder="Mfano: Zebra Restaurant"
+                  className="w-full bg-[#182038] border border-white/10 rounded-xl px-3.5 py-2.5 text-xs text-white placeholder-slate-500 font-semibold focus:outline-none focus:border-amber-400"
+                />
+              </div>
+
+              {/* 2. Job Title & Presets */}
+              <div className="p-4 rounded-2xl bg-[#12192F] border border-amber-500/20 space-y-3">
+                <div className="flex items-center justify-between">
+                  <span className="text-xs font-bold text-amber-400 uppercase tracking-wider flex items-center gap-1.5">
+                    <Briefcase className="w-4 h-4 text-amber-400" />
+                    <span>Job Title</span>
+                  </span>
+                  <span className="text-[11px] text-amber-300 font-semibold">Mfano wa Kazi</span>
+                </div>
+
+                {/* Job Title Input */}
+                <input
+                  type="text"
+                  required
+                  value={jobTitle}
+                  onChange={(e) => setJobTitle(e.target.value)}
+                  placeholder="[ Waiter / Waitress ]"
+                  className="w-full bg-[#182038] border border-white/10 rounded-xl px-3.5 py-2.5 text-xs text-white placeholder-slate-500 font-bold focus:outline-none focus:border-amber-400"
+                />
+
+                {/* Preset Chips from user prompt:
+                    Chef, Driver, Accountant, Sales Representative, Software Developer, Security Guard, Manager */}
+                <div className="space-y-1.5 pt-1">
+                  <span className="text-[10px] text-slate-400 block font-semibold">
+                    Chagua haraka (Popular Job Titles):
+                  </span>
+                  <div className="flex items-center gap-1.5 flex-wrap">
+                    {popularJobTitles.map((item) => (
+                      <button
+                        type="button"
+                        key={item.title}
+                        onClick={() => handleSelectJobTitle(item.title)}
+                        className={`px-2.5 py-1.5 rounded-xl text-xs font-bold transition-all flex items-center gap-1 active:scale-95 ${
+                          jobTitle.toLowerCase() === item.title.toLowerCase()
+                            ? 'bg-amber-500 text-slate-950 shadow-md shadow-amber-500/20'
+                            : 'bg-white/5 hover:bg-white/10 text-slate-300 border border-white/5'
+                        }`}
+                      >
+                        {jobTitle.toLowerCase() === item.title.toLowerCase() && (
+                          <Check className="w-3 h-3 stroke-[3]" />
+                        )}
+                        <span>{item.title}</span>
+                      </button>
+                    ))}
+                  </div>
+                </div>
+              </div>
+
+              {/* 3. Job Description */}
+              <div className="p-4 rounded-2xl bg-[#12192F] border border-amber-500/20 space-y-2">
+                <span className="text-xs font-bold text-amber-400 uppercase tracking-wider block">
+                  Job Description (Maelezo ya Kazi)
+                </span>
+                <textarea
+                  rows={3}
+                  required
+                  value={jobDescription}
+                  onChange={(e) => {
+                    setJobDescription(e.target.value);
+                    setCaption(e.target.value);
+                  }}
+                  placeholder="We are looking for an experienced waiter/waitress to join our team..."
+                  className="w-full bg-[#182038] border border-white/10 rounded-xl p-3 text-xs text-white placeholder-slate-500 focus:outline-none focus:border-amber-400"
+                />
+              </div>
+
+              {/* 4. 📍 Job Location */}
+              <div className="p-4 rounded-2xl bg-[#12192F] border border-amber-500/20 space-y-3">
+                <div className="flex items-center justify-between">
+                  <span className="text-xs font-bold text-amber-400 uppercase tracking-wider flex items-center gap-1.5">
+                    <MapPin className="w-4 h-4 text-amber-400" />
+                    <span>📍 Job Location</span>
+                  </span>
+                  <span className="text-[10px] text-slate-400">Eneo la Kazi</span>
+                </div>
+
+                <div className="flex items-center gap-2">
+                  <input
+                    type="text"
+                    value={jobLocation}
+                    onChange={(e) => setJobLocation(e.target.value)}
+                    placeholder="Masaki, Dar es Salaam"
+                    className="flex-1 bg-[#182038] border border-white/10 rounded-xl px-3.5 py-2.5 text-xs text-white placeholder-slate-500"
+                  />
+                  <button
+                    type="button"
+                    onClick={() => setJobLocation('Masaki, Dar es Salaam (Selected on Map)')}
+                    className="px-3 py-2.5 rounded-xl bg-cyan-500/20 hover:bg-cyan-500/30 text-cyan-300 font-bold text-xs flex items-center gap-1 active:scale-95 transition-all"
+                  >
+                    <MapPin className="w-3.5 h-3.5" />
+                    <span>[📍 Select on Map]</span>
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setIsLocating(true);
+                      setTimeout(() => {
+                        setJobLocation('Masaki, Dar es Salaam (GPS Current Location)');
+                        setIsLocating(false);
+                      }, 400);
+                    }}
+                    className="p-2.5 rounded-xl bg-white/5 hover:bg-white/10 text-slate-300 hover:text-white"
+                    title="Current GPS location"
+                  >
+                    <Navigation className={`w-4 h-4 ${isLocating ? 'animate-spin text-cyan-400' : ''}`} />
+                  </button>
+                </div>
+              </div>
+
+              {/* 5. 💰 Salary */}
+              <div className="p-4 rounded-2xl bg-[#12192F] border border-amber-500/20 space-y-3">
+                <div className="flex items-center justify-between">
+                  <span className="text-xs font-bold text-amber-400 uppercase tracking-wider">
+                    💰 Salary (Mshahara)
+                  </span>
+                  <div className="flex items-center gap-3 text-xs">
+                    <label className="flex items-center gap-1.5 text-slate-300 cursor-pointer">
+                      <input
+                        type="checkbox"
+                        checked={jobShowSalary}
+                        onChange={(e) => setJobShowSalary(e.target.checked)}
+                        className="rounded accent-amber-500"
+                      />
+                      <span>☑ Show salary</span>
+                    </label>
+                    <button
+                      type="button"
+                      onClick={() => setJobIsSalaryNegotiable(!jobIsSalaryNegotiable)}
+                      className={`px-2 py-0.5 rounded text-[11px] font-bold transition-all ${
+                        jobIsSalaryNegotiable
+                          ? 'bg-amber-500 text-slate-950'
+                          : 'bg-white/5 text-slate-400 hover:text-white'
+                      }`}
+                    >
+                      Au: Salary: Negotiable
+                    </button>
+                  </div>
+                </div>
+
+                {!jobIsSalaryNegotiable ? (
+                  <div className="grid grid-cols-2 gap-3 text-xs">
+                    <div>
+                      <span className="text-[10px] text-slate-400 block mb-1">From: (Kuanzia)</span>
+                      <div className="flex items-center bg-[#182038] border border-white/10 rounded-xl px-3 py-2">
+                        <span className="text-slate-400 text-[10px] mr-1">TSh</span>
+                        <input
+                          type="number"
+                          value={jobSalaryMin}
+                          onChange={(e) => setJobSalaryMin(parseInt(e.target.value) || 0)}
+                          className="w-full bg-transparent text-white font-mono font-bold focus:outline-none"
+                        />
+                      </div>
+                    </div>
+                    <div>
+                      <span className="text-[10px] text-slate-400 block mb-1">To: (Hadi)</span>
+                      <div className="flex items-center bg-[#182038] border border-white/10 rounded-xl px-3 py-2">
+                        <span className="text-slate-400 text-[10px] mr-1">TSh</span>
+                        <input
+                          type="number"
+                          value={jobSalaryMax}
+                          onChange={(e) => setJobSalaryMax(parseInt(e.target.value) || 0)}
+                          className="w-full bg-transparent text-amber-300 font-mono font-bold focus:outline-none"
+                        />
+                      </div>
+                    </div>
+                  </div>
+                ) : (
+                  <div className="p-3 rounded-xl bg-amber-500/10 border border-amber-500/30 text-amber-300 text-xs font-bold text-center">
+                    🤝 Mshahara: Negotiable (Maelewano wakati wa usaili)
+                  </div>
+                )}
+              </div>
+
+              {/* 6. Employment Type */}
+              <div className="p-4 rounded-2xl bg-[#12192F] border border-amber-500/20 space-y-2">
+                <span className="text-xs font-bold text-amber-400 uppercase tracking-wider block">
+                  Employment Type (Aina ya Ajira)
+                </span>
+                <div className="grid grid-cols-3 gap-2 text-xs">
+                  {[
+                    'Full Time',
+                    'Part Time',
+                    'Contract',
+                    'Temporary',
+                    'Internship',
+                    'Freelance',
+                  ].map((emp) => (
+                    <button
+                      type="button"
+                      key={emp}
+                      onClick={() => setJobEmploymentType(emp as any)}
+                      className={`p-2.5 rounded-xl text-left font-bold transition-all flex items-center gap-2 ${
+                        jobEmploymentType === emp
+                          ? 'bg-amber-500 text-slate-950 font-black'
+                          : 'bg-white/5 hover:bg-white/10 text-slate-300 border border-white/5'
+                      }`}
+                    >
+                      <span>{jobEmploymentType === emp ? '●' : '○'}</span>
+                      <span className="truncate">{emp}</span>
+                    </button>
+                  ))}
+                </div>
+              </div>
+
+              {/* 7. Requirements */}
+              <div className="p-4 rounded-2xl bg-[#12192F] border border-amber-500/20 space-y-3">
+                <div className="flex items-center justify-between">
+                  <span className="text-xs font-bold text-amber-400 uppercase tracking-wider">
+                    Requirements (Vigezo na Masharti)
+                  </span>
+                  <span className="text-[10px] text-slate-400">{jobRequirements.length} vigezo</span>
+                </div>
+
+                <div className="space-y-2">
+                  {jobRequirements.map((req, idx) => (
+                    <div
+                      key={idx}
+                      className="p-2.5 rounded-xl bg-[#182038] border border-white/5 flex items-center justify-between text-xs text-slate-200"
+                    >
+                      <div className="flex items-center gap-2">
+                        <Check className="w-4 h-4 text-emerald-400 stroke-[3]" />
+                        <span>{req}</span>
+                      </div>
+                      <button
+                        type="button"
+                        onClick={() => setJobRequirements(jobRequirements.filter((_, i) => i !== idx))}
+                        className="text-slate-500 hover:text-rose-400 p-1"
+                      >
+                        <Trash2 className="w-3.5 h-3.5" />
+                      </button>
+                    </div>
+                  ))}
+                </div>
+
+                {/* Add requirement input */}
+                <div className="flex items-center gap-2 pt-1">
+                  <input
+                    type="text"
+                    value={newRequirementText}
+                    onChange={(e) => setNewRequirementText(e.target.value)}
+                    placeholder="Weka kigezo kingine..."
+                    className="flex-1 bg-[#182038] border border-white/10 rounded-xl px-3 py-2 text-xs text-white placeholder-slate-500"
+                    onKeyDown={(e) => {
+                      if (e.key === 'Enter') {
+                        e.preventDefault();
+                        if (newRequirementText.trim()) {
+                          setJobRequirements([...jobRequirements, newRequirementText.trim()]);
+                          setNewRequirementText('');
+                        }
+                      }
+                    }}
+                  />
+                  <button
+                    type="button"
+                    onClick={() => {
+                      if (newRequirementText.trim()) {
+                        setJobRequirements([...jobRequirements, newRequirementText.trim()]);
+                        setNewRequirementText('');
+                      }
+                    }}
+                    className="p-2.5 rounded-xl bg-amber-500 hover:bg-amber-400 text-slate-950 font-bold active:scale-95 transition-all text-xs flex items-center gap-1"
+                  >
+                    <Plus className="w-4 h-4" />
+                    <span>Weka</span>
+                  </button>
+                </div>
+              </div>
+
+              {/* 8. 📅 Application Deadline & Status Indicator */}
+              <div className="p-4 rounded-2xl bg-[#12192F] border border-amber-500/20 space-y-3">
+                <div className="flex items-center justify-between">
+                  <span className="text-xs font-bold text-amber-400 uppercase tracking-wider flex items-center gap-1.5">
+                    <Calendar className="w-4 h-4 text-amber-400" />
+                    <span>📅 Application Deadline</span>
+                  </span>
+                  {/* Status Indicator: ⏳ 13 days remaining OR 🔴 Applications Closed */}
+                  {calculateDaysRemaining(jobDeadline) > 0 ? (
+                    <span className="text-xs px-2.5 py-1 rounded-full bg-amber-500/20 text-amber-300 border border-amber-500/40 font-black">
+                      ⏳ {calculateDaysRemaining(jobDeadline)} days remaining
+                    </span>
+                  ) : (
+                    <span className="text-xs px-2.5 py-1 rounded-full bg-rose-500/20 text-rose-300 border border-rose-500/40 font-black">
+                      🔴 Applications Closed
+                    </span>
+                  )}
+                </div>
+
+                <div className="flex items-center gap-2">
+                  <input
+                    type="text"
+                    value={jobDeadline}
+                    onChange={(e) => setJobDeadline(e.target.value)}
+                    placeholder="20 October 2026"
+                    className="flex-1 bg-[#182038] border border-white/10 rounded-xl px-3.5 py-2.5 text-xs text-white font-mono"
+                  />
+                  <button
+                    type="button"
+                    onClick={() => setJobDeadline('20 October 2026')}
+                    className="px-3 py-2 rounded-xl bg-white/5 hover:bg-white/10 text-slate-300 text-xs font-semibold"
+                  >
+                    20 Oct
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setJobDeadline('Expired')}
+                    className="px-3 py-2 rounded-xl bg-rose-500/10 hover:bg-rose-500/20 text-rose-300 text-xs font-semibold"
+                  >
+                    Funga (Close)
+                  </button>
+                </div>
+              </div>
+
+              {/* 9. Action Buttons Checkboxes */}
+              <div className="p-4 rounded-2xl bg-[#12192F] border border-amber-500/20 space-y-2">
+                <span className="text-xs font-bold text-amber-400 uppercase tracking-wider block">
+                  Vitufe vya Status (Action Buttons)
+                </span>
+                <div className="flex items-center gap-4 text-xs text-slate-200">
+                  <label className="flex items-center gap-2 cursor-pointer">
+                    <input
+                      type="checkbox"
+                      checked={jobActionButtons.apply}
+                      onChange={(e) =>
+                        setJobActionButtons({ ...jobActionButtons, apply: e.target.checked })
+                      }
+                      className="rounded accent-emerald-500"
+                    />
+                    <span className="font-bold text-emerald-400">📄 [Apply Now] Form</span>
+                  </label>
+                  <label className="flex items-center gap-2 cursor-pointer">
+                    <input
+                      type="checkbox"
+                      checked={jobActionButtons.chat}
+                      onChange={(e) =>
+                        setJobActionButtons({ ...jobActionButtons, chat: e.target.checked })
+                      }
+                      className="rounded accent-cyan-500"
+                    />
+                    <span className="font-bold text-cyan-400">💬 [Chat Now] Button</span>
+                  </label>
+                </div>
+              </div>
+            </div>
+          )}
 
           {/* ============================================================== */}
           {/* FOOD FORM */}
@@ -1129,7 +2052,808 @@ export const CreateStatusModal: React.FC<CreateStatusModalProps> = ({
           )}
 
           {/* ============================================================== */}
-          {/* SECTION 3: CAPTION & LOCATION */}
+          {/* 1. GIVEAWAY FORM */}
+          {/* ============================================================== */}
+          {activeType === 'giveaway' && (
+            <div className="space-y-4">
+              <div className="p-4 rounded-2xl bg-[#12192F] border border-amber-500/20 space-y-3">
+                <div className="flex items-center justify-between">
+                  <span className="text-xs font-bold text-amber-400 uppercase tracking-wider flex items-center gap-1.5">
+                    <Gift className="w-4 h-4 text-amber-400" />
+                    <span>Giveaway & Zawadi (Mega Promo)</span>
+                  </span>
+                  <span className="text-[10px] px-2 py-0.5 rounded bg-amber-500/20 text-amber-300 font-bold border border-amber-500/30">
+                    🎁 Viral Boost
+                  </span>
+                </div>
+
+                {/* Popular Giveaway Presets */}
+                <div>
+                  <span className="text-[10px] text-slate-400 block mb-1.5 font-semibold">
+                    Chagua Zawadi Maarufu (Presets):
+                  </span>
+                  <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
+                    {popularGiveaways.map((gw, idx) => (
+                      <button
+                        key={idx}
+                        type="button"
+                        onClick={() => {
+                          setGiveawayTitle(gw.title);
+                          setGiveawayPrizes(gw.prizes);
+                          setGiveawayWinnersCount(gw.winners);
+                          setGiveawayDeadline(gw.deadline);
+                          setMediaUrl(gw.img);
+                          setCaption(gw.caption);
+                        }}
+                        className={`p-2 rounded-xl border text-left text-xs transition-all ${
+                          giveawayTitle === gw.title
+                            ? 'bg-amber-500/20 border-amber-400 text-white shadow-sm'
+                            : 'bg-white/5 border-white/5 text-slate-300 hover:bg-white/10'
+                        }`}
+                      >
+                        <p className="font-bold text-[11px] truncate">{gw.title.replace(/[🎁💰🎮🍽️]/g, '')}</p>
+                        <p className="text-[9px] text-amber-300 font-mono mt-0.5">🏆 {gw.winners} {gw.winners === 1 ? 'Mshindi' : 'Washindi'}</p>
+                      </button>
+                    ))}
+                  </div>
+                </div>
+
+                {/* Title */}
+                <div>
+                  <span className="text-[10px] text-slate-400 block mb-1 font-semibold">Kichwa cha Giveaway (Title):</span>
+                  <input
+                    type="text"
+                    value={giveawayTitle}
+                    onChange={(e) => setGiveawayTitle(e.target.value)}
+                    placeholder="Kichwa cha Giveaway mfano [ WIN IPHONE 15 PRO MAX! 🎁 ]"
+                    className="w-full bg-[#182038] border border-white/10 rounded-xl px-3 py-2 text-xs text-white"
+                  />
+                </div>
+
+                {/* Prizes Description */}
+                <div>
+                  <span className="text-[10px] text-slate-400 block mb-1 font-semibold">Zawadi Zitakazotolewa (Prizes):</span>
+                  <input
+                    type="text"
+                    value={giveawayPrizes}
+                    onChange={(e) => setGiveawayPrizes(e.target.value)}
+                    placeholder="Zawadi: mfano iPhone 15 Pro Max, AirPods Pro 2, TSh 500,000 Cash"
+                    className="w-full bg-[#182038] border border-white/10 rounded-xl px-3 py-2 text-xs text-white"
+                  />
+                </div>
+
+                {/* Winners count and Deadline */}
+                <div className="grid grid-cols-2 gap-2 text-xs">
+                  <div>
+                    <span className="text-[10px] text-slate-400 block font-semibold mb-1">Idadi ya Washindi</span>
+                    <div className="flex items-center gap-1.5">
+                      {[1, 3, 5, 10].map((num) => (
+                        <button
+                          key={num}
+                          type="button"
+                          onClick={() => setGiveawayWinnersCount(num)}
+                          className={`flex-1 py-1.5 rounded-lg font-bold text-xs ${
+                            giveawayWinnersCount === num ? 'bg-amber-500 text-slate-950' : 'bg-white/5 text-slate-300'
+                          }`}
+                        >
+                          {num}
+                        </button>
+                      ))}
+                    </div>
+                  </div>
+
+                  <div>
+                    <span className="text-[10px] text-slate-400 block font-semibold mb-1">Tarehe ya Kutoa Zawadi</span>
+                    <input
+                      type="text"
+                      value={giveawayDeadline}
+                      onChange={(e) => setGiveawayDeadline(e.target.value)}
+                      placeholder="25 October 2026"
+                      className="w-full bg-[#182038] border border-white/10 rounded-lg p-1.5 text-xs text-white"
+                    />
+                  </div>
+                </div>
+
+                {/* Requirements / Entry Steps */}
+                <div className="space-y-1.5 pt-1">
+                  <span className="text-[10px] text-slate-400 block font-semibold">Masharti ya Kujiunga (Entry Steps):</span>
+                  <div className="space-y-1">
+                    {giveawayRequirements.map((req, i) => (
+                      <div key={i} className="flex items-center gap-2 p-1.5 rounded-lg bg-[#141B30] border border-white/5 text-xs text-slate-200">
+                        <CheckCircle2 className="w-3.5 h-3.5 text-amber-400 shrink-0" />
+                        <span className="flex-1">{req}</span>
+                        <button
+                          type="button"
+                          onClick={() => setGiveawayRequirements(prev => prev.filter((_, idx) => idx !== i))}
+                          className="text-slate-500 hover:text-rose-400 p-0.5"
+                        >
+                          <Trash2 className="w-3 h-3" />
+                        </button>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+
+                {/* Action Buttons */}
+                <div className="pt-2 border-t border-white/5 flex items-center justify-between text-xs">
+                  <span className="font-semibold text-slate-300">Vitufe vya Action:</span>
+                  <div className="flex items-center gap-3">
+                    <label className="flex items-center gap-1.5 cursor-pointer text-amber-300 font-bold">
+                      <input
+                        type="checkbox"
+                        checked={giveawayActionButtons.enter}
+                        onChange={(e) => setGiveawayActionButtons(prev => ({ ...prev, enter: e.target.checked }))}
+                        className="rounded accent-amber-500"
+                      />
+                      <span>[🎁 Enter Giveaway]</span>
+                    </label>
+                    <label className="flex items-center gap-1.5 cursor-pointer text-slate-300 font-bold">
+                      <input
+                        type="checkbox"
+                        checked={giveawayActionButtons.chat}
+                        onChange={(e) => setGiveawayActionButtons(prev => ({ ...prev, chat: e.target.checked }))}
+                        className="rounded accent-amber-500"
+                      />
+                      <span>[💬 Chat Now]</span>
+                    </label>
+                  </div>
+                </div>
+              </div>
+            </div>
+          )}
+
+          {/* ============================================================== */}
+          {/* 2. QUIZ FORM */}
+          {/* ============================================================== */}
+          {activeType === 'quiz' && (
+            <div className="space-y-4">
+              <div className="p-4 rounded-2xl bg-[#12192F] border border-teal-500/20 space-y-3">
+                <div className="flex items-center justify-between">
+                  <span className="text-xs font-bold text-teal-400 uppercase tracking-wider flex items-center gap-1.5">
+                    <HelpCircle className="w-4 h-4 text-teal-400" />
+                    <span>Tengeneza Quiz & Maswali ya Akili</span>
+                  </span>
+                  <span className="text-[10px] px-2 py-0.5 rounded bg-teal-500/20 text-teal-300 font-bold border border-teal-500/30">
+                    🧠 Interactive Challenge
+                  </span>
+                </div>
+
+                {/* Popular Quiz Presets */}
+                <div>
+                  <span className="text-[10px] text-slate-400 block mb-1.5 font-semibold">
+                    Mada Maarufu (Presets):
+                  </span>
+                  <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
+                    {popularQuizzes.map((qz, idx) => (
+                      <button
+                        key={idx}
+                        type="button"
+                        onClick={() => {
+                          setQuizCategory(qz.category);
+                          setQuizQuestion(qz.q);
+                          setQuizOptions(qz.opts);
+                          setQuizCorrectIndex(qz.correct);
+                          setQuizTimeSeconds(qz.time);
+                          setQuizPoints(qz.pts);
+                          setMediaUrl(qz.img);
+                          setCaption(`🧠 QUIZ: ${qz.q}\nJibu kwa usahihi ujishindie +${qz.pts} Points! #QuizTZ`);
+                        }}
+                        className={`p-2 rounded-xl border text-left text-xs transition-all ${
+                          quizQuestion === qz.q
+                            ? 'bg-teal-500/20 border-teal-400 text-white shadow-sm'
+                            : 'bg-white/5 border-white/5 text-slate-300 hover:bg-white/10'
+                        }`}
+                      >
+                        <p className="font-bold text-[11px] truncate">{qz.category}</p>
+                        <p className="text-[9px] text-teal-300 font-mono mt-0.5">⏱️ {qz.time}s • ⭐ +{qz.pts}pts</p>
+                      </button>
+                    ))}
+                  </div>
+                </div>
+
+                {/* Category & Question */}
+                <div className="grid grid-cols-3 gap-2">
+                  <div className="col-span-1">
+                    <span className="text-[10px] text-slate-400 block mb-1 font-semibold">Category:</span>
+                    <input
+                      type="text"
+                      value={quizCategory}
+                      onChange={(e) => setQuizCategory(e.target.value)}
+                      className="w-full bg-[#182038] border border-white/10 rounded-xl px-2.5 py-2 text-xs text-white"
+                    />
+                  </div>
+                  <div className="col-span-2">
+                    <span className="text-[10px] text-slate-400 block mb-1 font-semibold">Swali (Question):</span>
+                    <input
+                      type="text"
+                      value={quizQuestion}
+                      onChange={(e) => setQuizQuestion(e.target.value)}
+                      placeholder="Andika swali lako hapa..."
+                      className="w-full bg-[#182038] border border-white/10 rounded-xl px-3 py-2 text-xs text-white font-bold"
+                    />
+                  </div>
+                </div>
+
+                {/* 4 Options with Correct Answer Selector */}
+                <div className="space-y-2 pt-1">
+                  <div className="flex items-center justify-between">
+                    <span className="text-[10px] text-slate-400 font-semibold">
+                      Chaguzi 4 (Weka alama ya kijani kwenye JIBU SAHIHI):
+                    </span>
+                    <span className="text-[10px] text-emerald-400 font-bold">
+                      Jibu Sahihi: {['A', 'B', 'C', 'D'][quizCorrectIndex]}
+                    </span>
+                  </div>
+
+                  {quizOptions.map((opt, i) => {
+                    const letters = ['A', 'B', 'C', 'D'];
+                    const isCorrect = quizCorrectIndex === i;
+                    return (
+                      <div key={i} className="flex items-center gap-2">
+                        <button
+                          type="button"
+                          onClick={() => setQuizCorrectIndex(i)}
+                          className={`w-7 h-7 rounded-lg font-black text-xs flex items-center justify-center shrink-0 transition-all ${
+                            isCorrect
+                              ? 'bg-emerald-500 text-slate-950 ring-2 ring-emerald-400'
+                              : 'bg-white/10 text-slate-400 hover:text-white'
+                          }`}
+                          title="Gusa hapa kulifanya hili liwe jibu sahihi"
+                        >
+                          {letters[i]}
+                        </button>
+                        <input
+                          type="text"
+                          value={opt}
+                          onChange={(e) => {
+                            const newOpts = [...quizOptions];
+                            newOpts[i] = e.target.value;
+                            setQuizOptions(newOpts);
+                          }}
+                          placeholder={`Chaguo ${letters[i]}`}
+                          className={`flex-1 bg-[#182038] border rounded-xl px-3 py-1.5 text-xs text-white ${
+                            isCorrect ? 'border-emerald-500/60 font-bold text-emerald-200' : 'border-white/10'
+                          }`}
+                        />
+                        {isCorrect && (
+                          <span className="text-[10px] px-2 py-0.5 rounded bg-emerald-500/20 text-emerald-400 font-bold border border-emerald-500/30">
+                            ✓ SAHIHI
+                          </span>
+                        )}
+                      </div>
+                    );
+                  })}
+                </div>
+
+                {/* Timer & Points */}
+                <div className="grid grid-cols-2 gap-2 text-xs pt-1 border-t border-white/5">
+                  <div>
+                    <span className="text-[10px] text-slate-400 block font-semibold mb-1">Muda kwa Kila Swali</span>
+                    <div className="flex items-center gap-1.5">
+                      {[15, 20, 30, 60].map((sec) => (
+                        <button
+                          key={sec}
+                          type="button"
+                          onClick={() => setQuizTimeSeconds(sec)}
+                          className={`flex-1 py-1 rounded-lg font-bold text-xs ${
+                            quizTimeSeconds === sec ? 'bg-teal-500 text-slate-950' : 'bg-white/5 text-slate-300'
+                          }`}
+                        >
+                          {sec}s
+                        </button>
+                      ))}
+                    </div>
+                  </div>
+
+                  <div>
+                    <span className="text-[10px] text-slate-400 block font-semibold mb-1">Pointi za Ushindi</span>
+                    <div className="flex items-center gap-1.5">
+                      {[25, 50, 75, 100].map((pts) => (
+                        <button
+                          key={pts}
+                          type="button"
+                          onClick={() => setQuizPoints(pts)}
+                          className={`flex-1 py-1 rounded-lg font-bold text-xs ${
+                            quizPoints === pts ? 'bg-teal-500 text-slate-950' : 'bg-white/5 text-slate-300'
+                          }`}
+                        >
+                          +{pts}
+                        </button>
+                      ))}
+                    </div>
+                  </div>
+                </div>
+
+                {/* Action Buttons */}
+                <div className="pt-2 border-t border-white/5 flex items-center justify-between text-xs">
+                  <span className="font-semibold text-slate-300">Vitufe vya Action:</span>
+                  <div className="flex items-center gap-3">
+                    <label className="flex items-center gap-1.5 cursor-pointer text-teal-300 font-bold">
+                      <input
+                        type="checkbox"
+                        checked={quizActionButtons.play}
+                        onChange={(e) => setQuizActionButtons(prev => ({ ...prev, play: e.target.checked }))}
+                        className="rounded accent-teal-500"
+                      />
+                      <span>[🧠 Play Quiz]</span>
+                    </label>
+                    <label className="flex items-center gap-1.5 cursor-pointer text-slate-300 font-bold">
+                      <input
+                        type="checkbox"
+                        checked={quizActionButtons.chat}
+                        onChange={(e) => setQuizActionButtons(prev => ({ ...prev, chat: e.target.checked }))}
+                        className="rounded accent-teal-500"
+                      />
+                      <span>[💬 Chat Now]</span>
+                    </label>
+                  </div>
+                </div>
+              </div>
+            </div>
+          )}
+
+          {/* ============================================================== */}
+          {/* 3. PROPERTY FORM */}
+          {/* ============================================================== */}
+          {activeType === 'property' && (
+            <div className="space-y-4">
+              <div className="p-4 rounded-2xl bg-[#12192F] border border-cyan-500/20 space-y-3">
+                <div className="flex items-center justify-between">
+                  <span className="text-xs font-bold text-cyan-400 uppercase tracking-wider flex items-center gap-1.5">
+                    <Home className="w-4 h-4 text-cyan-400" />
+                    <span>Real Estate (Nyumba, Viwanja & Ofisi)</span>
+                  </span>
+                  <div className="flex items-center gap-1 text-xs">
+                    <button
+                      type="button"
+                      onClick={() => setPropertyListingType('For Rent')}
+                      className={`px-2.5 py-1 rounded-lg font-bold transition-all ${
+                        propertyListingType === 'For Rent' ? 'bg-cyan-500 text-slate-950' : 'bg-white/5 text-slate-400'
+                      }`}
+                    >
+                      Kupanga (Rent)
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => setPropertyListingType('For Sale')}
+                      className={`px-2.5 py-1 rounded-lg font-bold transition-all ${
+                        propertyListingType === 'For Sale' ? 'bg-amber-500 text-slate-950' : 'bg-white/5 text-slate-400'
+                      }`}
+                    >
+                      Kuuza (Sale)
+                    </button>
+                  </div>
+                </div>
+
+                {/* Popular Property Presets */}
+                <div>
+                  <span className="text-[10px] text-slate-400 block mb-1.5 font-semibold">
+                    Mifano Maarufu (Presets):
+                  </span>
+                  <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
+                    {popularProperties.map((pr, idx) => (
+                      <button
+                        key={idx}
+                        type="button"
+                        onClick={() => {
+                          setPropertyListingType(pr.type);
+                          setPropertyTitle(pr.title);
+                          setPropertyPrice(pr.price);
+                          setPropertyBeds(pr.beds);
+                          setPropertyBaths(pr.baths);
+                          setPropertyParking(pr.parking);
+                          setPropertyArea(pr.area);
+                          setPropertyLocation(pr.loc);
+                          setMediaUrl(pr.img);
+                          setCaption(pr.caption);
+                        }}
+                        className={`p-2 rounded-xl border text-left text-xs transition-all ${
+                          propertyTitle === pr.title
+                            ? 'bg-cyan-500/20 border-cyan-400 text-white shadow-sm'
+                            : 'bg-white/5 border-white/5 text-slate-300 hover:bg-white/10'
+                        }`}
+                      >
+                        <p className="font-bold text-[11px] truncate">{pr.title}</p>
+                        <p className="text-[9px] text-cyan-300 font-mono mt-0.5">TSh {pr.price.toLocaleString()}</p>
+                      </button>
+                    ))}
+                  </div>
+                </div>
+
+                {/* Title */}
+                <div>
+                  <span className="text-[10px] text-slate-400 block mb-1 font-semibold">Jina la Nyumba / Eneo (Title):</span>
+                  <input
+                    type="text"
+                    value={propertyTitle}
+                    onChange={(e) => setPropertyTitle(e.target.value)}
+                    placeholder="mfano Luxury 3-Bedroom Villa Masaki..."
+                    className="w-full bg-[#182038] border border-white/10 rounded-xl px-3 py-2 text-xs text-white"
+                  />
+                </div>
+
+                {/* Price and Currency */}
+                <div className="grid grid-cols-3 gap-2 text-xs">
+                  <div className="col-span-2">
+                    <span className="text-[10px] text-slate-400 block font-semibold mb-1">
+                      Bei ({propertyListingType === 'For Rent' ? 'Kwa Mwezi' : 'Bei ya Kuuza'}):
+                    </span>
+                    <input
+                      type="number"
+                      value={propertyPrice}
+                      onChange={(e) => setPropertyPrice(parseInt(e.target.value) || 0)}
+                      className="w-full bg-[#182038] border border-white/10 rounded-lg p-2 text-xs text-white font-mono font-bold"
+                    />
+                  </div>
+                  <div>
+                    <span className="text-[10px] text-slate-400 block font-semibold mb-1">Sarafu:</span>
+                    <select
+                      value={propertyCurrency}
+                      onChange={(e) => setPropertyCurrency(e.target.value)}
+                      className="w-full bg-[#182038] border border-white/10 rounded-lg p-2 text-xs text-white"
+                    >
+                      <option value="TSh">TSh</option>
+                      <option value="USD">USD ($)</option>
+                    </select>
+                  </div>
+                </div>
+
+                {/* Location */}
+                <div>
+                  <span className="text-[10px] text-slate-400 block mb-1 font-semibold">📍 Eneo la Nyumba (Location):</span>
+                  <input
+                    type="text"
+                    value={propertyLocation}
+                    onChange={(e) => setPropertyLocation(e.target.value)}
+                    placeholder="Masaki Peninsula, Dar es Salaam"
+                    className="w-full bg-[#182038] border border-white/10 rounded-xl px-3 py-2 text-xs text-white"
+                  />
+                </div>
+
+                {/* Specs: Beds, Baths, Parking, Area */}
+                <div className="grid grid-cols-4 gap-2 text-xs pt-1">
+                  <div>
+                    <span className="text-[10px] text-slate-400 block mb-1 font-semibold">🛏️ Vyumba</span>
+                    <input
+                      type="number"
+                      value={propertyBeds}
+                      onChange={(e) => setPropertyBeds(parseInt(e.target.value) || 0)}
+                      className="w-full bg-[#182038] border border-white/10 rounded-lg p-1.5 text-xs text-white font-mono"
+                    />
+                  </div>
+                  <div>
+                    <span className="text-[10px] text-slate-400 block mb-1 font-semibold">🚿 Vyoo</span>
+                    <input
+                      type="number"
+                      value={propertyBaths}
+                      onChange={(e) => setPropertyBaths(parseInt(e.target.value) || 0)}
+                      className="w-full bg-[#182038] border border-white/10 rounded-lg p-1.5 text-xs text-white font-mono"
+                    />
+                  </div>
+                  <div>
+                    <span className="text-[10px] text-slate-400 block mb-1 font-semibold">🚗 Maegesho</span>
+                    <input
+                      type="number"
+                      value={propertyParking}
+                      onChange={(e) => setPropertyParking(parseInt(e.target.value) || 0)}
+                      className="w-full bg-[#182038] border border-white/10 rounded-lg p-1.5 text-xs text-white font-mono"
+                    />
+                  </div>
+                  <div>
+                    <span className="text-[10px] text-slate-400 block mb-1 font-semibold">📐 Sqm</span>
+                    <input
+                      type="number"
+                      value={propertyArea}
+                      onChange={(e) => setPropertyArea(parseInt(e.target.value) || 0)}
+                      className="w-full bg-[#182038] border border-white/10 rounded-lg p-1.5 text-xs text-white font-mono"
+                    />
+                  </div>
+                </div>
+
+                {/* Action Buttons */}
+                <div className="pt-2 border-t border-white/5 flex items-center justify-between text-xs">
+                  <span className="font-semibold text-slate-300">Vitufe vya Action:</span>
+                  <div className="flex items-center gap-3">
+                    <label className="flex items-center gap-1.5 cursor-pointer text-cyan-300 font-bold">
+                      <input
+                        type="checkbox"
+                        checked={propertyActionButtons.book}
+                        onChange={(e) => setPropertyActionButtons(prev => ({ ...prev, book: e.target.checked }))}
+                        className="rounded accent-cyan-500"
+                      />
+                      <span>[📅 Book Inspection]</span>
+                    </label>
+                    <label className="flex items-center gap-1.5 cursor-pointer text-slate-300 font-bold">
+                      <input
+                        type="checkbox"
+                        checked={propertyActionButtons.chat}
+                        onChange={(e) => setPropertyActionButtons(prev => ({ ...prev, chat: e.target.checked }))}
+                        className="rounded accent-cyan-500"
+                      />
+                      <span>[💬 Chat with Agent]</span>
+                    </label>
+                  </div>
+                </div>
+              </div>
+            </div>
+          )}
+
+          {/* ============================================================== */}
+          {/* 4. LIVE SPACE FORM */}
+          {/* ============================================================== */}
+          {activeType === 'live' && (
+            <div className="space-y-4">
+              <div className="p-4 rounded-2xl bg-[#12192F] border border-pink-500/20 space-y-3">
+                <div className="flex items-center justify-between">
+                  <span className="text-xs font-bold text-pink-400 uppercase tracking-wider flex items-center gap-1.5">
+                    <Radio className="w-4 h-4 text-pink-400" />
+                    <span>Live Space (Audio Room & Matangazo Live)</span>
+                  </span>
+                  <div className="flex items-center gap-1 text-xs">
+                    <button
+                      type="button"
+                      onClick={() => setSpaceScheduleType('now')}
+                      className={`px-2.5 py-1 rounded-lg font-bold flex items-center gap-1 ${
+                        spaceScheduleType === 'now' ? 'bg-rose-500 text-white' : 'bg-white/5 text-slate-400'
+                      }`}
+                    >
+                      <span className="w-1.5 h-1.5 rounded-full bg-white animate-pulse" />
+                      <span>LIVE NOW</span>
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => setSpaceScheduleType('schedule')}
+                      className={`px-2.5 py-1 rounded-lg font-bold ${
+                        spaceScheduleType === 'schedule' ? 'bg-purple-500 text-white' : 'bg-white/5 text-slate-400'
+                      }`}
+                    >
+                      🗓️ Schedule
+                    </button>
+                  </div>
+                </div>
+
+                {/* Popular Live Space Presets */}
+                <div>
+                  <span className="text-[10px] text-slate-400 block mb-1.5 font-semibold">
+                    Mada Zinazovuma (Presets):
+                  </span>
+                  <div className="grid grid-cols-1 sm:grid-cols-3 gap-2">
+                    {popularLiveSpaces.map((ls, idx) => (
+                      <button
+                        key={idx}
+                        type="button"
+                        onClick={() => {
+                          setSpaceTopic(ls.topic);
+                          setSpaceSubtitle(ls.sub);
+                          setSpaceCategory(ls.cat);
+                          setSpaceScheduleType(ls.schedule);
+                          setMediaUrl(ls.img);
+                          setCaption(ls.caption);
+                        }}
+                        className={`p-2 rounded-xl border text-left text-xs transition-all ${
+                          spaceTopic === ls.topic
+                            ? 'bg-pink-500/20 border-pink-400 text-white shadow-sm'
+                            : 'bg-white/5 border-white/5 text-slate-300 hover:bg-white/10'
+                        }`}
+                      >
+                        <p className="font-bold text-[11px] truncate">{ls.topic}</p>
+                        <p className="text-[9px] text-pink-300 font-mono mt-0.5">{ls.time} • {ls.cat}</p>
+                      </button>
+                    ))}
+                  </div>
+                </div>
+
+                {/* Topic and Subtitle */}
+                <div>
+                  <span className="text-[10px] text-slate-400 block mb-1 font-semibold">Mada Kuu (Space Topic):</span>
+                  <input
+                    type="text"
+                    value={spaceTopic}
+                    onChange={(e) => setSpaceTopic(e.target.value)}
+                    placeholder="mfano Dar Tech & Creators Talk 2026..."
+                    className="w-full bg-[#182038] border border-white/10 rounded-xl px-3 py-2 text-xs text-white font-bold"
+                  />
+                </div>
+
+                <div>
+                  <span className="text-[10px] text-slate-400 block mb-1 font-semibold">Maelezo Fupi (Subtitle / Agenda):</span>
+                  <textarea
+                    rows={2}
+                    value={spaceSubtitle}
+                    onChange={(e) => setSpaceSubtitle(e.target.value)}
+                    placeholder="Nini kitajadiliwa kwenye Live Space hii..."
+                    className="w-full bg-[#182038] border border-white/10 rounded-xl px-3 py-2 text-xs text-white"
+                  />
+                </div>
+
+                {/* Speakers and Date/Time */}
+                <div className="grid grid-cols-2 gap-2 text-xs">
+                  <div>
+                    <span className="text-[10px] text-slate-400 block font-semibold mb-1">Wasemaji (Speakers)</span>
+                    <input
+                      type="text"
+                      value={spaceSpeakers}
+                      onChange={(e) => setSpaceSpeakers(e.target.value)}
+                      placeholder="Host: Fresh KK, DJ Fresh..."
+                      className="w-full bg-[#182038] border border-white/10 rounded-lg p-1.5 text-xs text-white"
+                    />
+                  </div>
+
+                  <div>
+                    <span className="text-[10px] text-slate-400 block font-semibold mb-1">Muda / Ratiba</span>
+                    <input
+                      type="text"
+                      value={spaceScheduleType === 'now' ? '🔴 INAENDELEA SASA (Live Now)' : `${spaceDate} ${spaceTime}`}
+                      onChange={(e) => setSpaceTime(e.target.value)}
+                      disabled={spaceScheduleType === 'now'}
+                      className="w-full bg-[#182038] border border-white/10 rounded-lg p-1.5 text-xs text-white"
+                    />
+                  </div>
+                </div>
+
+                {/* Action Buttons */}
+                <div className="pt-2 border-t border-white/5 flex items-center justify-between text-xs">
+                  <span className="font-semibold text-slate-300">Vitufe vya Action:</span>
+                  <div className="flex items-center gap-3">
+                    <label className="flex items-center gap-1.5 cursor-pointer text-pink-300 font-bold">
+                      <input
+                        type="checkbox"
+                        checked={spaceActionButtons.join}
+                        onChange={(e) => setSpaceActionButtons(prev => ({ ...prev, join: e.target.checked }))}
+                        className="rounded accent-pink-500"
+                      />
+                      <span>[🎙️ Join Space]</span>
+                    </label>
+                    <label className="flex items-center gap-1.5 cursor-pointer text-slate-300 font-bold">
+                      <input
+                        type="checkbox"
+                        checked={spaceActionButtons.remind}
+                        onChange={(e) => setSpaceActionButtons(prev => ({ ...prev, remind: e.target.checked }))}
+                        className="rounded accent-pink-500"
+                      />
+                      <span>[🔔 Reminder]</span>
+                    </label>
+                  </div>
+                </div>
+              </div>
+            </div>
+          )}
+
+          {/* ============================================================== */}
+          {/* 5. AD CAMPAIGN FORM */}
+          {/* ============================================================== */}
+          {activeType === 'advertisement' && (
+            <div className="space-y-4">
+              <div className="p-4 rounded-2xl bg-[#12192F] border border-yellow-500/20 space-y-3">
+                <div className="flex items-center justify-between">
+                  <span className="text-xs font-bold text-yellow-400 uppercase tracking-wider flex items-center gap-1.5">
+                    <Megaphone className="w-4 h-4 text-yellow-400" />
+                    <span>Tangazo Rasmi (Sponsored Ad Campaign)</span>
+                  </span>
+                  <span className="text-[10px] px-2 py-0.5 rounded bg-yellow-500/20 text-yellow-300 font-bold border border-yellow-500/30">
+                    📢 Reach 50k+
+                  </span>
+                </div>
+
+                {/* Popular Ad Presets */}
+                <div>
+                  <span className="text-[10px] text-slate-400 block mb-1.5 font-semibold">
+                    Mifano ya Kampeni (Presets):
+                  </span>
+                  <div className="grid grid-cols-1 sm:grid-cols-3 gap-2">
+                    {popularAdCampaigns.map((ad, idx) => (
+                      <button
+                        key={idx}
+                        type="button"
+                        onClick={() => {
+                          setAdHeadline(ad.headline);
+                          setAdSubtitle(ad.sub);
+                          setAdGoal(ad.goal);
+                          setAdCtaText(ad.cta);
+                          setAdDailyBudget(ad.budget);
+                          setAdDurationDays(ad.days);
+                          setMediaUrl(ad.img);
+                          setCaption(ad.caption);
+                        }}
+                        className={`p-2 rounded-xl border text-left text-xs transition-all ${
+                          adHeadline === ad.headline
+                            ? 'bg-yellow-500/20 border-yellow-400 text-white shadow-sm'
+                            : 'bg-white/5 border-white/5 text-slate-300 hover:bg-white/10'
+                        }`}
+                      >
+                        <p className="font-bold text-[11px] truncate">{ad.headline}</p>
+                        <p className="text-[9px] text-yellow-300 font-mono mt-0.5">{ad.cta} • {ad.days} Siku</p>
+                      </button>
+                    ))}
+                  </div>
+                </div>
+
+                {/* Headline & Subtitle */}
+                <div>
+                  <span className="text-[10px] text-slate-400 block mb-1 font-semibold">Headline (Kichwa cha Tangazo):</span>
+                  <input
+                    type="text"
+                    value={adHeadline}
+                    onChange={(e) => setAdHeadline(e.target.value)}
+                    placeholder="Kichwa cha Tangazo..."
+                    className="w-full bg-[#182038] border border-white/10 rounded-xl px-3 py-2 text-xs text-white font-bold"
+                  />
+                </div>
+
+                <div>
+                  <span className="text-[10px] text-slate-400 block mb-1 font-semibold">Maelezo ya Ofa (Ad Copy):</span>
+                  <textarea
+                    rows={2}
+                    value={adSubtitle}
+                    onChange={(e) => setAdSubtitle(e.target.value)}
+                    placeholder="Eleza ofa au faida kwa mtumiaji..."
+                    className="w-full bg-[#182038] border border-white/10 rounded-xl px-3 py-2 text-xs text-white"
+                  />
+                </div>
+
+                {/* Campaign Goal and CTA Text */}
+                <div className="grid grid-cols-2 gap-2 text-xs">
+                  <div>
+                    <span className="text-[10px] text-slate-400 block font-semibold mb-1">Call-To-Action (Kitufe)</span>
+                    <input
+                      type="text"
+                      value={adCtaText}
+                      onChange={(e) => setAdCtaText(e.target.value)}
+                      placeholder="🌐 Visit Website au 🛍️ Shop Now"
+                      className="w-full bg-[#182038] border border-white/10 rounded-lg p-1.5 text-xs text-white"
+                    />
+                  </div>
+
+                  <div>
+                    <span className="text-[10px] text-slate-400 block font-semibold mb-1">Eneo Linalolengwa (Target)</span>
+                    <input
+                      type="text"
+                      value={adTargetLocation}
+                      onChange={(e) => setAdTargetLocation(e.target.value)}
+                      placeholder="Dar es Salaam, Arusha, Mwanza"
+                      className="w-full bg-[#182038] border border-white/10 rounded-lg p-1.5 text-xs text-white"
+                    />
+                  </div>
+                </div>
+
+                {/* Budget & Estimated Reach */}
+                <div className="p-3 rounded-xl bg-gradient-to-r from-yellow-500/15 via-amber-500/15 to-yellow-500/15 border border-yellow-500/30 flex items-center justify-between text-xs">
+                  <div>
+                    <span className="text-yellow-300 font-bold block">Bajeti ya Siku: TSh {adDailyBudget.toLocaleString()}</span>
+                    <span className="text-[10px] text-slate-400 font-mono">Muda: Siku {adDurationDays} ({adDailyBudget * adDurationDays > 0 ? `Jumla: TSh ${(adDailyBudget * adDurationDays).toLocaleString()}` : ''})</span>
+                  </div>
+                  <span className="text-[11px] px-2.5 py-1 rounded-lg bg-yellow-400 text-slate-950 font-black">
+                    🚀 ~{(adDailyBudget / 1000 * 1800).toLocaleString()} Views
+                  </span>
+                </div>
+
+                {/* Action Buttons */}
+                <div className="pt-2 border-t border-white/5 flex items-center justify-between text-xs">
+                  <span className="font-semibold text-slate-300">Vitufe vya Action:</span>
+                  <div className="flex items-center gap-3">
+                    <label className="flex items-center gap-1.5 cursor-pointer text-yellow-300 font-bold">
+                      <input
+                        type="checkbox"
+                        checked={adActionButtons.cta}
+                        onChange={(e) => setAdActionButtons(prev => ({ ...prev, cta: e.target.checked }))}
+                        className="rounded accent-yellow-500"
+                      />
+                      <span>[{adCtaText}]</span>
+                    </label>
+                    <label className="flex items-center gap-1.5 cursor-pointer text-slate-300 font-bold">
+                      <input
+                        type="checkbox"
+                        checked={adActionButtons.chat}
+                        onChange={(e) => setAdActionButtons(prev => ({ ...prev, chat: e.target.checked }))}
+                        className="rounded accent-yellow-500"
+                      />
+                      <span>[💬 Chat Now]</span>
+                    </label>
+                  </div>
+                </div>
+              </div>
+            </div>
+          )}
           {/* ============================================================== */}
           <div className="space-y-3">
             <div>
@@ -1285,11 +3009,17 @@ export const CreateStatusModal: React.FC<CreateStatusModalProps> = ({
                 <div className="flex items-center justify-between">
                   <div className="flex items-center gap-2">
                     <div className="w-8 h-8 rounded-full bg-amber-500/20 text-amber-400 flex items-center justify-center font-bold text-xs border border-amber-400">
-                      {activeType === 'food' ? 'ZR' : 'ZK'}
+                      {activeType === 'food' || activeType === 'job' ? 'ZR' : 'ZK'}
                     </div>
                     <div>
                       <h5 className="font-extrabold text-xs text-white flex items-center gap-1">
-                        <span>{activeType === 'food' ? 'ZEBRA RESTAURANT' : currentUser.displayName}</span>
+                        <span>
+                          {activeType === 'food'
+                            ? 'ZEBRA RESTAURANT'
+                            : activeType === 'job'
+                            ? jobCompanyName || 'ZEBRA RESTAURANT'
+                            : currentUser.displayName}
+                        </span>
                         <span className="text-cyan-400 text-xs">✓</span>
                       </h5>
                       <span className="text-[10px] text-slate-400 flex items-center gap-1">
@@ -1304,6 +3034,89 @@ export const CreateStatusModal: React.FC<CreateStatusModalProps> = ({
                 <div className="aspect-video w-full rounded-2xl overflow-hidden relative bg-black/40">
                   <img src={mediaUrl} alt="Preview" className="w-full h-full object-cover" />
                 </div>
+
+                {/* Job Details */}
+                {activeType === 'job' && (
+                  <div className="space-y-2.5">
+                    <div className="flex items-center justify-between">
+                      <h4 className="font-black text-sm text-white flex items-center gap-1.5">
+                        <Briefcase className="w-4 h-4 text-amber-400" />
+                        <span>{jobTitle}</span>
+                      </h4>
+                      <span className="px-2 py-0.5 rounded-full bg-amber-500/20 text-amber-300 border border-amber-500/40 text-[10px] font-black">
+                        ⏱️ {jobEmploymentType}
+                      </span>
+                    </div>
+
+                    <div className="p-2.5 rounded-xl bg-amber-500/15 border border-amber-500/30 flex items-center justify-between text-xs">
+                      <div className="flex items-center gap-1.5">
+                        <span className="text-amber-400 font-bold">💰 Mshahara:</span>
+                        <span className="text-white font-mono font-extrabold">
+                          {jobIsSalaryNegotiable
+                            ? 'Negotiable'
+                            : jobShowSalary
+                            ? `TSh ${jobSalaryMin.toLocaleString()} – ${jobSalaryMax.toLocaleString()}`
+                            : 'Maelewano'}
+                        </span>
+                      </div>
+                      {calculateDaysRemaining(jobDeadline) > 0 ? (
+                        <span className="text-[10px] font-black text-amber-300 bg-amber-500/20 px-2 py-0.5 rounded">
+                          ⏳ {calculateDaysRemaining(jobDeadline)} days remaining
+                        </span>
+                      ) : (
+                        <span className="text-[10px] font-black text-rose-300 bg-rose-500/20 px-2 py-0.5 rounded">
+                          🔴 Applications Closed
+                        </span>
+                      )}
+                    </div>
+
+                    <p className="text-xs text-slate-200 italic whitespace-pre-line leading-relaxed">
+                      “{jobDescription}”
+                    </p>
+
+                    {/* Requirements list */}
+                    {jobRequirements.length > 0 && (
+                      <div className="space-y-1 pt-1 border-t border-white/5">
+                        <span className="text-[10px] font-bold text-slate-400 block uppercase tracking-wider">
+                          Requirements:
+                        </span>
+                        <div className="space-y-1">
+                          {jobRequirements.map((req, i) => (
+                            <div key={i} className="flex items-center gap-1.5 text-[11px] text-slate-300">
+                              <Check className="w-3 h-3 text-emerald-400 stroke-[3] shrink-0" />
+                              <span>{req}</span>
+                            </div>
+                          ))}
+                        </div>
+                      </div>
+                    )}
+
+                    <p className="text-[10px] text-slate-400 flex items-center gap-1">
+                      <MapPin className="w-3 h-3 text-amber-400" />
+                      <span>📍 {jobLocation}</span>
+                    </p>
+
+                    <div className="flex items-center justify-between text-slate-400 text-xs pt-1 border-t border-white/5">
+                      <span className="flex items-center gap-1">❤️ 168</span>
+                      <span className="flex items-center gap-1">💬 24</span>
+                      <span className="flex items-center gap-1">📤 38</span>
+                      <span className="flex items-center gap-1">🔖</span>
+                    </div>
+
+                    <div className="pt-1 flex items-center gap-2">
+                      {jobActionButtons.apply && (
+                        <div className="flex-1 py-2.5 rounded-xl bg-emerald-500 text-slate-950 font-black text-xs text-center shadow-md shadow-emerald-500/25">
+                          📄 Apply Now
+                        </div>
+                      )}
+                      {jobActionButtons.chat && (
+                        <div className="flex-1 py-2.5 rounded-xl bg-white/10 text-white font-bold text-xs text-center">
+                          💬 Chat Now
+                        </div>
+                      )}
+                    </div>
+                  </div>
+                )}
 
                 {/* Food Details */}
                 {activeType === 'food' && (
@@ -1426,6 +3239,209 @@ export const CreateStatusModal: React.FC<CreateStatusModalProps> = ({
                       <div className="flex-1 py-2 rounded-xl bg-white/10 text-white font-bold text-xs text-center">
                         💬 Chat Now
                       </div>
+                    </div>
+                  </div>
+                )}
+
+                {/* Giveaway Details Preview */}
+                {activeType === 'giveaway' && (
+                  <div className="space-y-2">
+                    <div className="flex items-center justify-between">
+                      <h4 className="font-black text-sm text-white flex items-center gap-1.5">
+                        <Gift className="w-4 h-4 text-amber-400" />
+                        <span>{giveawayTitle}</span>
+                      </h4>
+                      <span className="text-[10px] px-2 py-0.5 rounded bg-amber-500 text-slate-950 font-black">
+                        🏆 {giveawayWinnersCount} {giveawayWinnersCount === 1 ? 'WINNER' : 'WINNERS'}
+                      </span>
+                    </div>
+
+                    <div className="p-2.5 rounded-xl bg-amber-500/15 border border-amber-500/30 flex items-center justify-between text-xs">
+                      <div>
+                        <span className="text-amber-400 font-bold block text-[10px]">ZAWADI:</span>
+                        <span className="text-white font-bold text-xs">{giveawayPrizes}</span>
+                      </div>
+                      <span className="text-[10px] text-amber-300 font-mono bg-amber-500/20 px-2 py-1 rounded">
+                        ⏳ Mwisho: {giveawayDeadline}
+                      </span>
+                    </div>
+
+                    <p className="text-xs text-slate-300 italic whitespace-pre-line">{caption}</p>
+
+                    <div className="pt-1 flex items-center gap-2">
+                      {giveawayActionButtons.enter && (
+                        <div className="flex-1 py-2.5 rounded-xl bg-gradient-to-r from-amber-500 to-yellow-400 text-slate-950 font-black text-xs text-center shadow-md shadow-amber-500/25">
+                          🎁 Enter Giveaway
+                        </div>
+                      )}
+                      {giveawayActionButtons.chat && (
+                        <div className="flex-1 py-2.5 rounded-xl bg-white/10 text-white font-bold text-xs text-center">
+                          💬 Chat Now
+                        </div>
+                      )}
+                    </div>
+                  </div>
+                )}
+
+                {/* Quiz Details Preview */}
+                {activeType === 'quiz' && (
+                  <div className="space-y-2">
+                    <div className="flex items-center justify-between">
+                      <span className="text-[10px] font-bold text-teal-400 uppercase tracking-wider">
+                        🧠 {quizCategory}
+                      </span>
+                      <span className="text-[10px] text-teal-300 font-mono bg-teal-500/20 px-2 py-0.5 rounded">
+                        ⏱️ {quizTimeSeconds}s • ⭐ +{quizPoints}pts
+                      </span>
+                    </div>
+
+                    <h4 className="font-black text-sm text-white">{quizQuestion}</h4>
+
+                    <div className="grid grid-cols-2 gap-1.5 pt-1">
+                      {quizOptions.map((opt, i) => {
+                        const isCorrect = quizCorrectIndex === i;
+                        return (
+                          <div
+                            key={i}
+                            className={`p-2 rounded-xl border text-xs flex items-center justify-between ${
+                              isCorrect
+                                ? 'bg-emerald-500/20 border-emerald-400 text-emerald-200 font-bold'
+                                : 'bg-white/5 border-white/5 text-slate-300'
+                            }`}
+                          >
+                            <span className="truncate">{['A', 'B', 'C', 'D'][i]}. {opt}</span>
+                            {isCorrect && <Check className="w-3.5 h-3.5 text-emerald-400 shrink-0" />}
+                          </div>
+                        );
+                      })}
+                    </div>
+
+                    <div className="pt-1 flex items-center gap-2">
+                      {quizActionButtons.play && (
+                        <div className="flex-1 py-2 rounded-xl bg-teal-500 text-slate-950 font-black text-xs text-center">
+                          🧠 Play Quiz
+                        </div>
+                      )}
+                      {quizActionButtons.chat && (
+                        <div className="flex-1 py-2 rounded-xl bg-white/10 text-white font-bold text-xs text-center">
+                          💬 Chat Now
+                        </div>
+                      )}
+                    </div>
+                  </div>
+                )}
+
+                {/* Property Details Preview */}
+                {activeType === 'property' && (
+                  <div className="space-y-2">
+                    <div className="flex items-center justify-between">
+                      <h4 className="font-black text-sm text-white flex items-center gap-1.5">
+                        <Home className="w-4 h-4 text-cyan-400" />
+                        <span>{propertyTitle}</span>
+                      </h4>
+                      <span className={`text-[10px] px-2 py-0.5 rounded font-black ${
+                        propertyListingType === 'For Rent' ? 'bg-cyan-500 text-slate-950' : 'bg-amber-500 text-slate-950'
+                      }`}>
+                        {propertyListingType === 'For Rent' ? 'KUPANGA' : 'KUUZA'}
+                      </span>
+                    </div>
+
+                    <div className="p-2.5 rounded-xl bg-cyan-500/15 border border-cyan-500/30 flex items-center justify-between text-xs">
+                      <div>
+                        <span className="text-cyan-400 font-bold block text-[10px]">BEI:</span>
+                        <span className="text-white font-mono font-black text-sm">
+                          {propertyCurrency} {propertyPrice.toLocaleString()} {propertyListingType === 'For Rent' ? '/ mwezi' : ''}
+                        </span>
+                      </div>
+                      <span className="text-[10px] text-slate-300 flex items-center gap-1">
+                        <MapPin className="w-3 h-3 text-cyan-400" />
+                        <span>{propertyLocation}</span>
+                      </span>
+                    </div>
+
+                    <div className="grid grid-cols-4 gap-1.5 p-2 rounded-xl bg-[#141B30] text-center text-xs">
+                      <div><span className="text-slate-400 text-[10px] block">Vyumba</span><strong className="text-white">🛏️ {propertyBeds}</strong></div>
+                      <div><span className="text-slate-400 text-[10px] block">Vyoo</span><strong className="text-white">🚿 {propertyBaths}</strong></div>
+                      <div><span className="text-slate-400 text-[10px] block">Parking</span><strong className="text-white">🚗 {propertyParking}</strong></div>
+                      <div><span className="text-slate-400 text-[10px] block">Eneo</span><strong className="text-white">📐 {propertyArea}m²</strong></div>
+                    </div>
+
+                    <div className="pt-1 flex items-center gap-2">
+                      {propertyActionButtons.book && (
+                        <div className="flex-1 py-2.5 rounded-xl bg-cyan-500 text-slate-950 font-black text-xs text-center shadow-md shadow-cyan-500/25">
+                          📅 Book Inspection
+                        </div>
+                      )}
+                      {propertyActionButtons.chat && (
+                        <div className="flex-1 py-2.5 rounded-xl bg-white/10 text-white font-bold text-xs text-center">
+                          💬 Chat Agent
+                        </div>
+                      )}
+                    </div>
+                  </div>
+                )}
+
+                {/* Live Space Details Preview */}
+                {activeType === 'live' && (
+                  <div className="space-y-2">
+                    <div className="flex items-center justify-between">
+                      <span className="text-xs px-2.5 py-1 rounded-xl bg-rose-500/20 text-rose-400 font-black flex items-center gap-1.5 border border-rose-500/30">
+                        <span className="w-2 h-2 rounded-full bg-rose-500 animate-pulse" />
+                        <span>{spaceScheduleType === 'now' ? '🔴 LIVE NOW' : `🗓️ ${spaceDate} ${spaceTime}`}</span>
+                      </span>
+                      <span className="text-[11px] text-slate-400">
+                        👥 {spaceListenersCount.toLocaleString()} listening
+                      </span>
+                    </div>
+
+                    <h4 className="font-black text-sm text-white flex items-center gap-1.5">
+                      <Radio className="w-4 h-4 text-pink-400" />
+                      <span>{spaceTopic}</span>
+                    </h4>
+
+                    <p className="text-xs text-slate-300 italic">{spaceSubtitle}</p>
+                    <p className="text-[11px] text-slate-400 font-mono">🎙️ {spaceSpeakers}</p>
+
+                    <div className="pt-1 flex items-center gap-2">
+                      {spaceActionButtons.join && (
+                        <div className="flex-1 py-2.5 rounded-xl bg-gradient-to-r from-pink-500 to-rose-500 text-white font-black text-xs text-center shadow-md shadow-pink-500/25">
+                          🎙️ Join Space
+                        </div>
+                      )}
+                      {spaceActionButtons.remind && (
+                        <div className="flex-1 py-2.5 rounded-xl bg-white/10 text-white font-bold text-xs text-center">
+                          🔔 Reminder
+                        </div>
+                      )}
+                    </div>
+                  </div>
+                )}
+
+                {/* Ad Campaign Details Preview */}
+                {activeType === 'advertisement' && (
+                  <div className="space-y-2">
+                    <div className="flex items-center justify-between">
+                      <span className="text-[10px] px-2 py-0.5 rounded bg-yellow-400 text-slate-950 font-black flex items-center gap-1">
+                        <Megaphone className="w-3 h-3" />
+                        <span>SPONSORED / TANGAZO RASMI</span>
+                      </span>
+                      <span className="text-[10px] text-slate-400">📍 {adTargetLocation}</span>
+                    </div>
+
+                    <h4 className="font-black text-sm text-white">{adHeadline}</h4>
+                    <p className="text-xs text-slate-200">{adSubtitle}</p>
+
+                    <div className="pt-1 flex items-center gap-2">
+                      {adActionButtons.cta && (
+                        <div className="flex-1 py-2.5 rounded-xl bg-gradient-to-r from-yellow-400 to-amber-500 text-slate-950 font-black text-xs text-center shadow-md shadow-yellow-500/25">
+                          {adCtaText}
+                        </div>
+                      )}
+                      {adActionButtons.chat && (
+                        <div className="flex-1 py-2.5 rounded-xl bg-white/10 text-white font-bold text-xs text-center">
+                          💬 Chat Now
+                        </div>
+                      )}
                     </div>
                   </div>
                 )}

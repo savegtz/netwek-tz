@@ -11,10 +11,13 @@ import {
   Users,
   ChevronLeft,
   ShieldCheck,
+  Sun,
+  Moon,
 } from 'lucide-react';
 import { UserProfile } from '../types';
 import { SafeImage } from './SafeImage';
 import { StatusIcon } from './StatusIcon';
+import { useTheme } from '../context/ThemeContext';
 
 interface HeaderProps {
   currentUser: UserProfile;
@@ -41,6 +44,8 @@ export const Header: React.FC<HeaderProps> = ({
   onToggleFrameMode,
   unreadNotificationsCount,
 }) => {
+  const { isDark, toggleTheme } = useTheme();
+
   const mainTabs = [
     { id: 'chats', label: 'Chats', icon: MessageCircle },
     { id: 'status', label: 'Status', icon: StatusIcon },
@@ -171,6 +176,29 @@ export const Header: React.FC<HeaderProps> = ({
           >
             <ShieldCheck className="w-3.5 h-3.5 text-cyan-400" />
             <span className="hidden sm:inline">Admin</span>
+          </button>
+
+          {/* Night Mode & Light Mode Toggle */}
+          <button
+            onClick={toggleTheme}
+            className={`p-2 rounded-xl border transition-all text-xs flex items-center gap-1.5 active:scale-95 ${
+              isDark
+                ? 'bg-indigo-500/15 border-indigo-500/30 text-indigo-300 hover:text-white hover:bg-indigo-500/25'
+                : 'bg-amber-500/20 border-amber-400/40 text-amber-700 hover:text-amber-900 hover:bg-amber-500/30 shadow-sm'
+            }`}
+            title={isDark ? 'Badili kwenda Light Mode (Mchana ☀️)' : 'Badili kwenda Night Mode (Usiku 🌙)'}
+          >
+            {isDark ? (
+              <>
+                <Moon className="w-4 h-4 text-indigo-400" />
+                <span className="text-[11px] font-bold hidden sm:inline">Night</span>
+              </>
+            ) : (
+              <>
+                <Sun className="w-4 h-4 text-amber-500 fill-amber-500" />
+                <span className="text-[11px] font-bold hidden sm:inline">Light</span>
+              </>
+            )}
           </button>
 
           {/* Notifications Bell */}

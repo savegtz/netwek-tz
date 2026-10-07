@@ -14,12 +14,15 @@ import {
   Bookmark,
   CheckCircle2,
   Flame,
+  Briefcase,
+  Check,
 } from 'lucide-react';
-import { StatusItem } from '../../types';
+import { StatusItem, UserProfile } from '../../types';
 import { SafeImage } from '../../components/SafeImage';
 import { FoodOrderModal } from './components/FoodOrderModal';
 import { ProductPurchaseModal } from './components/ProductPurchaseModal';
 import { EventTicketModal } from './components/EventTicketModal';
+import { JobApplicationModal } from './components/JobApplicationModal';
 
 interface StatusStoryViewerModalProps {
   isOpen: boolean;
@@ -27,6 +30,7 @@ interface StatusStoryViewerModalProps {
   initialIndex?: number;
   onClose: () => void;
   onReply?: (status: StatusItem, replyText: string) => void;
+  currentUser?: UserProfile;
   onStartChatWithBusiness?: (
     businessId: string,
     businessName: string,
@@ -39,6 +43,7 @@ export const StatusStoryViewerModal: React.FC<StatusStoryViewerModalProps> = ({
   isOpen,
   statuses,
   initialIndex = 0,
+  currentUser,
   onClose,
   onReply,
   onStartChatWithBusiness,
@@ -58,6 +63,7 @@ export const StatusStoryViewerModal: React.FC<StatusStoryViewerModalProps> = ({
   const [isFoodOrderOpen, setIsFoodOrderOpen] = useState(false);
   const [isProductPurchaseOpen, setIsProductPurchaseOpen] = useState(false);
   const [isEventTicketOpen, setIsEventTicketOpen] = useState(false);
+  const [isJobApplicationOpen, setIsJobApplicationOpen] = useState(false);
 
   // Stable refs for callbacks
   const onCloseRef = useRef(onClose);
@@ -153,11 +159,14 @@ export const StatusStoryViewerModal: React.FC<StatusStoryViewerModalProps> = ({
 
   const handleChatNow = () => {
     if (!onStartChatWithBusiness) return;
-    let initialMsg = `Habari ${current.authorName}!`;
+    let initialMsg = `Habari ${current.metadata?.companyName || current.authorName}!`;
     if (current.type === 'food') {
       const foodName = current.metadata?.foodName || 'Chicken Burger';
       const offer = current.metadata?.offerPrice || 12000;
       initialMsg = `Habari ${current.authorName}! Ninaulizia kuhusu: 🍔 ${foodName} (TSh ${offer.toLocaleString()}) Ofa ya Masaki Dar es Salaam. Naomba maelezo ya kuagiza.`;
+    } else if (current.type === 'job') {
+      const jobTitle = current.metadata?.jobTitle || 'kazi';
+      initialMsg = `Habari ${current.metadata?.companyName || current.authorName}! Nimeona tangazo lenu la kazi ya "${jobTitle}". Ningependa kupata maelezo zaidi kuhusu nafasi hii.`;
     } else if (current.type === 'product') {
       const prodName = current.metadata?.productName || 'Nike Air Max';
       const price = current.metadata?.salePrice || 175000;
@@ -166,7 +175,7 @@ export const StatusStoryViewerModal: React.FC<StatusStoryViewerModalProps> = ({
       const evName = current.metadata?.eventName || 'Dar Food Festival 2026';
       initialMsg = `Habari waandaaji wa ${evName}! Ninaulizia tiketi za VIP na maegesho.`;
     }
-    onStartChatWithBusiness(current.authorId, current.authorName, initialMsg, current.authorPhoto);
+    onStartChatWithBusiness(current.authorId, current.metadata?.companyName || current.authorName, initialMsg, current.authorPhoto);
     onCloseRef.current?.();
   };
 
@@ -231,6 +240,11 @@ export const StatusStoryViewerModal: React.FC<StatusStoryViewerModalProps> = ({
                 <p className="text-[11px] text-slate-300 drop-shadow flex items-center gap-1.5 mt-0.5">
                   <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 inline-block" />
                   <span>{current.createdAt}</span>
+                  {current.type === 'job' && (
+                    <span className="px-1.5 py-0.2 rounded bg-amber-500 text-slate-950 text-[9px] font-black">
+                      💼 Job
+                    </span>
+                  )}
                   {current.type === 'food' && (
                     <span className="px-1.5 py-0.2 rounded bg-amber-500 text-slate-950 text-[9px] font-black">
                       🍕 Food
@@ -485,6 +499,84 @@ export const StatusStoryViewerModal: React.FC<StatusStoryViewerModalProps> = ({
             </div>
           )}
 
+          {/* ==================== 5. JOB STORY CONTENT ==================== */}
+          {current.type === 'job' && (
+            <div className="p-3.5 rounded-2xl bg-[#0F1426]/90 backdrop-blur-md border border-amber-500/30 space-y-2.5 shadow-2xl">
+              <div className="flex items-center justify-between">
+                <div>
+                  <h4 className="font-black text-sm sm:text-base text-white flex items-center gap-1.5">
+                    <Briefcase className="w-4 h-4 text-amber-400" />
+                    <span>{current.metadata?.jobTitle || 'Waiter / Waitress'}</span>
+                  </h4>
+                  <span className="text-[11px] text-amber-300 font-bold">
+                    {current.metadata?.companyName || current.authorName} • {current.location || 'Masaki, Dar es Salaam'}
+                  </span>
+                </div>
+                <span className="px-2 py-0.5 rounded-xl bg-amber-500/20 text-amber-300 font-black text-xs border border-amber-500/30">
+                  ⏱️ {current.metadata?.employmentType || 'Full Time'}
+                </span>
+              </div>
+
+              {/* Salary & Deadline Banner */}
+              <div className="flex items-center justify-between text-xs p-2 rounded-xl bg-black/40 border border-white/5">
+                <div className="flex items-center gap-1.5">
+                  <span className="text-amber-400 font-bold">💰 Mshahara:</span>
+                  <span className="text-white font-mono font-bold">
+                    {current.metadata?.isSalaryNegotiable
+                      ? 'Negotiable'
+                      : current.metadata?.salaryMin
+                      ? `TSh ${current.metadata.salaryMin.toLocaleString()} – ${(current.metadata.salaryMax || 600000).toLocaleString()}`
+                      : 'TSh 400,000 – 600,000'}
+                  </span>
+                </div>
+                {(current.metadata?.daysRemaining ?? 13) > 0 && !current.metadata?.isClosed ? (
+                  <span className="text-amber-300 text-[10px] font-black bg-amber-500/20 px-2 py-0.5 rounded">
+                    ⏳ {current.metadata?.daysRemaining ?? 13} days remaining
+                  </span>
+                ) : (
+                  <span className="text-rose-300 text-[10px] font-black bg-rose-500/20 px-2 py-0.5 rounded">
+                    🔴 Applications Closed
+                  </span>
+                )}
+              </div>
+
+              {/* Requirements */}
+              {current.metadata?.requirements && current.metadata.requirements.length > 0 && (
+                <div className="space-y-1 text-xs text-slate-200">
+                  <span className="text-[10px] font-bold text-slate-400 block uppercase">Requirements:</span>
+                  <div className="grid grid-cols-2 gap-1">
+                    {current.metadata.requirements.map((req, i) => (
+                      <div key={i} className="flex items-center gap-1 text-[11px]">
+                        <Check className="w-3 h-3 text-emerald-400 stroke-[3]" />
+                        <span className="truncate">{req}</span>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              )}
+
+              {/* Action Buttons: [📄 Apply Now] and [💬 Chat Now] */}
+              <div className="grid grid-cols-2 gap-2 pt-1">
+                <button
+                  type="button"
+                  onClick={() => setIsJobApplicationOpen(true)}
+                  className="py-2.5 px-3 rounded-xl bg-emerald-500 hover:bg-emerald-400 text-slate-950 font-black text-xs flex items-center justify-center gap-1.5 shadow-md shadow-emerald-500/25 active:scale-95 transition-all"
+                >
+                  <Briefcase className="w-3.5 h-3.5 stroke-[2.5]" />
+                  <span>📄 Apply Now</span>
+                </button>
+                <button
+                  type="button"
+                  onClick={handleChatNow}
+                  className="py-2.5 px-3 rounded-xl bg-white/10 hover:bg-white/15 text-white font-bold text-xs flex items-center justify-center gap-1.5 active:scale-95 transition-all"
+                >
+                  <MessageCircle className="w-3.5 h-3.5" />
+                  <span>💬 Chat Now</span>
+                </button>
+              </div>
+            </div>
+          )}
+
           {/* Caption */}
           <p className="text-xs sm:text-sm font-medium text-white drop-shadow-md leading-relaxed whitespace-pre-line line-clamp-3">
             {current.text}
@@ -596,6 +688,45 @@ export const StatusStoryViewerModal: React.FC<StatusStoryViewerModalProps> = ({
         onStartChatWithOrganizer={(msg) => {
           if (onStartChatWithBusiness) {
             onStartChatWithBusiness(current.authorId, current.authorName, msg, current.authorPhoto);
+          }
+        }}
+      />
+
+      {/* Submodal: Job Application Modal */}
+      <JobApplicationModal
+        isOpen={isJobApplicationOpen}
+        onClose={() => setIsJobApplicationOpen(false)}
+        jobTitle={current.metadata?.jobTitle || 'Waiter / Waitress'}
+        companyName={current.metadata?.companyName || current.authorName || 'Zebra Restaurant'}
+        location={current.location || 'Masaki, Dar es Salaam'}
+        salaryText={
+          current.metadata?.isSalaryNegotiable
+            ? 'Negotiable'
+            : current.metadata?.salaryMin
+            ? `TSh ${current.metadata.salaryMin.toLocaleString()} – ${(current.metadata.salaryMax || 600000).toLocaleString()}`
+            : 'TSh 400,000 – 600,000'
+        }
+        currentUser={
+          currentUser || {
+            id: 'current_user',
+            email: 'amina.juma@gmail.com',
+            displayName: 'Amina Juma',
+            username: 'amina_juma',
+            accountType: 'personal',
+            followersCount: 0,
+            followingCount: 0,
+            postsCount: 0,
+            phone: '+255 714 892 012',
+          }
+        }
+        onStartChatWithEmployer={(appMsg) => {
+          if (onStartChatWithBusiness) {
+            onStartChatWithBusiness(
+              current.authorId,
+              current.metadata?.companyName || current.authorName,
+              appMsg,
+              current.authorPhoto
+            );
           }
         }}
       />

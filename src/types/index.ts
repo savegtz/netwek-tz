@@ -7,6 +7,8 @@ export interface UserProfile {
   username: string;
   photoURL?: string;
   bio?: string;
+  phone?: string;
+  phoneNumber?: string;
   accountType: AccountType;
   verified?: boolean;
   followersCount: number;
@@ -246,7 +248,81 @@ export interface StatusItem {
     };
     specialOfferLabel?: string;
     validUntil?: string;
-    actionButtons?: ('order_now' | 'chat_now' | 'buy_now' | 'get_ticket' | 'join_ride')[];
+    actionButtons?: (
+      | 'order_now'
+      | 'chat_now'
+      | 'buy_now'
+      | 'get_ticket'
+      | 'join_ride'
+      | 'apply_now'
+      | 'join_giveaway'
+      | 'submit_quiz'
+      | 'property_details'
+      | 'join_live_space'
+      | 'run_ad'
+    )[];
+
+    // Job Story
+    companyName?: string;
+    jobTitle?: string;
+    jobDescription?: string;
+    salaryMin?: number;
+    salaryMax?: number;
+    isSalaryNegotiable?: boolean;
+    showSalary?: boolean;
+    employmentType?: 'Full Time' | 'Part Time' | 'Contract' | 'Temporary' | 'Internship' | 'Freelance';
+    locationType?: 'On-site' | 'Remote' | 'Hybrid';
+    requirements?: string[];
+    deadlineDate?: string;
+    daysRemaining?: number;
+    isClosed?: boolean;
+
+    // Giveaway Story
+    giveawayTitle?: string;
+    giveawayPrizes?: string;
+    entrySteps?: string[];
+    winnersCount?: number;
+    bannerTag?: string;
+    giveawayDeadline?: string;
+    participantsCount?: number;
+
+    // Quiz Story
+    quizCategory?: string;
+    quizTimeSeconds?: number;
+    quizPoints?: number;
+
+    // Property Story
+    propertyType?: 'For Sale' | 'For Rent';
+    propertyTitle?: string;
+    propertyLocation?: string;
+    propertyPrice?: number;
+    propertyCurrency?: string;
+    bedrooms?: number;
+    bathrooms?: number;
+    parkingSpaces?: number;
+    areaSqMeters?: number;
+    propertyImages?: string[];
+
+    // Live Space Story
+    spaceTitle?: string;
+    spaceTopic?: string;
+    spaceSubtitle?: string;
+    spaceDate?: string;
+    spaceTime?: string;
+    listenersCount?: number;
+    hostName?: string;
+    hostAvatar?: string;
+    guests?: { name: string; role: string; avatar: string }[];
+    isLiveNow?: boolean;
+
+    // Ad Campaign Story
+    adHeadline?: string;
+    adSubtitle?: string;
+    adBulletPoints?: string[];
+    adCallToAction?: string;
+    adBadge?: string;
+    adTargetUrl?: string;
+    sponsorName?: string;
 
     // Product Story
     productName?: string;
