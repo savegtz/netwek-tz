@@ -1,13 +1,28 @@
-import React, { useState } from 'react';
-import { Plus, Utensils, BarChart2, ShoppingBag, Calendar, Flame } from 'lucide-react';
+import React, { useState, useRef } from 'react';
+import {
+  Plus,
+  Sparkles,
+  ChevronLeft,
+  ChevronRight,
+  Flame,
+  ShoppingBag,
+  BarChart2,
+  Calendar,
+  Utensils,
+} from 'lucide-react';
 import { StatusItem, UserProfile } from '../../types';
 import { StatusStoryViewerModal } from './StatusStoryViewerModal';
 import { SafeImage } from '../../components/SafeImage';
 
-// Bundled local image assets matching the user's reference
+// Bundled local image assets matching the app's visual identity
 import freshKkStatus from '../../assets/images/fresh_kk_status_1791078352206.jpg';
 import freshKkAvatar from '../../assets/images/fresh_kk_avatar_1791078365294.jpg';
 import aminaAvatar from '../../assets/images/amina_avatar_1790280951312.jpg';
+import alexPortrait from '../../assets/images/alex_portrait_1791059432462.jpg';
+import alexAvatar from '../../assets/images/alex_avatar_1790802235334.jpg';
+import sarahPortrait from '../../assets/images/sarah_portrait_1791059459448.jpg';
+import sarahAvatar from '../../assets/images/sarah_avatar_1790802224123.jpg';
+import concertFestival from '../../assets/images/concert_festival_1790280974630.jpg';
 
 interface ChatListStatusRowProps {
   currentUser: UserProfile;
@@ -27,18 +42,20 @@ export const INITIAL_CHAT_STATUSES: StatusItem[] = [
   {
     id: 'status_card_zebra_food',
     authorId: 'zebra_restaurant',
-    authorName: 'ZEBRA RESTAURANT',
+    authorName: 'Zebra Rest.',
     authorUsername: 'zebra_restaurant',
-    authorPhoto: 'https://images.unsplash.com/photo-1555396273-367ea4eb4db5?w=500&auto=format&fit=crop&q=80',
+    authorPhoto:
+      'https://images.unsplash.com/photo-1555396273-367ea4eb4db5?w=500&auto=format&fit=crop&q=80',
     type: 'food',
-    mediaUrl: 'https://images.unsplash.com/photo-1568901346375-23c9450c58cd?w=1200&auto=format&fit=crop&q=80',
+    mediaUrl:
+      'https://images.unsplash.com/photo-1568901346375-23c9450c58cd?w=1200&auto=format&fit=crop&q=80',
     text: '“Fresh, juicy & delicious 🤤”\n\n🔥 Our famous Chicken Burger is back! Fresh grilled patty, cheddar cheese, na crispy fries.\n#ZebraRestaurant #ChickenBurger #DarFood',
     location: 'Masaki, Dar es Salaam',
     visibility: 'public',
     likesCount: 245,
     commentsCount: 32,
     sharesCount: 14,
-    createdAt: '10m ago',
+    createdAt: '10m',
     expiresAt: new Date(Date.now() + 24 * 3600 * 1000).toISOString(),
     metadata: {
       foodName: 'Chicken Burger',
@@ -59,7 +76,7 @@ export const INITIAL_CHAT_STATUSES: StatusItem[] = [
     },
   },
 
-  // 2. Fresh kk
+  // 2. Fresh kk (Outdoor Vibes)
   {
     id: 'status_card_fresh_kk',
     authorId: 'user_fresh_kk',
@@ -68,32 +85,32 @@ export const INITIAL_CHAT_STATUSES: StatusItem[] = [
     authorPhoto: freshKkAvatar,
     type: 'photo',
     mediaUrl: freshKkStatus,
-    text: 'Fresh vibes outdoor! ☀️✌️',
+    text: 'Fresh vibes outdoor! ☀️✌️ Dar es Salaam living.',
     location: 'Dar es Salaam, Tanzania',
     visibility: 'public',
     likesCount: 1840,
     commentsCount: 112,
     sharesCount: 46,
-    createdAt: '15m ago',
+    createdAt: '15m',
     expiresAt: new Date(Date.now() + 24 * 3600 * 1000).toISOString(),
   },
 
-  // 3. POLL STORY (Leo tukatoke wapi? 😎)
+  // 3. POLL STORY (Alex Kimani - Leo tukatoke wapi? 😎)
   {
     id: 'status_card_poll_dar',
     authorId: 'user_alex',
     authorName: 'Alex Kimani',
     authorUsername: 'alex_k',
-    authorPhoto: 'https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?w=500&auto=format&fit=crop&q=80',
+    authorPhoto: alexAvatar,
     type: 'poll',
-    mediaUrl: 'https://images.unsplash.com/photo-1507525428034-b723cf961d3e?w=1200&auto=format&fit=crop&q=80',
+    mediaUrl: alexPortrait,
     text: 'Mpango wa weekend hii unakaaje wana-Dar? Piga kura yako sasa tujue wapi kuna fujo ya furaha! 🌊🌴',
     location: 'Dar es Salaam, Tanzania',
     visibility: 'public',
     likesCount: 512,
     commentsCount: 89,
     sharesCount: 42,
-    createdAt: '45m ago',
+    createdAt: '45m',
     expiresAt: new Date(Date.now() + 23 * 3600 * 1000).toISOString(),
     metadata: {
       pollQuestion: 'Leo tukatoke wapi? 😎',
@@ -111,62 +128,80 @@ export const INITIAL_CHAT_STATUSES: StatusItem[] = [
     },
   },
 
-  // 4. PRODUCT STORY (Nike Air Max)
+  // 4. PRODUCT STORY (Nike Air Max - Fresh Store)
   {
     id: 'status_card_prod_nike',
     authorId: 'fresh_store_dar',
-    authorName: 'Fresh Store Dar',
+    authorName: 'Fresh Store',
     authorUsername: 'fresh_store',
-    authorPhoto: 'https://images.unsplash.com/photo-1542291026-7eec264c27ff?w=500&auto=format&fit=crop&q=80',
+    authorPhoto:
+      'https://images.unsplash.com/photo-1542291026-7eec264c27ff?w=500&auto=format&fit=crop&q=80',
     type: 'product',
-    mediaUrl: 'https://images.unsplash.com/photo-1542291026-7eec264c27ff?w=1200&auto=format&fit=crop&q=80',
-    text: 'Nike Air Max Original Sneakers zimeingia mzigo mpya! Punguzo la 12.5% kwa oda za leo pekee. #FreshStore #SneakersDar #Streetwear',
+    mediaUrl:
+      'https://images.unsplash.com/photo-1542291026-7eec264c27ff?w=1200&auto=format&fit=crop&q=80',
+    text: 'Nike Air Max Original Sneakers zimeingia mzigo mpya! Punguzo la 12.5% kwa oda za leo pekee.',
     location: 'Kariakoo, Dar es Salaam',
     visibility: 'public',
     likesCount: 380,
     commentsCount: 45,
     sharesCount: 19,
-    createdAt: '1h ago',
+    createdAt: '1h',
     expiresAt: new Date(Date.now() + 22 * 3600 * 1000).toISOString(),
     metadata: {
       productName: 'Nike Air Max',
       regularPrice: 200000,
       salePrice: 175000,
-      discountBadge: '12.5% OFF — NEW ARRIVAL',
+      discountBadge: '12.5% OFF',
       stockRemaining: 24,
-      variants: {
-        sizes: ['S', 'M', 'L', 'XL'],
-        colors: ['Black', 'White', 'Blue'],
-      },
       actionButtons: ['buy_now', 'chat_now'],
     },
   },
 
-  // 5. EVENT STORY (Dar Food Festival 2026)
+  // 5. Sarah M. (Sunset & Lifestyle)
   {
-    id: 'status_card_event_fest',
-    authorId: 'dar_food_fest',
-    authorName: 'Dar Food Festival 2026',
-    authorUsername: 'darfoodfest',
-    authorPhoto: 'https://images.unsplash.com/photo-1555396273-367ea4eb4db5?w=500&auto=format&fit=crop&q=80',
-    type: 'event',
-    mediaUrl: 'https://images.unsplash.com/photo-1511795409834-ef04bbd61622?w=1200&auto=format&fit=crop&q=80',
-    text: 'Weekend kubwa ya food, music na entertainment! Tiketi za VIP na Regular ziko sokoni sasa. Usikose live performances!',
-    location: 'Mlimani City, Dar es Salaam',
+    id: 'status_card_sarah_sunset',
+    authorId: 'user_sarah_m',
+    authorName: 'Sarah M.',
+    authorUsername: 'sarah_m',
+    authorPhoto: sarahAvatar,
+    type: 'photo',
+    mediaUrl: sarahPortrait,
+    text: 'Mapumziko ya jioni Masaki beach 🍹🌅 Furaha ya upepo wa bahari.',
+    location: 'Masaki, Dar es Salaam',
     visibility: 'public',
-    likesCount: 890,
-    commentsCount: 112,
-    sharesCount: 85,
-    createdAt: '2h ago',
-    expiresAt: new Date(Date.now() + 21 * 3600 * 1000).toISOString(),
+    likesCount: 940,
+    commentsCount: 68,
+    sharesCount: 28,
+    createdAt: '2h',
+    expiresAt: new Date(Date.now() + 20 * 3600 * 1000).toISOString(),
+  },
+
+  // 6. EVENT STORY (Dar Live Music Festival)
+  {
+    id: 'status_card_dar_concert',
+    authorId: 'events_dar',
+    authorName: 'Dar Events',
+    authorUsername: 'dar_events',
+    authorPhoto:
+      'https://images.unsplash.com/photo-1514525253161-7a46d19cd819?w=500&auto=format&fit=crop&q=80',
+    type: 'event',
+    mediaUrl: concertFestival,
+    text: 'Usiku wa Burudani Mlimani City Hall! Wasanii wote wakali jukwaa moja Jumamosi hii. Tiketi za VIP zinapatikana sasa.',
+    location: 'Mlimani City, Dar',
+    visibility: 'public',
+    likesCount: 1420,
+    commentsCount: 198,
+    sharesCount: 76,
+    createdAt: '3h',
+    expiresAt: new Date(Date.now() + 18 * 3600 * 1000).toISOString(),
     metadata: {
-      eventName: 'Dar Food Festival 2026',
-      eventDate: '12 October 2026',
-      eventStartTime: '08:00 PM',
-      eventEndTime: '02:00 AM',
-      capacity: 500,
-      ticketsSold: 327,
-      lineup: ['Harmonize', 'DJ Fresh', 'Rayvanny', 'Food Festival', 'Games'],
+      eventName: 'Dar Music Festival 2026',
+      eventDate: 'Jumamosi hii',
+      eventStartTime: '7:00 PM',
+      ticketTiers: [
+        { name: 'VIP', price: 30000 },
+        { name: 'Regular', price: 15000 },
+      ],
       actionButtons: ['get_ticket', 'chat_now'],
     },
   },
@@ -179,8 +214,8 @@ export const ChatListStatusRow: React.FC<ChatListStatusRowProps> = ({
   customStatuses = [],
   onStartChatWithBusiness,
 }) => {
-  // Combine custom user-created statuses with initial rich statuses
   const allStatuses = [...customStatuses, ...INITIAL_CHAT_STATUSES];
+  const scrollRef = useRef<HTMLDivElement>(null);
 
   const [viewerState, setViewerState] = useState<{
     isOpen: boolean;
@@ -194,134 +229,219 @@ export const ChatListStatusRow: React.FC<ChatListStatusRowProps> = ({
     setViewerState((prev) => ({ ...prev, isOpen: false }));
   }, []);
 
+  const handleScroll = (direction: 'left' | 'right') => {
+    if (scrollRef.current) {
+      const scrollAmount = direction === 'left' ? -220 : 220;
+      scrollRef.current.scrollBy({ left: scrollAmount, behavior: 'smooth' });
+    }
+  };
+
   return (
-    <div className="pt-2 pb-2.5 px-3 border-b border-white/[0.06] select-none bg-black/10">
-      {/* Horizontal Carousel of Squircle Status Cards */}
-      <div className="flex items-center gap-3 overflow-x-auto no-scrollbar scroll-smooth py-1">
-        {/* 1. My Status Card (Hali Yangu) */}
-        <div
-          onClick={onOpenCreateStatus}
-          className="relative w-[136px] sm:w-[144px] h-[84px] sm:h-[90px] rounded-[28px] overflow-hidden bg-gradient-to-tr from-[#0F172A] via-[#1E293B] to-[#334155] border border-white/15 shrink-0 cursor-pointer active:scale-95 transition-all shadow-lg hover:border-cyan-400/60 group"
-          title="Weka Hali Yako (Post Status)"
-        >
-          {/* Background overlay */}
-          <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-black/20 to-black/10" />
-
-          {/* Top-Left Circular Avatar with White Ring and + Badge */}
-          <div className="absolute top-2.5 left-2.5 z-10">
-            <div className="relative">
-              <div className="w-8 h-8 sm:w-8.5 sm:h-8.5 rounded-full border-2 border-white shadow-md overflow-hidden bg-slate-900">
-                <SafeImage
-                  src={currentUser.photoURL || aminaAvatar}
-                  fallbackText="Me"
-                  alt="My Status"
-                  className="w-full h-full object-cover"
-                />
-              </div>
-              <span className="absolute -bottom-0.5 -right-0.5 w-3.5 h-3.5 rounded-full bg-emerald-500 text-white flex items-center justify-center text-[8.5px] font-black border border-[#0F172A] shadow-sm">
-                <Plus className="w-2.5 h-2.5 stroke-[3.5]" />
-              </span>
-            </div>
+    <div className="pt-2.5 pb-3 px-3.5 border-b border-white/[0.06] select-none bg-gradient-to-b from-[#090D1A]/80 to-[#070A14]">
+      {/* Top Header Row: Title & Action */}
+      <div className="flex items-center justify-between mb-2.5 px-0.5">
+        <div className="flex items-center gap-2">
+          <div className="w-5 h-5 rounded-lg bg-cyan-500/15 flex items-center justify-center text-cyan-400">
+            <Sparkles className="w-3.5 h-3.5" />
           </div>
-
-          {/* Clean Label */}
-          <div className="absolute bottom-2 left-3 right-2 z-10 pointer-events-none">
-            <p className="text-[11px] font-bold text-white truncate drop-shadow leading-tight">
-              Hali Yangu
-            </p>
-            <p className="text-[9px] text-cyan-300/80 truncate">Gusa kuongeza</p>
-          </div>
+          <span className="text-xs font-bold text-slate-200 tracking-tight">
+            Stories
+          </span>
+          <span className="px-1.5 py-0.5 rounded-full bg-cyan-500/15 text-cyan-400 text-[10px] font-semibold font-mono">
+            {allStatuses.length} mpya
+          </span>
         </div>
 
-        {/* 2. Contact Status Cards: Zebra Restaurant, Fresh kk, Alex, Fresh Store, Event */}
-        {allStatuses.map((item, idx) => (
-          <div
-            key={item.id}
-            onClick={() => setViewerState({ isOpen: true, initialIndex: idx })}
-            className="relative w-[136px] sm:w-[144px] h-[84px] sm:h-[90px] rounded-[28px] overflow-hidden shrink-0 cursor-pointer group active:scale-95 transition-all shadow-lg border border-white/10 hover:border-cyan-400/80"
-            title={`Tazama status ya ${item.authorName}`}
+        <button
+          onClick={onOpenCreateStatus}
+          className="flex items-center gap-1 text-[11px] font-semibold text-cyan-400 hover:text-cyan-300 transition-colors group"
+          title="Weka Hali Yako"
+        >
+          <Plus className="w-3.5 h-3.5 stroke-[2.5] group-hover:scale-110 transition-transform" />
+          <span>Weka Story</span>
+        </button>
+      </div>
+
+      {/* Stories Carousel with smooth touch scrolling and desktop navigation arrows */}
+      <div className="relative group/carousel">
+        {/* Left Scroll Arrow (Desktop) */}
+        <button
+          onClick={() => handleScroll('left')}
+          className="hidden md:flex absolute -left-2 top-1/2 -translate-y-1/2 z-20 w-7 h-7 rounded-full bg-[#0A0F1E]/90 hover:bg-[#121B33] text-white items-center justify-center border border-white/10 shadow-lg opacity-0 group-hover/carousel:opacity-100 transition-all active:scale-95"
+          aria-label="Scroll left"
+        >
+          <ChevronLeft className="w-4 h-4" />
+        </button>
+
+        {/* Right Scroll Arrow (Desktop) */}
+        <button
+          onClick={() => handleScroll('right')}
+          className="hidden md:flex absolute -right-2 top-1/2 -translate-y-1/2 z-20 w-7 h-7 rounded-full bg-[#0A0F1E]/90 hover:bg-[#121B33] text-white items-center justify-center border border-white/10 shadow-lg opacity-0 group-hover/carousel:opacity-100 transition-all active:scale-95"
+          aria-label="Scroll right"
+        >
+          <ChevronRight className="w-4 h-4" />
+        </button>
+
+        {/* Story Cards List */}
+        <div
+          ref={scrollRef}
+          className="flex items-center gap-2.5 overflow-x-auto no-scrollbar scroll-smooth py-0.5 px-0.5 overscroll-x-contain"
+          style={{ WebkitOverflowScrolling: 'touch' }}
+        >
+          {/* ============================================================== */}
+          {/* 1. MY STORY CARD (Hali Yangu / Weka Mpya)                       */}
+          {/* ============================================================== */}
+          <button
+            onClick={onOpenCreateStatus}
+            className="group relative w-[102px] min-w-[102px] sm:w-[110px] sm:min-w-[110px] h-[152px] sm:h-[158px] rounded-2xl overflow-hidden border border-white/10 hover:border-cyan-400/60 shadow-md hover:shadow-cyan-500/15 hover:-translate-y-1 active:scale-[0.98] transition-all duration-300 flex flex-col justify-between text-left focus:outline-none shrink-0 bg-[#0E1428]"
+            title="Weka Hali Yako (Post Status)"
           >
-            {/* Background image wallpaper covering the full card */}
-            <SafeImage
-              src={item.mediaUrl}
-              fallbackText={item.authorName}
-              alt={item.authorName}
-              className="absolute inset-0 w-full h-full object-cover group-hover:scale-105 transition-transform duration-300"
-            />
+            {/* Top Photo Section with User Avatar */}
+            <div className="relative w-full h-[62%] overflow-hidden bg-slate-800">
+              <SafeImage
+                src={currentUser?.photoURL || aminaAvatar}
+                fallbackText="Me"
+                alt="My Status"
+                className="w-full h-full object-cover group-hover:scale-108 transition-transform duration-500"
+              />
+              <div className="absolute inset-0 bg-gradient-to-b from-black/40 via-transparent to-[#0E1428]" />
+            </div>
 
-            {/* Subtle vignette overlay */}
-            <div className="absolute inset-0 bg-gradient-to-t from-black/85 via-black/25 to-black/35 pointer-events-none" />
-
-            {/* Top-Left Circular Avatar with Solid White Ring */}
-            <div className="absolute top-2.5 left-2.5 z-10 pointer-events-none">
-              <div className="w-8 h-8 sm:w-8.5 sm:h-8.5 rounded-full border-2 border-white shadow-md overflow-hidden bg-slate-900">
-                <SafeImage
-                  src={item.authorPhoto}
-                  fallbackText={item.authorName}
-                  alt={item.authorName}
-                  className="w-full h-full object-cover"
-                />
+            {/* Floating Plus Button (Split overlapping line) */}
+            <div className="absolute top-[54%] left-1/2 -translate-x-1/2 -translate-y-1/2 z-10">
+              <div className="w-8 h-8 rounded-full bg-gradient-to-tr from-cyan-400 via-blue-500 to-indigo-600 text-white flex items-center justify-center shadow-lg shadow-cyan-500/40 ring-[3.5px] ring-[#0E1428] group-hover:scale-110 transition-transform">
+                <Plus className="w-4 h-4 stroke-[3]" />
               </div>
             </div>
 
-            {/* Category / Offer Badge on Top-Right */}
-            {item.type === 'food' && (
-              <span className="absolute top-2 right-2 px-1.5 py-0.5 rounded-full bg-amber-500 text-slate-950 font-black text-[9px] shadow-sm z-10">
-                🍕 Food
+            {/* Bottom Info Section */}
+            <div className="w-full h-[38%] pt-3.5 pb-2 px-1 flex flex-col items-center justify-center bg-[#0E1428]">
+              <span className="text-[11px] font-bold text-white tracking-tight leading-tight truncate max-w-full">
+                Hali Yangu
               </span>
-            )}
-            {item.type === 'poll' && (
-              <span className="absolute top-2 right-2 px-1.5 py-0.5 rounded-full bg-blue-500 text-white font-bold text-[9px] shadow-sm z-10">
-                📊 Poll
+              <span className="text-[9px] font-semibold text-cyan-400/90 tracking-wide mt-0.5">
+                Weka Story
               </span>
-            )}
-            {item.type === 'product' && (
-              <span className="absolute top-2 right-2 px-1.5 py-0.5 rounded-full bg-emerald-500 text-slate-950 font-bold text-[9px] shadow-sm z-10">
-                🛍️ Shop
-              </span>
-            )}
-            {item.type === 'event' && (
-              <span className="absolute top-2 right-2 px-1.5 py-0.5 rounded-full bg-purple-500 text-white font-bold text-[9px] shadow-sm z-10">
-                🎪 Event
-              </span>
-            )}
-
-            {/* Bottom info */}
-            <div className="absolute bottom-2 left-3 right-2 z-10 pointer-events-none">
-              <p className="text-[11px] font-bold text-white truncate drop-shadow leading-tight">
-                {item.authorName}
-              </p>
-              {item.type === 'food' && item.metadata?.offerPrice && (
-                <p className="text-[9px] text-amber-300 font-bold truncate">
-                  TSh {item.metadata.offerPrice.toLocaleString()} • Ofa
-                </p>
-              )}
-              {item.type === 'poll' && (
-                <p className="text-[9px] text-blue-300 font-bold truncate">
-                  Piga Kura 🗳️
-                </p>
-              )}
-              {item.type === 'product' && item.metadata?.salePrice && (
-                <p className="text-[9px] text-emerald-300 font-bold truncate">
-                  TSh {item.metadata.salePrice.toLocaleString()}
-                </p>
-              )}
-              {item.type === 'event' && (
-                <p className="text-[9px] text-purple-300 font-bold truncate">
-                  12 Oct • Tiketi
-                </p>
-              )}
-              {item.type === 'photo' && (
-                <p className="text-[9px] text-slate-300 truncate">
-                  {item.createdAt}
-                </p>
-              )}
             </div>
-          </div>
-        ))}
+          </button>
+
+          {/* ============================================================== */}
+          {/* 2. CONTACT / COMMUNITY STORY CARDS                             */}
+          {/* ============================================================== */}
+          {allStatuses.map((item, idx) => {
+            const firstName = item.authorName.split(' ')[0];
+            const isFood = item.type === 'food';
+            const isPoll = item.type === 'poll';
+            const isProduct = item.type === 'product';
+            const isEvent = item.type === 'event';
+
+            // Distinct badge icon and label
+            let badgeIcon = null;
+            let badgeLabel = item.createdAt;
+            let badgeClass = 'bg-black/60 text-slate-200 border-white/10';
+
+            if (isFood) {
+              badgeIcon = <Utensils className="w-2.5 h-2.5 mr-0.5 text-amber-300" />;
+              badgeLabel = item.metadata?.specialOfferLabel || 'Ofa';
+              badgeClass = 'bg-amber-500/90 text-slate-950 font-black border-amber-400';
+            } else if (isPoll) {
+              badgeIcon = <BarChart2 className="w-2.5 h-2.5 mr-0.5 text-blue-200" />;
+              badgeLabel = 'Kura';
+              badgeClass = 'bg-blue-500/90 text-white font-bold border-blue-400';
+            } else if (isProduct) {
+              badgeIcon = <ShoppingBag className="w-2.5 h-2.5 mr-0.5 text-emerald-200" />;
+              badgeLabel = item.metadata?.discountBadge || 'Duka';
+              badgeClass = 'bg-emerald-500/90 text-slate-950 font-black border-emerald-400';
+            } else if (isEvent) {
+              badgeIcon = <Calendar className="w-2.5 h-2.5 mr-0.5 text-purple-200" />;
+              badgeLabel = 'Tukio';
+              badgeClass = 'bg-purple-500/90 text-white font-bold border-purple-400';
+            }
+
+            return (
+              <button
+                key={item.id}
+                onClick={() => setViewerState({ isOpen: true, initialIndex: idx })}
+                className="group relative w-[102px] min-w-[102px] sm:w-[110px] sm:min-w-[110px] h-[152px] sm:h-[158px] rounded-2xl overflow-hidden border border-white/10 hover:border-cyan-400/70 shadow-md hover:shadow-cyan-500/20 hover:-translate-y-1 active:scale-[0.98] transition-all duration-300 flex flex-col justify-between text-left focus:outline-none shrink-0 bg-slate-950"
+                title={`Tazama story ya ${item.authorName}`}
+              >
+                {/* Background Image Preview with Zoom effect */}
+                <div className="absolute inset-0 z-0 bg-slate-900">
+                  <SafeImage
+                    src={item.mediaUrl}
+                    fallbackGradient="from-cyan-950 via-slate-900 to-indigo-950"
+                    alt={item.text}
+                    className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-500"
+                  />
+                  {/* Top scrim for avatar and badge */}
+                  <div className="absolute inset-x-0 top-0 h-14 bg-gradient-to-b from-black/80 via-black/30 to-transparent" />
+                  {/* Bottom scrim for author name and snippet */}
+                  <div className="absolute inset-x-0 bottom-0 h-20 bg-gradient-to-t from-black/95 via-black/60 to-transparent" />
+                </div>
+
+                {/* Top Row: Creator Avatar & Story Badge */}
+                <div className="relative z-10 p-2 flex items-center justify-between w-full">
+                  {/* Creator Avatar with Glowing Gradient Ring */}
+                  <div className="w-7 h-7 rounded-full p-[1.5px] bg-gradient-to-tr from-cyan-400 via-fuchsia-500 to-amber-400 shadow-md ring-1 ring-black/60 group-hover:scale-105 transition-transform">
+                    <div className="w-full h-full rounded-full overflow-hidden bg-slate-950">
+                      <SafeImage
+                        src={item.authorPhoto}
+                        fallbackText={item.authorName}
+                        alt={item.authorName}
+                        className="w-full h-full object-cover"
+                      />
+                    </div>
+                  </div>
+
+                  {/* Story Badge */}
+                  <span
+                    className={`inline-flex items-center px-1.5 py-0.5 rounded-full text-[9px] backdrop-blur-md shadow-sm border ${badgeClass} truncate max-w-[50px]`}
+                  >
+                    {badgeIcon}
+                    <span className="truncate">{badgeLabel}</span>
+                  </span>
+                </div>
+
+                {/* Bottom Row: Creator Name & Story Snippet/Price */}
+                <div className="relative z-10 p-2 pt-0 w-full">
+                  <h4 className="text-[11px] font-bold text-white tracking-tight leading-tight truncate drop-shadow-md">
+                    {firstName}
+                  </h4>
+                  <div className="text-[9.5px] font-medium leading-tight truncate mt-0.5 drop-shadow-sm">
+                    {isFood && (
+                      <span className="text-amber-300 font-bold">
+                        TSh {(item.metadata?.offerPrice || 12000).toLocaleString()}
+                      </span>
+                    )}
+                    {isProduct && (
+                      <span className="text-emerald-300 font-bold">
+                        TSh {(item.metadata?.salePrice || 175000).toLocaleString()}
+                      </span>
+                    )}
+                    {isPoll && (
+                      <span className="text-cyan-300 font-medium">
+                        {item.metadata?.pollQuestion?.split(' ')[0] || 'Kura'}?
+                      </span>
+                    )}
+                    {isEvent && (
+                      <span className="text-purple-300 font-medium">
+                        {item.metadata?.eventName?.split(' ')[0] || 'Tukio'}
+                      </span>
+                    )}
+                    {!isFood && !isProduct && !isPoll && !isEvent && (
+                      <span className="text-slate-300/90 font-normal">
+                        {item.location ? item.location.split(',')[0] : 'Vibes ☀️'}
+                      </span>
+                    )}
+                  </div>
+                </div>
+              </button>
+            );
+          })}
+        </div>
       </div>
 
-      {/* Story Viewer Modal */}
+      {/* Full-Screen Story Viewer Modal */}
       {viewerState.isOpen && (
         <StatusStoryViewerModal
           isOpen={viewerState.isOpen}

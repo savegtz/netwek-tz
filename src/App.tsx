@@ -4,11 +4,11 @@
  */
 
 import React, { useState, useEffect } from 'react';
-import { onAuthStateChanged } from 'firebase/auth';
+import { onAuthStateChanged, signOut } from 'firebase/auth';
 import { doc, getDoc, setDoc } from 'firebase/firestore';
 import { auth, db } from './services/firebase/config';
-import { UserProfile, Conversation, StatusType, StatusItem } from './types';
-import { INITIAL_USER, INITIAL_CONVERSATIONS } from './services/seed/initialData';
+import { UserProfile, Conversation, StatusType, StatusItem, NotificationItem } from './types';
+import { INITIAL_USER, INITIAL_CONVERSATIONS, INITIAL_NOTIFICATIONS } from './services/seed/initialData';
 import { MessageSquare, Plus, Sparkles, ShieldCheck, Lock } from 'lucide-react';
 
 // Layout & Navigation Components
@@ -18,9 +18,11 @@ import { CreateMenuModal } from './components/CreateMenuModal';
 
 // Features
 import { AuthModal } from './features/auth/AuthModal';
+import { EditProfileModal } from './features/profile/EditProfileModal';
 import { ChatList } from './features/chat/ChatList';
 import { ChatRoom } from './features/chat/ChatRoom';
 import { GroupChatRoom } from './features/chat/GroupChatRoom';
+import { ChatGuestGateway } from './features/chat/ChatGuestGateway';
 import { StartNewChatModal } from './features/chat/components/StartNewChatModal';
 import { CreateStatusModal } from './features/status/CreateStatusModal';
 import { StatusFeed } from './features/status/StatusFeed';
@@ -39,12 +41,67 @@ import { AdminDevPanel } from './features/admin/AdminDevPanel';
 import freshKkAvatar from './assets/images/fresh_kk_avatar_1791078365294.jpg';
 
 export default function App() {
-  const [currentUser, setCurrentUser] = useState<UserProfile>(INITIAL_USER);
+  // If user hasn't logged in or registered, currentUser is null (Guest mode)
+  const [currentUser, setCurrentUser] = useState<UserProfile | null>(() => {
+    const saved = localStorage.getItem('zenia_active_user');
+    if (saved) {
+      try {
+        return JSON.parse(saved);
+      } catch {
+        return null;
+      }
+    }
+    return null;
+  });
+
   const [activeTab, setActiveTab] = useState<string>('chats');
   const [activeConversation, setActiveConversation] = useState<Conversation | null>(null);
 
+  // User-scoped conversations: Starts completely empty until user starts chatting
+  const [conversations, setConversations] = useState<Conversation[]>(() => {
+    const saved = localStorage.getItem('zenia_active_user');
+    if (saved) {
+      try {
+        const user = JSON.parse(saved);
+        if (user && user.id) {
+          const userConvs = localStorage.getItem(`zenia_user_conversations_${user.id}`);
+          if (userConvs) return JSON.parse(userConvs);
+        }
+      } catch {}
+    }
+    return [];
+  });
+
+  // Sync conversations with currentUser: if logged out or guest, no chats shown
+  useEffect(() => {
+    if (!currentUser) {
+      setConversations([]);
+      setActiveConversation(null);
+    } else {
+      try {
+        const userConvs = localStorage.getItem(`zenia_user_conversations_${currentUser.id}`);
+        setConversations(userConvs ? JSON.parse(userConvs) : []);
+      } catch {
+        setConversations([]);
+      }
+    }
+  }, [currentUser?.id]);
+
+  // Persist conversations for the current user
+  useEffect(() => {
+    if (currentUser) {
+      try {
+        localStorage.setItem(
+          `zenia_user_conversations_${currentUser.id}`,
+          JSON.stringify(conversations)
+        );
+      } catch {}
+    }
+  }, [conversations, currentUser?.id]);
+
   // Modals & Subscreens
   const [isAuthOpen, setIsAuthOpen] = useState(false);
+  const [isEditProfileOpen, setIsEditProfileOpen] = useState(false);
   const [isCreateMenuOpen, setIsCreateMenuOpen] = useState(false);
   const [isNewChatModalOpen, setIsNewChatModalOpen] = useState(false);
   const [isAIOpen, setIsAIOpen] = useState(false);
@@ -55,13 +112,67 @@ export default function App() {
   const [customStatuses, setCustomStatuses] = useState<StatusItem[]>([]);
   const [isFrameMode, setIsFrameMode] = useState<boolean>(false); // Full-width responsive web view by default
 
+  // Notifications state with localStorage persistence
+  const [notifications, setNotifications] = useState<NotificationItem[]>(() => {
+    try {
+      const saved = localStorage.getItem(`zenia_notifications_${currentUser?.id || 'guest'}`);
+      if (saved) return JSON.parse(saved);
+    } catch {}
+    return INITIAL_NOTIFICATIONS;
+  });
+
+  useEffect(() => {
+    try {
+      localStorage.setItem(
+        `zenia_notifications_${currentUser?.id || 'guest'}`,
+        JSON.stringify(notifications)
+      );
+    } catch {}
+  }, [notifications, currentUser?.id]);
+
+  // Safe fallback representation for read-only child components when browsing as guest
+  const activeUser: UserProfile = currentUser || {
+    id: 'guest',
+    displayName: 'Mgeni (Guest)',
+    username: 'guest',
+    email: '',
+    accountType: 'personal',
+    verified: false,
+    followersCount: 0,
+    followingCount: 0,
+    postsCount: 0,
+    isOnline: false,
+  };
+
+  const handleSignOut = async () => {
+    try {
+      await signOut(auth);
+    } catch (e) {
+      console.warn('Signout warning:', e);
+    }
+    localStorage.removeItem('zenia_active_user');
+    setCurrentUser(null);
+    setConversations([]);
+    setActiveConversation(null);
+  };
+
   const handleSelectUserToChat = (targetUser: {
     id: string;
     displayName: string;
     username: string;
     photoURL?: string;
   }) => {
+    if (!currentUser) {
+      setIsAuthOpen(true);
+      return;
+    }
     const convId = `conv_${[currentUser.id, targetUser.id].sort().join('_')}`;
+    const existing = conversations.find((c) => c.id === convId);
+    if (existing) {
+      setActiveConversation(existing);
+      setActiveTab('chats');
+      return;
+    }
     const newConv: Conversation = {
       id: convId,
       participants: [currentUser.id, targetUser.id],
@@ -84,6 +195,7 @@ export default function App() {
       updatedAt: 'Sasa hivi',
       unreadCount: 0,
     };
+    setConversations((prev) => [newConv, ...prev.filter((c) => c.id !== newConv.id)]);
     setActiveConversation(newConv);
     setActiveTab('chats');
   };
@@ -95,26 +207,35 @@ export default function App() {
         try {
           const userDoc = await getDoc(doc(db, 'users', user.uid));
           if (userDoc.exists()) {
-            setCurrentUser(userDoc.data() as UserProfile);
+            const profile = userDoc.data() as UserProfile;
+            setCurrentUser(profile);
+            localStorage.setItem('zenia_active_user', JSON.stringify(profile));
           } else {
             const fallback: UserProfile = {
               id: user.uid,
               email: user.email || 'user@zenia.app',
-              displayName: user.displayName || 'Zenia User',
+              displayName: user.displayName || 'Mtumiaji wa Zenia',
               username: (user.displayName || 'user').toLowerCase().replace(/\s+/g, '_'),
-              photoURL: user.photoURL || '/src/assets/images/amina_avatar_1790280951312.jpg',
+              photoURL: user.photoURL || undefined,
               accountType: 'personal',
               verified: false,
-              followersCount: 1,
+              followersCount: 0,
               followingCount: 0,
               postsCount: 0,
               isOnline: true,
             };
             await setDoc(doc(db, 'users', user.uid), fallback);
             setCurrentUser(fallback);
+            localStorage.setItem('zenia_active_user', JSON.stringify(fallback));
           }
         } catch (e) {
           console.warn('User profile sync notice:', e);
+        }
+      } else {
+        // If not authenticated in Firebase and no manual session, reset to null
+        const manualSession = localStorage.getItem('zenia_active_user');
+        if (!manualSession) {
+          setCurrentUser(null);
         }
       }
     });
@@ -125,6 +246,10 @@ export default function App() {
   const handleSelectCreateOption = (
     type: StatusType | 'ai' | 'product_listing' | 'event_create' | 'job_create'
   ) => {
+    if (!currentUser && type !== 'ai') {
+      setIsAuthOpen(true);
+      return;
+    }
     if (type === 'ai') {
       setIsAIOpen(true);
     } else if (type === 'product_listing') {
@@ -141,8 +266,19 @@ export default function App() {
   };
 
   const handleStartChatWithSeller = (sellerId: string, sellerName: string) => {
+    if (!currentUser) {
+      setIsAuthOpen(true);
+      return;
+    }
+    const convId = `conv_${sellerId}_${currentUser.id}`;
+    const existing = conversations.find((c) => c.id === convId);
+    if (existing) {
+      setActiveConversation(existing);
+      setActiveTab('chats');
+      return;
+    }
     const sellerConv: Conversation = {
-      id: `conv_${sellerId}`,
+      id: convId,
       participants: [currentUser.id, sellerId],
       participantDetails: {
         [sellerId]: {
@@ -151,11 +287,18 @@ export default function App() {
           username: sellerName.toLowerCase().replace(/\s+/g, '_'),
           isOnline: true,
         },
+        [currentUser.id]: {
+          displayName: currentUser.displayName,
+          photoURL: currentUser.photoURL,
+          username: currentUser.username,
+          isOnline: true,
+        },
       },
       isGroup: false,
-      lastMessage: 'Hi! Is this item still available?',
-      updatedAt: 'Just now',
+      lastMessage: 'Habari! Bidhaa hii bado ipo? 🛍️',
+      updatedAt: 'Sasa hivi',
     };
+    setConversations((prev) => [sellerConv, ...prev.filter((c) => c.id !== sellerConv.id)]);
     setActiveConversation(sellerConv);
     setActiveTab('chats');
   };
@@ -166,7 +309,17 @@ export default function App() {
     initialMessage?: string,
     avatar?: string
   ) => {
+    if (!currentUser) {
+      setIsAuthOpen(true);
+      return;
+    }
     const convId = `conv_${businessId}_${currentUser.id}`;
+    const existing = conversations.find((c) => c.id === convId);
+    if (existing) {
+      setActiveConversation(existing);
+      setActiveTab('chats');
+      return;
+    }
     const businessConv: Conversation = {
       id: convId,
       participants: [currentUser.id, businessId],
@@ -188,8 +341,9 @@ export default function App() {
       },
       isGroup: false,
       lastMessage: initialMessage || 'Habari! Nahitaji huduma / maelezo zaidi.',
-      updatedAt: 'Just now',
+      updatedAt: 'Sasa hivi',
     };
+    setConversations((prev) => [businessConv, ...prev.filter((c) => c.id !== businessConv.id)]);
     setActiveConversation(businessConv);
     setActiveTab('chats');
   };
@@ -211,7 +365,7 @@ export default function App() {
           onOpenAdmin={() => setIsAdminOpen(true)}
           isFrameMode={isFrameMode}
           onToggleFrameMode={() => setIsFrameMode(!isFrameMode)}
-          unreadNotificationsCount={2}
+          unreadNotificationsCount={notifications.filter((n) => !n.read).length}
         />
       </div>
 
@@ -228,87 +382,119 @@ export default function App() {
           <div className="relative flex-1 flex flex-col min-h-0 h-full overflow-hidden">
             {/* View: Chats (Responsive dual-pane on Web View, single-pane on mobile) */}
             {activeTab === 'chats' && (
-              <div className="w-full h-full flex flex-1 min-h-0 overflow-hidden">
-                {/* Left Pane: Chat List */}
-                <div
-                  className={`${
-                    activeConversation && !isFrameMode ? 'hidden md:flex' : 'flex'
-                  } ${
-                    isFrameMode
-                      ? 'w-full'
-                      : 'w-full md:w-80 lg:w-[380px] shrink-0 md:border-r md:border-white/[0.08]'
-                  } flex-col h-full min-h-0 bg-[#070A12] overflow-hidden`}
-                >
-                  <ChatList
-                    currentUser={currentUser}
-                    activeConversationId={activeConversation?.id}
-                    onSelectConversation={(conv) => setActiveConversation(conv)}
-                    onStartNewChat={() => setIsNewChatModalOpen(true)}
-                    onStartNewChatWithUser={handleSelectUserToChat}
-                    onOpenProfile={() => setActiveTab('profile')}
-                    onOpenCreateStatus={() => setIsCreateMenuOpen(true)}
-                    customStatuses={customStatuses}
-                    onStartChatWithBusiness={handleStartChatWithBusiness}
-                    onUpdateConversation={(updated) => {
-                      if (activeConversation?.id === updated.id) {
-                        setActiveConversation(updated);
-                      }
-                    }}
-                    onDeleteConversation={(deletedId) => {
-                      if (activeConversation?.id === deletedId) {
-                        setActiveConversation(null);
-                      }
-                    }}
-                  />
-                </div>
-
-                {/* Right Pane: Active Conversation or Desktop Empty State */}
-                {(!isFrameMode || activeConversation) && (
+              !currentUser ? (
+                <ChatGuestGateway
+                  onOpenAuth={() => setIsAuthOpen(true)}
+                  onLoginDemoAmina={() => {
+                    setCurrentUser(INITIAL_USER);
+                    localStorage.setItem('zenia_active_user', JSON.stringify(INITIAL_USER));
+                  }}
+                />
+              ) : (
+                <div className="w-full h-full flex flex-1 min-h-0 overflow-hidden">
+                  {/* Left Pane: Chat List */}
                   <div
                     className={`${
-                      !activeConversation && !isFrameMode ? 'hidden md:flex' : 'flex'
+                      activeConversation && !isFrameMode ? 'hidden md:flex' : 'flex'
                     } ${
-                      isFrameMode ? 'w-full' : 'flex-1'
-                    } flex-col h-full bg-[#080B16] overflow-hidden`}
+                      isFrameMode
+                        ? 'w-full'
+                        : 'w-full md:w-80 lg:w-[380px] shrink-0 md:border-r md:border-white/[0.08]'
+                    } flex-col h-full min-h-0 bg-[#070A12] overflow-hidden`}
                   >
-                    {activeConversation ? (
-                      activeConversation.isGroup ? (
-                        <GroupChatRoom
-                          conversation={activeConversation}
-                          currentUser={currentUser}
-                          onBack={() => setActiveConversation(null)}
-                          onStartCall={(type) => setActiveCallType(type)}
-                          onUpdateConversation={(updated) => {
-                            if (activeConversation?.id === updated.id) {
-                              setActiveConversation(updated);
-                            }
-                          }}
-                          onDeleteConversation={(deletedId) => {
-                            if (activeConversation?.id === deletedId) {
-                              setActiveConversation(null);
-                            }
-                          }}
-                        />
+                    <ChatList
+                      currentUser={currentUser}
+                      conversations={conversations}
+                      onSetConversations={setConversations}
+                      activeConversationId={activeConversation?.id}
+                      onSelectConversation={(conv) => setActiveConversation(conv)}
+                      onStartNewChat={() => setIsNewChatModalOpen(true)}
+                      onStartNewChatWithUser={handleSelectUserToChat}
+                      onOpenProfile={() => setActiveTab('profile')}
+                      onOpenCreateStatus={() => setIsCreateMenuOpen(true)}
+                      customStatuses={customStatuses}
+                      onStartChatWithBusiness={handleStartChatWithBusiness}
+                      onUpdateConversation={(updated) => {
+                        setConversations((prev) =>
+                          prev.map((c) => (c.id === updated.id ? updated : c))
+                        );
+                        if (activeConversation?.id === updated.id) {
+                          setActiveConversation(updated);
+                        }
+                      }}
+                      onDeleteConversation={(deletedId) => {
+                        setConversations((prev) => prev.filter((c) => c.id !== deletedId));
+                        if (activeConversation?.id === deletedId) {
+                          setActiveConversation(null);
+                        }
+                      }}
+                      onDeleteAllConversations={() => {
+                        setConversations([]);
+                        setActiveConversation(null);
+                        if (currentUser) {
+                          try {
+                            localStorage.removeItem(`zenia_user_conversations_${currentUser.id}`);
+                          } catch (_) {}
+                        }
+                      }}
+                    />
+                  </div>
+
+                  {/* Right Pane: Active Conversation or Desktop Empty State */}
+                  {(!isFrameMode || activeConversation) && (
+                    <div
+                      className={`${
+                        !activeConversation && !isFrameMode ? 'hidden md:flex' : 'flex'
+                      } ${
+                        isFrameMode ? 'w-full' : 'flex-1'
+                      } flex-col h-full bg-[#080B16] overflow-hidden`}
+                    >
+                      {activeConversation ? (
+                        activeConversation.isGroup ? (
+                          <GroupChatRoom
+                            conversation={activeConversation}
+                            currentUser={currentUser}
+                            onBack={() => setActiveConversation(null)}
+                            onStartCall={(type) => setActiveCallType(type)}
+                            onUpdateConversation={(updated) => {
+                              setConversations((prev) =>
+                                prev.map((c) => (c.id === updated.id ? updated : c))
+                              );
+                              if (activeConversation?.id === updated.id) {
+                                setActiveConversation(updated);
+                              }
+                            }}
+                            onDeleteConversation={(deletedId) => {
+                              setConversations((prev) => prev.filter((c) => c.id !== deletedId));
+                              if (activeConversation?.id === deletedId) {
+                                setActiveConversation(null);
+                              }
+                            }}
+                          />
+                        ) : (
+                          <ChatRoom
+                            conversation={activeConversation}
+                            currentUser={currentUser}
+                            onBack={() => setActiveConversation(null)}
+                            onStartCall={(type) => setActiveCallType(type)}
+                            onSwitchUser={(u) => setCurrentUser(u)}
+                            onUpdateConversation={(updated) => {
+                              setConversations((prev) =>
+                                prev.map((c) => (c.id === updated.id ? updated : c))
+                              );
+                              if (activeConversation?.id === updated.id) {
+                                setActiveConversation(updated);
+                              }
+                            }}
+                            onDeleteConversation={(deletedId) => {
+                              setConversations((prev) => prev.filter((c) => c.id !== deletedId));
+                              if (activeConversation?.id === deletedId) {
+                                setActiveConversation(null);
+                              }
+                            }}
+                          />
+                        )
                       ) : (
-                        <ChatRoom
-                          conversation={activeConversation}
-                          currentUser={currentUser}
-                          onBack={() => setActiveConversation(null)}
-                          onStartCall={(type) => setActiveCallType(type)}
-                          onSwitchUser={(u) => setCurrentUser(u)}
-                          onUpdateConversation={(updated) => {
-                            if (activeConversation?.id === updated.id) {
-                              setActiveConversation(updated);
-                            }
-                          }}
-                          onDeleteConversation={(deletedId) => {
-                            if (activeConversation?.id === deletedId) {
-                              setActiveConversation(null);
-                            }
-                          }}
-                        />
-                      )
-                    ) : (
                       /* Desktop Web Chat Welcome Placeholder */
                       <div className="w-full h-full flex flex-col items-center justify-center p-8 text-center bg-gradient-to-b from-[#080B16] via-[#090D1A] to-[#070A12]">
                         <div className="relative mb-6">
@@ -350,12 +536,13 @@ export default function App() {
                   </div>
                 )}
               </div>
-            )}
+            )
+          )}
 
             {/* View: Status Stories (Updates) */}
             {activeTab === 'status' && (
               <StatusFeed
-                currentUser={currentUser}
+                currentUser={activeUser}
                 onOpenCreateMenu={() => setIsCreateMenuOpen(true)}
                 onStartChatWithBusiness={handleStartChatWithBusiness}
                 customStatuses={customStatuses}
@@ -374,9 +561,28 @@ export default function App() {
             {activeTab === 'profile' && (
               <ProfileView
                 currentUser={currentUser}
-                onOpenEditProfile={() => setIsAuthOpen(true)}
+                onOpenEditProfile={() => {
+                  if (currentUser) {
+                    setIsEditProfileOpen(true);
+                  } else {
+                    setIsAuthOpen(true);
+                  }
+                }}
                 onOpenAdmin={() => setIsAdminOpen(true)}
                 onSelectService={(tab) => setActiveTab(tab)}
+                onOpenAuth={() => setIsAuthOpen(true)}
+                onSignOut={handleSignOut}
+                onLoginSuccess={(user) => {
+                  setCurrentUser(user);
+                  localStorage.setItem('zenia_active_user', JSON.stringify(user));
+                }}
+                onOpenCreateStatus={() => {
+                  if (!currentUser) {
+                    setIsAuthOpen(true);
+                  } else {
+                    setIsCreateMenuOpen(true);
+                  }
+                }}
               />
             )}
 
@@ -402,14 +608,14 @@ export default function App() {
             {/* Specialized Subviews (Directly accessible via top header or discover) */}
             {activeTab === 'events' && <EventsView onBack={() => setActiveTab('discover')} />}
 
-            {activeTab === 'jobs' && <JobsView currentUser={currentUser} />}
+            {activeTab === 'jobs' && <JobsView currentUser={activeUser} />}
 
             {activeTab === 'transport' && <RideRequestView onBack={() => setActiveTab('chats')} />}
 
             {activeTab === 'wallet' && <WalletView onBack={() => setActiveTab('chats')} />}
 
             {activeTab === 'community' && (
-              <CommunityView currentUser={currentUser} onBack={() => setActiveTab('discover')} />
+              <CommunityView currentUser={activeUser} onBack={() => setActiveTab('discover')} />
             )}
           </div>
 
@@ -423,6 +629,7 @@ export default function App() {
                   setActiveTab(tab);
                 }}
                 onOpenCreateMenu={() => setIsCreateMenuOpen(true)}
+                hasUnreadChats={!!currentUser && conversations.some((c) => (c.unreadCount || 0) > 0)}
               />
             </div>
           )}
@@ -440,7 +647,7 @@ export default function App() {
         isOpen={createStatusType !== null}
         onClose={() => setCreateStatusType(null)}
         statusType={createStatusType}
-        currentUser={currentUser}
+        currentUser={activeUser}
         onStatusCreated={(newStatus) => {
           setCustomStatuses((prev) => [newStatus, ...prev]);
           setActiveTab('status');
@@ -451,21 +658,40 @@ export default function App() {
         isOpen={isAuthOpen}
         onClose={() => setIsAuthOpen(false)}
         currentUser={currentUser}
-        onUserUpdate={(updated) => setCurrentUser(updated)}
+        onUserUpdate={(updated) => {
+          setCurrentUser(updated);
+          if (updated) {
+            localStorage.setItem('zenia_active_user', JSON.stringify(updated));
+          } else {
+            localStorage.removeItem('zenia_active_user');
+          }
+        }}
       />
+
+      {currentUser && (
+        <EditProfileModal
+          isOpen={isEditProfileOpen}
+          onClose={() => setIsEditProfileOpen(false)}
+          currentUser={currentUser}
+          onUserUpdate={(updated) => {
+            setCurrentUser(updated);
+            localStorage.setItem('zenia_active_user', JSON.stringify(updated));
+          }}
+        />
+      )}
 
       <AIAssistantModal isOpen={isAIOpen} onClose={() => setIsAIOpen(false)} />
 
       <AdminDevPanel
         isOpen={isAdminOpen}
         onClose={() => setIsAdminOpen(false)}
-        currentUser={currentUser}
+        currentUser={activeUser}
       />
 
       <StartNewChatModal
         isOpen={isNewChatModalOpen}
         onClose={() => setIsNewChatModalOpen(false)}
-        currentUser={currentUser}
+        currentUser={activeUser}
         onSelectUserToChat={handleSelectUserToChat}
       />
 
@@ -475,6 +701,9 @@ export default function App() {
           <div className="relative w-full max-w-lg bg-[#0A0D18] border-t sm:border border-white/10 rounded-t-[28px] sm:rounded-3xl overflow-hidden shadow-2xl max-h-[92vh] flex flex-col">
             <NotificationsView
               onBack={() => setIsNotificationsOpen(false)}
+              notifications={notifications}
+              onUpdateNotifications={setNotifications}
+              currentUser={activeUser}
               onNavigate={(type) => {
                 setIsNotificationsOpen(false);
                 if (type === 'message') setActiveTab('chats');
@@ -497,9 +726,9 @@ export default function App() {
               activeConversation?.isGroup
                 ? activeConversation.groupName
                 : (activeConversation?.participantDetails &&
-                  activeConversation.participants.find((p) => p !== currentUser.id)
+                  activeConversation.participants.find((p) => p !== activeUser.id)
                     ? activeConversation.participantDetails[
-                        activeConversation.participants.find((p) => p !== currentUser.id)!
+                        activeConversation.participants.find((p) => p !== activeUser.id)!
                       ]?.displayName
                     : 'Fresh kk') || 'Fresh kk'
             }
@@ -507,13 +736,13 @@ export default function App() {
               activeConversation?.isGroup
                 ? activeConversation.groupAvatar
                 : (activeConversation?.participantDetails &&
-                  activeConversation.participants.find((p) => p !== currentUser.id)
+                  activeConversation.participants.find((p) => p !== activeUser.id)
                     ? activeConversation.participantDetails[
-                        activeConversation.participants.find((p) => p !== currentUser.id)!
+                        activeConversation.participants.find((p) => p !== activeUser.id)!
                       ]?.photoURL
                     : freshKkAvatar) || freshKkAvatar
             }
-            currentUser={currentUser}
+            currentUser={activeUser}
             onEndCall={() => setActiveCallType(null)}
           />
         </div>

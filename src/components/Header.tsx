@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useState, useRef, useEffect } from 'react';
 import {
   Bell,
   Sparkles,
@@ -7,12 +7,16 @@ import {
   Compass,
   ShoppingBag,
   MessageCircle,
-  Video,
   Users,
   ChevronLeft,
   ShieldCheck,
   Sun,
   Moon,
+  LogIn,
+  MoreVertical,
+  LogOut,
+  User,
+  Settings,
 } from 'lucide-react';
 import { UserProfile } from '../types';
 import { SafeImage } from './SafeImage';
@@ -20,7 +24,7 @@ import { StatusIcon } from './StatusIcon';
 import { useTheme } from '../context/ThemeContext';
 
 interface HeaderProps {
-  currentUser: UserProfile;
+  currentUser: UserProfile | null;
   activeTab: string;
   onSelectTab: (tab: string) => void;
   onOpenNotifications: () => void;
@@ -45,12 +49,29 @@ export const Header: React.FC<HeaderProps> = ({
   unreadNotificationsCount,
 }) => {
   const { isDark, toggleTheme } = useTheme();
+  const [isMenuOpen, setIsMenuOpen] = useState(false);
+  const menuRef = useRef<HTMLDivElement>(null);
+
+  // Close menu when clicking outside
+  useEffect(() => {
+    const handleClickOutside = (event: MouseEvent) => {
+      if (menuRef.current && !menuRef.current.contains(event.target as Node)) {
+        setIsMenuOpen(false);
+      }
+    };
+    if (isMenuOpen) {
+      document.addEventListener('mousedown', handleClickOutside);
+    }
+    return () => {
+      document.removeEventListener('mousedown', handleClickOutside);
+    };
+  }, [isMenuOpen]);
 
   const mainTabs = [
     { id: 'chats', label: 'Chats', icon: MessageCircle },
     { id: 'status', label: 'Status', icon: StatusIcon },
     { id: 'discover', label: 'Discover', icon: Compass },
-    { id: 'shop', label: 'Shop', icon: ShoppingBag },
+    { id: 'shop', label: 'Marketplace', icon: ShoppingBag },
     { id: 'profile', label: 'Profile', icon: Users },
   ];
 
@@ -61,17 +82,17 @@ export const Header: React.FC<HeaderProps> = ({
       case 'chats':
         return 'Chats';
       case 'status':
-        return 'Status Stories';
+        return 'Status';
       case 'discover':
         return 'Discover';
       case 'shop':
         return 'Marketplace';
       case 'profile':
-        return 'My Profile';
+        return 'Profile';
       case 'events':
-        return 'Events & Tickets';
+        return 'Events';
       case 'jobs':
-        return 'Jobs & Careers';
+        return 'Jobs';
       case 'transport':
         return 'Rides';
       case 'wallet':
@@ -84,43 +105,38 @@ export const Header: React.FC<HeaderProps> = ({
   };
 
   return (
-    <header className="sticky top-0 z-40 bg-[#070A14]/95 backdrop-blur-xl border-b border-white/[0.08] px-3 sm:px-5 py-2.5 transition-all">
-      <div className="max-w-7xl mx-auto flex items-center justify-between gap-2 sm:gap-4">
-        {/* Left: Brand / Sub-service back navigation */}
+    <header className="sticky top-0 z-40 bg-[#070A12]/95 backdrop-blur-md border-b border-white/[0.06] px-3.5 sm:px-6 py-2.5 transition-all">
+      <div className="max-w-7xl mx-auto flex items-center justify-between gap-3">
+        {/* Zone 1: Brand Wordmark / Back Nav */}
         <div className="flex items-center gap-2">
           {isSubService ? (
             <button
               onClick={() => onSelectTab('profile')}
               className="flex items-center gap-1.5 px-2.5 py-1.5 rounded-xl bg-white/5 hover:bg-white/10 text-slate-200 transition-colors"
             >
-              <ChevronLeft className="w-5 h-5 text-cyan-400" />
+              <ChevronLeft className="w-4 h-4 text-cyan-400" />
               <span className="text-xs font-semibold text-white">{getTabTitle(activeTab)}</span>
             </button>
           ) : (
             <button
               onClick={() => onSelectTab('chats')}
-              className="flex items-center gap-2 group text-left"
+              className="flex items-center gap-2.5 group text-left"
             >
-              <div className="w-8 h-8 rounded-xl bg-gradient-to-tr from-cyan-400 via-indigo-500 to-purple-500 p-0.5 shadow-md shadow-cyan-500/20 group-hover:scale-105 transition-transform shrink-0">
+              <div className="w-8 h-8 rounded-xl bg-gradient-to-tr from-cyan-400 to-blue-600 p-[1.5px] shadow-sm shadow-cyan-500/20 group-hover:scale-105 transition-transform shrink-0">
                 <div className="w-full h-full bg-[#080B14] rounded-[10px] flex items-center justify-center">
-                  <span className="text-transparent bg-clip-text bg-gradient-to-tr from-cyan-400 to-purple-400 font-black text-sm">
+                  <span className="text-transparent bg-clip-text bg-gradient-to-tr from-cyan-400 to-blue-400 font-black text-sm">
                     Z
                   </span>
                 </div>
               </div>
-              <div className="flex flex-col">
-                <span className="font-extrabold text-base tracking-tight text-white group-hover:text-cyan-300 transition-colors leading-none">
-                  Zenia
-                </span>
-                <span className="text-[10px] text-cyan-400/90 font-medium sm:hidden leading-tight mt-0.5">
-                  {getTabTitle(activeTab)}
-                </span>
-              </div>
+              <span className="font-extrabold text-base tracking-tight text-white group-hover:text-cyan-300 transition-colors">
+                Zenia
+              </span>
             </button>
           )}
         </div>
 
-        {/* Center: Desktop Navigation Tabs (Visible on tablet & desktop) */}
+        {/* Zone 2: Desktop Navigation Links (Clean & unboxed) */}
         <nav className="hidden md:flex items-center gap-1">
           {mainTabs.map((item) => {
             const isActive = activeTab === item.id;
@@ -130,7 +146,7 @@ export const Header: React.FC<HeaderProps> = ({
                 onClick={() => onSelectTab(item.id)}
                 className={`px-3 py-1.5 rounded-xl text-xs font-medium transition-all ${
                   isActive
-                    ? 'text-cyan-300 font-bold bg-cyan-500/10 border border-cyan-500/20 shadow-sm'
+                    ? 'text-cyan-300 font-semibold bg-cyan-500/10 border border-cyan-500/20'
                     : 'text-slate-400 hover:text-white hover:bg-white/[0.04]'
                 }`}
               >
@@ -140,105 +156,143 @@ export const Header: React.FC<HeaderProps> = ({
           })}
         </nav>
 
-        {/* Right: Quick Action Controls */}
+        {/* Zone 3: Refined Action Controls (Max 3 clean icons, zero clutter) */}
         <div className="flex items-center gap-1.5 sm:gap-2">
-          {/* AI Assistant Quick Pill / Button */}
+          {/* 1. Zenia AI Assistant Button */}
           <button
             onClick={onOpenAI}
-            className="flex items-center gap-1.5 px-2.5 sm:px-3 py-1.5 rounded-full bg-gradient-to-r from-purple-500/20 via-pink-500/20 to-purple-500/20 border border-purple-500/40 text-purple-200 hover:text-white text-xs font-semibold shadow-sm transition-all active:scale-95 group"
-            title="Open Zenia AI Assistant"
+            className="flex items-center gap-1.5 px-2.5 py-1.5 rounded-xl bg-purple-500/10 hover:bg-purple-500/20 border border-purple-500/20 text-purple-200 text-xs font-semibold transition-all active:scale-95 group"
+            title="Zenia AI Assistant"
           >
             <Sparkles className="w-3.5 h-3.5 text-purple-400 group-hover:rotate-12 transition-transform" />
-            <span className="text-[11px] sm:text-xs">AI</span>
+            <span className="text-xs">AI</span>
           </button>
 
-          {/* Desktop Only: Preview Mode Toggle */}
-          <button
-            onClick={onToggleFrameMode}
-            className={`p-2 rounded-xl border transition-all text-xs hidden md:flex items-center gap-1.5 ${
-              !isFrameMode
-                ? 'bg-cyan-500/20 border-cyan-400/40 text-cyan-300 shadow-sm'
-                : 'bg-white/5 border-white/10 text-slate-400 hover:text-white'
-            }`}
-            title={!isFrameMode ? 'Full Screen Web View (Active)' : 'Switch to Full Screen Web View'}
-          >
-            {!isFrameMode ? <Monitor className="w-4 h-4 text-cyan-400" /> : <Smartphone className="w-4 h-4" />}
-            <span className="text-[11px] font-medium hidden lg:inline">
-              {!isFrameMode ? 'Web View' : 'Mobile View'}
-            </span>
-          </button>
-
-          {/* Super Admin Control Panel Button */}
-          <button
-            onClick={onOpenAdmin}
-            className="flex items-center gap-1.5 px-2.5 sm:px-3 py-1.5 rounded-full bg-cyan-500/15 hover:bg-cyan-500/25 border border-cyan-500/40 text-cyan-300 hover:text-white text-xs font-bold shadow-sm transition-all active:scale-95"
-            title="Super Admin Panel (Usimamizi wa Mfumo)"
-          >
-            <ShieldCheck className="w-3.5 h-3.5 text-cyan-400" />
-            <span className="hidden sm:inline">Admin</span>
-          </button>
-
-          {/* Night Mode & Light Mode Toggle */}
-          <button
-            onClick={toggleTheme}
-            className={`p-2 rounded-xl border transition-all text-xs flex items-center gap-1.5 active:scale-95 ${
-              isDark
-                ? 'bg-indigo-500/15 border-indigo-500/30 text-indigo-300 hover:text-white hover:bg-indigo-500/25'
-                : 'bg-amber-500/20 border-amber-400/40 text-amber-700 hover:text-amber-900 hover:bg-amber-500/30 shadow-sm'
-            }`}
-            title={isDark ? 'Badili kwenda Light Mode (Mchana ☀️)' : 'Badili kwenda Night Mode (Usiku 🌙)'}
-          >
-            {isDark ? (
-              <>
-                <Moon className="w-4 h-4 text-indigo-400" />
-                <span className="text-[11px] font-bold hidden sm:inline">Night</span>
-              </>
-            ) : (
-              <>
-                <Sun className="w-4 h-4 text-amber-500 fill-amber-500" />
-                <span className="text-[11px] font-bold hidden sm:inline">Light</span>
-              </>
-            )}
-          </button>
-
-          {/* Notifications Bell */}
+          {/* 2. Notifications Bell with subtle counter */}
           <button
             onClick={onOpenNotifications}
-            className="relative p-2 rounded-xl bg-white/5 hover:bg-white/10 border border-white/5 text-slate-300 transition-colors active:scale-95"
-            title="Notifications"
+            className="relative p-2 rounded-xl bg-white/5 hover:bg-white/10 border border-white/5 text-slate-300 hover:text-white transition-colors active:scale-95"
+            title="Taarifa (Notifications)"
+            aria-label="Notifications"
           >
             <Bell className="w-4 h-4" />
             {unreadNotificationsCount > 0 && (
-              <span className="absolute -top-1 -right-1 w-4 h-4 rounded-full bg-rose-500 text-[10px] font-bold text-white flex items-center justify-center animate-pulse">
-                {unreadNotificationsCount}
+              <span className="absolute -top-1 -right-1 min-w-[16px] h-4 px-1 rounded-full bg-rose-500 text-[10px] font-bold text-white flex items-center justify-center">
+                {unreadNotificationsCount > 9 ? '9+' : unreadNotificationsCount}
               </span>
             )}
           </button>
 
-          {/* User Profile Avatar with SafeImage */}
-          <button
-            onClick={() => onSelectTab('profile')}
-            className={`flex items-center gap-1.5 p-1 pl-1 pr-2 rounded-2xl border transition-all active:scale-95 ${
-              activeTab === 'profile'
-                ? 'bg-cyan-500/20 border-cyan-400/50 ring-2 ring-cyan-500/30'
-                : 'bg-white/5 border-white/10 hover:border-white/20'
-            }`}
-            title="Profile & Services"
-          >
-            <div className="relative">
-              <SafeImage
-                src={currentUser.photoURL}
-                fallbackText={currentUser.displayName}
-                fallbackGradient="from-cyan-700 to-purple-800"
-                alt={currentUser.displayName}
-                className="w-7 h-7 aspect-square rounded-[10px] object-cover ring-2 ring-purple-500/50"
-              />
-              <span className="absolute -bottom-0.5 -right-0.5 w-2.5 h-2.5 rounded-full bg-emerald-500 ring-2 ring-[#080B14]" />
-            </div>
-            <span className="text-xs font-semibold text-slate-200 hidden sm:block">
-              {currentUser.displayName.split(' ')[0]}
-            </span>
-          </button>
+          {/* 3. Consolidated Profile & App Settings Dropdown Menu */}
+          <div className="relative" ref={menuRef}>
+            {currentUser ? (
+              <button
+                onClick={() => setIsMenuOpen(!isMenuOpen)}
+                className={`flex items-center gap-1.5 p-1 pl-1 pr-1.5 rounded-xl border transition-all active:scale-95 ${
+                  isMenuOpen
+                    ? 'bg-cyan-500/15 border-cyan-400/40'
+                    : 'bg-white/5 border-white/10 hover:border-white/20'
+                }`}
+                title="Menyu ya Mipangilio na Wasifu"
+                aria-label="User menu"
+              >
+                <div className="relative">
+                  <SafeImage
+                    src={currentUser.photoURL}
+                    fallbackText={currentUser.displayName}
+                    fallbackGradient="from-cyan-700 to-purple-800"
+                    alt={currentUser.displayName}
+                    className="w-6 h-6 rounded-lg object-cover"
+                  />
+                  <span className="absolute -bottom-0.5 -right-0.5 w-2 h-2 rounded-full bg-emerald-500 ring-2 ring-[#070A12]" />
+                </div>
+                <MoreVertical className="w-3.5 h-3.5 text-slate-400" />
+              </button>
+            ) : (
+              <button
+                onClick={onOpenAuth}
+                className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-cyan-500 hover:bg-cyan-400 text-slate-950 font-bold text-xs transition-all active:scale-95 shadow-sm"
+                title="Ingia kwenye Akaunti"
+              >
+                <LogIn className="w-3.5 h-3.5 text-slate-950" />
+                <span>Ingia</span>
+              </button>
+            )}
+
+            {/* Elegant Dropdown Menu */}
+            {isMenuOpen && (
+              <div className="absolute right-0 top-full mt-2 w-56 bg-[#0E1324] border border-white/10 rounded-2xl p-1.5 shadow-2xl z-50 animate-in fade-in zoom-in-95 duration-150 backdrop-blur-xl">
+                {currentUser && (
+                  <div className="px-3 py-2 border-b border-white/5 mb-1">
+                    <p className="text-xs font-bold text-white truncate">{currentUser.displayName}</p>
+                    <p className="text-[10px] text-slate-400 truncate">@{currentUser.username}</p>
+                  </div>
+                )}
+
+                <button
+                  onClick={() => {
+                    setIsMenuOpen(false);
+                    onSelectTab('profile');
+                  }}
+                  className="w-full flex items-center gap-2.5 px-3 py-2 rounded-xl text-xs text-slate-200 hover:text-white hover:bg-white/5 transition-colors text-left"
+                >
+                  <User className="w-3.5 h-3.5 text-cyan-400" />
+                  <span>Wasifu Wangu (Profile)</span>
+                </button>
+
+                <button
+                  onClick={() => {
+                    setIsMenuOpen(false);
+                    toggleTheme();
+                  }}
+                  className="w-full flex items-center justify-between px-3 py-2 rounded-xl text-xs text-slate-200 hover:text-white hover:bg-white/5 transition-colors text-left"
+                >
+                  <div className="flex items-center gap-2.5">
+                    {isDark ? (
+                      <Moon className="w-3.5 h-3.5 text-indigo-400" />
+                    ) : (
+                      <Sun className="w-3.5 h-3.5 text-amber-400" />
+                    )}
+                    <span>Mandhari ({isDark ? 'Usiku' : 'Mchana'})</span>
+                  </div>
+                  <span className="text-[10px] font-semibold text-slate-400">
+                    {isDark ? '🌙' : '☀️'}
+                  </span>
+                </button>
+
+                <button
+                  onClick={() => {
+                    setIsMenuOpen(false);
+                    onToggleFrameMode();
+                  }}
+                  className="w-full flex items-center justify-between px-3 py-2 rounded-xl text-xs text-slate-200 hover:text-white hover:bg-white/5 transition-colors text-left"
+                >
+                  <div className="flex items-center gap-2.5">
+                    {!isFrameMode ? (
+                      <Smartphone className="w-3.5 h-3.5 text-cyan-400" />
+                    ) : (
+                      <Monitor className="w-3.5 h-3.5 text-cyan-400" />
+                    )}
+                    <span>Mtazamo ({!isFrameMode ? 'Simu' : 'Web'})</span>
+                  </div>
+                  <span className="text-[10px] text-slate-400">
+                    {!isFrameMode ? 'Mobile' : 'Desktop'}
+                  </span>
+                </button>
+
+                <button
+                  onClick={() => {
+                    setIsMenuOpen(false);
+                    onOpenAdmin();
+                  }}
+                  className="w-full flex items-center gap-2.5 px-3 py-2 rounded-xl text-xs text-slate-200 hover:text-white hover:bg-white/5 transition-colors text-left"
+                >
+                  <ShieldCheck className="w-3.5 h-3.5 text-emerald-400" />
+                  <span>Usimamizi wa Mfumo (Admin)</span>
+                </button>
+              </div>
+            )}
+          </div>
         </div>
       </div>
     </header>

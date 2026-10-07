@@ -58,6 +58,7 @@ export const StatusStoryViewerModal: React.FC<StatusStoryViewerModalProps> = ({
 
   // Poll voting inside story
   const [votedOption, setVotedOption] = useState<string | null>(null);
+  const [copiedToast, setCopiedToast] = useState(false);
 
   // Submodals
   const [isFoodOrderOpen, setIsFoodOrderOpen] = useState(false);
@@ -269,11 +270,12 @@ export const StatusStoryViewerModal: React.FC<StatusStoryViewerModalProps> = ({
               </div>
             </div>
 
-            <div className="flex items-center gap-1.5">
+            <div className="flex items-center gap-1.5 relative">
               <button
                 onClick={() => {
                   navigator.clipboard?.writeText(window.location.href);
-                  alert('Kiungo cha status kimenakiliwa!');
+                  setCopiedToast(true);
+                  setTimeout(() => setCopiedToast(false), 2000);
                 }}
                 className="p-2 rounded-full bg-black/40 text-white hover:bg-black/60 transition-colors"
                 title="Share"
@@ -286,6 +288,13 @@ export const StatusStoryViewerModal: React.FC<StatusStoryViewerModalProps> = ({
               >
                 <X className="w-5 h-5" />
               </button>
+
+              {/* In-UI Copy Feedback Toast */}
+              {copiedToast && (
+                <div className="absolute right-0 -bottom-8 px-2.5 py-1 rounded-lg bg-emerald-500 text-slate-950 font-bold text-[11px] shadow-lg animate-in fade-in slide-in-from-top-1 whitespace-nowrap z-50">
+                  Kiungo kimenakiliwa! ✓
+                </div>
+              )}
             </div>
           </div>
         </div>

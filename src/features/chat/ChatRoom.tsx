@@ -101,90 +101,100 @@ export const ChatRoom: React.FC<ChatRoomProps> = ({
   const name = otherUser?.displayName || (conversation.isGroup ? conversation.groupName || 'Chat' : 'Fresh kk');
   const avatar = otherUser?.photoURL || freshKkAvatar;
 
-  const [messages, setMessages] = useState<ChatMessage[]>([
-    {
-      id: 'm1',
-      conversationId: conversation.id,
-      senderId: otherUserId || 'user_fresh_kk',
-      senderName: name,
-      text: 'Habari kiongozi! Mzigo uko tayari kutumwa 👊',
-      messageType: 'text',
-      createdAt: '12:20 PM',
-      reactions: { '❤️': ['current_user_id'] },
-    },
-    {
-      id: 'm_audio_1',
-      conversationId: conversation.id,
-      senderId: otherUserId || 'user_fresh_kk',
-      senderName: name,
-      text: 'Ujumbe wa sauti (Voice Note)',
-      messageType: 'audio',
-      audioDuration: '0:18',
-      transcription: 'Habari kiongozi! Mzigo wako umeshapakiwa na unakaribia kufika Dar es Salaam. Nithibitishie anuani ya kupokelea.',
-      createdAt: '12:22 PM',
-    },
-    {
-      id: 'm_poll_1',
-      conversationId: conversation.id,
-      senderId: otherUserId || 'user_fresh_kk',
-      senderName: name,
-      text: 'Kura ya Maoni: Mzigo uletwe wapi?',
-      messageType: 'poll',
-      pollDetails: {
-        id: 'poll_1',
-        question: 'Mzigo uletwe wapi kiongozi?',
-        options: [
-          { id: 'opt_1', text: 'Kariakoo Msimbazi', votes: ['user_fresh_kk'] },
-          { id: 'opt_2', text: 'Posta Mpya', votes: [] },
-          { id: 'opt_3', text: 'Sinza Palestina', votes: [] },
-        ],
-        totalVotes: 1,
-        isClosed: false,
-      },
-      createdAt: '12:23 PM',
-    },
-    {
-      id: 'm_view_once_1',
-      conversationId: conversation.id,
-      senderId: otherUserId || 'user_fresh_kk',
-      senderName: name,
-      text: 'Picha ya siri ya mzigo kabla ya kufungwa 🔒',
-      messageType: 'view_once_media',
-      isViewOnce: true,
-      isViewedOnce: false,
-      mediaUrl: '/src/assets/images/wireless_earbuds_1790280984496.jpg',
-      createdAt: '12:24 PM',
-    },
-    {
-      id: 'm_tip_1',
-      conversationId: conversation.id,
-      senderId: otherUserId || 'user_fresh_kk',
-      senderName: name,
-      text: 'Pesa ya chai / Zawadi',
-      messageType: 'tip_gift',
-      tipDetails: {
-        id: 'tip_demo',
-        amount: 10000,
-        currency: 'TZS',
-        note: 'Pesa ya chai / Ahsante kwa uaminifu wako! ☕🎁',
-        senderName: name,
-        receiverName: 'You',
-        isOpened: false,
-      },
-      createdAt: '12:25 PM',
-    },
-    {
-      id: 'm_video_note_1',
-      conversationId: conversation.id,
-      senderId: otherUserId || 'user_fresh_kk',
-      senderName: name,
-      text: 'Ujumbe wa Video ya Duara (Round Cam)',
-      messageType: 'video_note',
-      mediaUrl: '/src/assets/images/wireless_earbuds_1790280984496.jpg',
-      audioDuration: '0:12',
-      createdAt: '12:26 PM',
-    },
-  ]);
+  const [messages, setMessages] = useState<ChatMessage[]>(() => {
+    try {
+      const cached = localStorage.getItem(`zenia_msgs_${conversation.id}`);
+      if (cached) return JSON.parse(cached);
+    } catch (_) {}
+
+    if (conversation.id === 'conv_fresh_kk') {
+      return [
+        {
+          id: 'm1',
+          conversationId: conversation.id,
+          senderId: otherUserId || 'user_fresh_kk',
+          senderName: name,
+          text: 'Habari kiongozi! Mzigo uko tayari kutumwa 👊',
+          messageType: 'text',
+          createdAt: '12:20 PM',
+          reactions: { '❤️': ['current_user_id'] },
+        },
+        {
+          id: 'm_audio_1',
+          conversationId: conversation.id,
+          senderId: otherUserId || 'user_fresh_kk',
+          senderName: name,
+          text: 'Ujumbe wa sauti (Voice Note)',
+          messageType: 'audio',
+          audioDuration: '0:18',
+          transcription: 'Habari kiongozi! Mzigo wako umeshapakiwa na unakaribia kufika Dar es Salaam. Nithibitishie anuani ya kupokelea.',
+          createdAt: '12:22 PM',
+        },
+        {
+          id: 'm_poll_1',
+          conversationId: conversation.id,
+          senderId: otherUserId || 'user_fresh_kk',
+          senderName: name,
+          text: 'Kura ya Maoni: Mzigo uletwe wapi?',
+          messageType: 'poll',
+          pollDetails: {
+            id: 'poll_1',
+            question: 'Mzigo uletwe wapi kiongozi?',
+            options: [
+              { id: 'opt_1', text: 'Kariakoo Msimbazi', votes: ['user_fresh_kk'] },
+              { id: 'opt_2', text: 'Posta Mpya', votes: [] },
+              { id: 'opt_3', text: 'Sinza Palestina', votes: [] },
+            ],
+            totalVotes: 1,
+            isClosed: false,
+          },
+          createdAt: '12:23 PM',
+        },
+        {
+          id: 'm_view_once_1',
+          conversationId: conversation.id,
+          senderId: otherUserId || 'user_fresh_kk',
+          senderName: name,
+          text: 'Picha ya siri ya mzigo kabla ya kufungwa 🔒',
+          messageType: 'view_once_media',
+          isViewOnce: true,
+          isViewedOnce: false,
+          mediaUrl: '/src/assets/images/wireless_earbuds_1790280984496.jpg',
+          createdAt: '12:24 PM',
+        },
+        {
+          id: 'm_tip_1',
+          conversationId: conversation.id,
+          senderId: otherUserId || 'user_fresh_kk',
+          senderName: name,
+          text: 'Pesa ya chai / Zawadi',
+          messageType: 'tip_gift',
+          tipDetails: {
+            id: 'tip_demo',
+            amount: 10000,
+            currency: 'TZS',
+            note: 'Pesa ya chai / Ahsante kwa uaminifu wako! ☕🎁',
+            senderName: name,
+            receiverName: 'You',
+            isOpened: false,
+          },
+          createdAt: '12:25 PM',
+        },
+        {
+          id: 'm_video_note_1',
+          conversationId: conversation.id,
+          senderId: otherUserId || 'user_fresh_kk',
+          senderName: name,
+          text: 'Ujumbe wa Video ya Duara (Round Cam)',
+          messageType: 'video_note',
+          mediaUrl: '/src/assets/images/wireless_earbuds_1790280984496.jpg',
+          audioDuration: '0:12',
+          createdAt: '12:26 PM',
+        },
+      ];
+    }
+    return [];
+  });
 
   const [inputText, setInputText] = useState('');
   const [isContactTyping, setIsContactTyping] = useState(false);
@@ -687,138 +697,200 @@ export const ChatRoom: React.FC<ChatRoomProps> = ({
         </div>
       )}
 
-      {/* Header */}
-      <div className="p-3 bg-[#0D1222]/95 border-b border-white/[0.08] backdrop-blur-xl flex items-center justify-between z-20 shrink-0">
-        <div className="flex items-center gap-2.5 min-w-0">
-          <button
-            onClick={onBack}
-            className="p-1.5 hover:bg-white/10 rounded-xl transition-colors md:hidden text-slate-300 hover:text-white"
-          >
-            <ArrowLeft className="w-5 h-5" />
-          </button>
+      {/* Header (Selection Mode or Standard) */}
+      {isSelectionMode ? (
+        <div className="p-3 bg-[#0D1222]/95 border-b border-cyan-500/30 backdrop-blur-xl flex items-center justify-between z-20 shrink-0 animate-in slide-in-from-top-1">
+          <div className="flex items-center gap-2 min-w-0">
+            <button
+              onClick={() => {
+                setIsSelectionMode(false);
+                setSelectedMsgIds([]);
+              }}
+              className="p-1.5 hover:bg-white/10 rounded-xl transition-colors text-slate-300 hover:text-white"
+              title="Ghairi (Cancel)"
+            >
+              <X className="w-5 h-5" />
+            </button>
+            <span className="text-xs font-bold text-cyan-300 truncate">
+              {selectedMsgIds.length} {selectedMsgIds.length === 1 ? 'ujumbe umechaguliwa' : 'jumbe zimechaguliwa'}
+            </span>
+          </div>
 
-          <div
-            onClick={() => setIsContactInfoOpen(true)}
-            className="flex items-center gap-2.5 cursor-pointer min-w-0 group"
-          >
-            <div className="relative shrink-0">
-              <SafeImage
-                src={avatar}
-                fallbackText={name}
-                fallbackGradient="from-cyan-800 to-indigo-900"
-                alt={name}
-                className="w-10 h-10 aspect-square rounded-[14px] object-cover ring-2 ring-white/10 group-hover:ring-cyan-400/80 transition-all"
-              />
-              <span className="absolute -bottom-0.5 -right-0.5 w-3 h-3 rounded-full bg-emerald-500 ring-2 ring-[#0D1222]" />
-            </div>
+          <div className="flex items-center gap-2 shrink-0">
+            <button
+              type="button"
+              onClick={() => {
+                if (selectedMsgIds.length === messages.length && messages.length > 0) {
+                  setSelectedMsgIds([]);
+                } else {
+                  setSelectedMsgIds(messages.map((m) => m.id));
+                }
+              }}
+              className="px-2.5 py-1.5 rounded-xl bg-white/10 hover:bg-white/15 text-slate-200 text-xs font-semibold active:scale-95 transition-all"
+            >
+              {selectedMsgIds.length === messages.length && messages.length > 0 ? 'Ondoa Zote' : 'Chagua Zote'}
+            </button>
 
-            <div className="min-w-0">
-              <div className="flex items-center gap-1.5">
-                <h3 className="font-bold text-sm text-white truncate group-hover:text-cyan-300 transition-colors">
-                  {name}
-                </h3>
-                {disappearingTimer && (
-                  <span className="px-1.5 py-0.5 rounded text-[9px] font-bold bg-cyan-500/20 text-cyan-300 border border-cyan-500/30">
-                    ⏱️ {disappearingTimer}
-                  </span>
-                )}
-              </div>
-              <p className="text-[11px] text-emerald-400 flex items-center gap-1">
-                <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse" />
-                <span>Online • Direct Chat</span>
-              </p>
-            </div>
+            <button
+              type="button"
+              disabled={selectedMsgIds.length === 0}
+              onClick={() => {
+                if (selectedMsgIds.length === 0) return;
+                const idsToDelete = new Set(selectedMsgIds);
+                const count = idsToDelete.size;
+                setMessages((prev) => prev.filter((m) => !idsToDelete.has(m.id)));
+                idsToDelete.forEach((id) => {
+                  ChatSyncService.deleteMessage(conversation.id, id);
+                });
+                setSelectedMsgIds([]);
+                setIsSelectionMode(false);
+                showToast(`Jumbe ${count} zimefutwa! 🗑️`);
+              }}
+              className={`px-3 py-1.5 rounded-xl text-xs font-bold flex items-center gap-1.5 transition-all active:scale-95 ${
+                selectedMsgIds.length > 0
+                  ? 'bg-rose-600 hover:bg-rose-500 text-white shadow-md shadow-rose-600/30'
+                  : 'bg-white/5 text-slate-500 border border-white/5 cursor-not-allowed'
+              }`}
+              title="Futa jumbe zilizochaguliwa"
+            >
+              <Trash2 className="w-3.5 h-3.5" />
+              <span>Futa ({selectedMsgIds.length})</span>
+            </button>
           </div>
         </div>
+      ) : (
+        <div className="p-3 bg-[#0D1222]/95 border-b border-white/[0.08] backdrop-blur-xl flex items-center justify-between z-20 shrink-0">
+          <div className="flex items-center gap-2.5 min-w-0">
+            <button
+              onClick={onBack}
+              className="p-1.5 hover:bg-white/10 rounded-xl transition-colors md:hidden text-slate-300 hover:text-white"
+            >
+              <ArrowLeft className="w-5 h-5" />
+            </button>
 
-        {/* Header Action Buttons */}
-        <div className="flex items-center gap-1 sm:gap-1.5 text-slate-300">
-          {/* Feature 8: Live Audio Spaces button */}
-          <button
-            onClick={() => setIsAudioSpaceOpen(true)}
-            className="px-2.5 py-1.5 rounded-xl bg-gradient-to-r from-rose-500/20 to-purple-500/20 hover:from-rose-500/30 hover:to-purple-500/30 border border-rose-500/30 text-rose-300 hover:text-white text-xs font-bold flex items-center gap-1.5 shadow-sm active:scale-95 transition-all"
-            title="Chumba cha Sauti cha Moja kwa Moja (X Space)"
-          >
-            <Radio className="w-3.5 h-3.5 text-rose-400 animate-pulse" />
-            <span className="hidden sm:inline">Space</span>
-          </button>
+            <div
+              onClick={() => setIsContactInfoOpen(true)}
+              className="flex items-center gap-2.5 cursor-pointer min-w-0 group"
+            >
+              <div className="relative shrink-0">
+                <SafeImage
+                  src={avatar}
+                  fallbackText={name}
+                  fallbackGradient="from-cyan-800 to-indigo-900"
+                  alt={name}
+                  className="w-10 h-10 aspect-square rounded-[14px] object-cover ring-2 ring-white/10 group-hover:ring-cyan-400/80 transition-all"
+                />
+                <span className="absolute -bottom-0.5 -right-0.5 w-3 h-3 rounded-full bg-emerald-500 ring-2 ring-[#0D1222]" />
+              </div>
 
-          {/* Disappearing Messages Quick Button */}
-          <button
-            onClick={() => setIsDisappearingModalOpen(true)}
-            className={`p-2 rounded-xl transition-all relative ${
-              disappearingTimer
-                ? 'bg-cyan-500/25 text-cyan-300 border border-cyan-500/40'
-                : 'hover:bg-white/5 text-slate-300 hover:text-white'
-            }`}
-            title="Ujumbe Unaojifuta"
-          >
-            <Clock className="w-4 h-4" />
-          </button>
+              <div className="min-w-0">
+                <div className="flex items-center gap-1.5">
+                  <h3 className="font-bold text-sm text-white truncate group-hover:text-cyan-300 transition-colors">
+                    {name}
+                  </h3>
+                  {disappearingTimer && (
+                    <span className="px-1.5 py-0.5 rounded text-[9px] font-bold bg-cyan-500/20 text-cyan-300 border border-cyan-500/30">
+                      ⏱️ {disappearingTimer}
+                    </span>
+                  )}
+                </div>
+                <p className="text-[11px] text-emerald-400 flex items-center gap-1">
+                  <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse" />
+                  <span>Online • Direct Chat</span>
+                </p>
+              </div>
+            </div>
+          </div>
 
-          {/* Voice Call */}
-          <button
-            onClick={() => onStartCall('voice')}
-            className="p-2 hover:bg-white/5 rounded-xl text-slate-200 hover:text-white transition-colors"
-            title="Simu ya Sauti"
-          >
-            <Phone className="w-4 h-4" />
-          </button>
+          {/* Header Action Buttons */}
+          <div className="flex items-center gap-1 sm:gap-1.5 text-slate-300">
+            {/* Feature 8: Live Audio Spaces button */}
+            <button
+              onClick={() => setIsAudioSpaceOpen(true)}
+              className="px-2.5 py-1.5 rounded-xl bg-gradient-to-r from-rose-500/20 to-purple-500/20 hover:from-rose-500/30 hover:to-purple-500/30 border border-rose-500/30 text-rose-300 hover:text-white text-xs font-bold flex items-center gap-1.5 shadow-sm active:scale-95 transition-all"
+              title="Chumba cha Sauti cha Moja kwa Moja (X Space)"
+            >
+              <Radio className="w-3.5 h-3.5 text-rose-400 animate-pulse" />
+              <span className="hidden sm:inline">Space</span>
+            </button>
 
-          {/* Video Call */}
-          <button
-            onClick={() => onStartCall('video')}
-            className="p-2 hover:bg-cyan-500/15 rounded-xl text-cyan-400 transition-colors"
-            title="Simu ya Video"
-          >
-            <Video className="w-4 h-4" />
-          </button>
+            {/* Disappearing Messages Quick Button */}
+            <button
+              onClick={() => setIsDisappearingModalOpen(true)}
+              className={`p-2 rounded-xl transition-all relative ${
+                disappearingTimer
+                  ? 'bg-cyan-500/25 text-cyan-300 border border-cyan-500/40'
+                  : 'hover:bg-white/5 text-slate-300 hover:text-white'
+              }`}
+              title="Ujumbe Unaojifuta"
+            >
+              <Clock className="w-4 h-4" />
+            </button>
 
-          {/* Three Dots More Menu */}
-          <button
-            onClick={() => setIsMoreMenuOpen(!isMoreMenuOpen)}
-            className="p-2 rounded-xl hover:bg-white/5 text-slate-300 hover:text-white"
-          >
-            <MoreVertical className="w-4 h-4" />
-          </button>
+            {/* Voice Call */}
+            <button
+              onClick={() => onStartCall('voice')}
+              className="p-2 hover:bg-white/5 rounded-xl text-slate-200 hover:text-white transition-colors"
+              title="Simu ya Sauti"
+            >
+              <Phone className="w-4 h-4" />
+            </button>
+
+            {/* Video Call */}
+            <button
+              onClick={() => onStartCall('video')}
+              className="p-2 hover:bg-cyan-500/15 rounded-xl text-cyan-400 transition-colors"
+              title="Simu ya Video"
+            >
+              <Video className="w-4 h-4" />
+            </button>
+
+            {/* Three Dots More Menu */}
+            <button
+              onClick={() => setIsMoreMenuOpen(!isMoreMenuOpen)}
+              className="p-2 rounded-xl hover:bg-white/5 text-slate-300 hover:text-white"
+            >
+              <MoreVertical className="w-4 h-4" />
+            </button>
+          </div>
+
+          {/* 3-Dots Dropdown Menu */}
+          <ChatRoomMoreMenu
+            conversation={conversation}
+            messages={messages}
+            isOpen={isMoreMenuOpen}
+            onClose={() => setIsMoreMenuOpen(false)}
+            onOpenSearch={() => setIsSearchOpen(true)}
+            onToggleSelectMode={() => {
+              setIsSelectionMode(true);
+              setSelectedMsgIds([]);
+            }}
+            onMute={(dur) => showToast(dur ? `Taarifa zimezimwa (${dur})` : 'Taarifa zimewashwa')}
+            onToggleFavorite={() => showToast('Imebadilishwa kwenye Vipendwa')}
+            onAddToList={(listName) => showToast(`Orodha: ${listName}`)}
+            onCloseChat={onBack}
+            onStartCall={onStartCall}
+            onBlock={() => showToast('Kizuizi kimesasishwa')}
+            onClearChat={() => {
+              setMessages([]);
+              showToast('Jumbe zote zimefutwa');
+            }}
+            onDeleteChat={() => {
+              if (onDeleteConversation) onDeleteConversation(conversation.id);
+              onBack();
+            }}
+            currentThemeId={currentThemeId}
+            onSelectTheme={(themeId) => setCurrentThemeId(themeId)}
+            disappearingTimer={disappearingTimer}
+            onSetDisappearingTimer={(timer) => setDisappearingTimer(timer)}
+            customLists={customLists}
+            onCreateCustomList={(name) => {
+              if (!customLists.includes(name)) setCustomLists((c) => [...c, name]);
+            }}
+            onShowToast={showToast}
+          />
         </div>
-
-        {/* 3-Dots Dropdown Menu */}
-        <ChatRoomMoreMenu
-          conversation={conversation}
-          messages={messages}
-          isOpen={isMoreMenuOpen}
-          onClose={() => setIsMoreMenuOpen(false)}
-          onOpenSearch={() => setIsSearchOpen(true)}
-          onToggleSelectMode={() => {
-            setIsSelectionMode(true);
-            setSelectedMsgIds([]);
-          }}
-          onMute={(dur) => showToast(dur ? `Taarifa zimezimwa (${dur})` : 'Taarifa zimewashwa')}
-          onToggleFavorite={() => showToast('Imebadilishwa kwenye Vipendwa')}
-          onAddToList={(listName) => showToast(`Orodha: ${listName}`)}
-          onCloseChat={onBack}
-          onStartCall={onStartCall}
-          onBlock={() => showToast('Kizuizi kimesasishwa')}
-          onClearChat={() => {
-            setMessages([]);
-            showToast('Jumbe zote zimefutwa');
-          }}
-          onDeleteChat={() => {
-            if (onDeleteConversation) onDeleteConversation(conversation.id);
-            onBack();
-          }}
-          currentThemeId={currentThemeId}
-          onSelectTheme={(themeId) => setCurrentThemeId(themeId)}
-          disappearingTimer={disappearingTimer}
-          onSetDisappearingTimer={(timer) => setDisappearingTimer(timer)}
-          customLists={customLists}
-          onCreateCustomList={(name) => {
-            if (!customLists.includes(name)) setCustomLists((c) => [...c, name]);
-          }}
-          onShowToast={showToast}
-        />
-      </div>
+      )}
 
       {/* Real-time Multi-User Persona Switcher Banner */}
       <div className="bg-[#0A0E1C] border-b border-white/[0.08] px-3.5 py-1.5 flex items-center justify-between text-xs z-10 shrink-0">
@@ -870,6 +942,40 @@ export const ChatRoom: React.FC<ChatRoomProps> = ({
         className={`flex-1 min-h-0 overflow-y-auto p-4 space-y-3 transition-colors duration-300 overscroll-contain ${activeTheme.wallpaperClass}`}
         style={{ ...activeTheme.wallpaperStyle, WebkitOverflowScrolling: 'touch' }}
       >
+        {messages.length === 0 && (
+          <div className="flex flex-col items-center justify-center h-full min-h-[320px] text-center p-6 max-w-sm mx-auto my-auto animate-in fade-in zoom-in-95 duration-200">
+            <div className="w-16 h-16 rounded-2xl bg-gradient-to-tr from-cyan-500/20 to-blue-500/20 border border-cyan-500/30 flex items-center justify-center mb-3 shadow-lg shadow-cyan-500/10">
+              <SafeImage
+                src={avatar}
+                fallbackText={name}
+                fallbackGradient="from-cyan-800 to-indigo-900"
+                alt={name}
+                className="w-12 h-12 rounded-xl object-cover"
+              />
+            </div>
+            <h3 className="font-bold text-sm text-white mb-1">
+              Mazungumzo na {name}
+            </h3>
+            <p className="text-[11px] text-slate-400 mb-4 leading-relaxed">
+              🔒 Mazungumzo haya yamelindwa na usimbaji fiche (End-to-End Encrypted). Hakuna mtu mwingine anayeweza kusoma jumbe hizi. Tuma ujumbe wako wa kwanza kuanza mazungumzo!
+            </p>
+            <div className="flex flex-wrap items-center justify-center gap-1.5 w-full">
+              {['Habari yako! 👋', 'Mambo vipi? ✨', 'Nahitaji maelezo zaidi 💬'].map((chip) => (
+                <button
+                  key={chip}
+                  type="button"
+                  onClick={() => {
+                    setInputText(chip);
+                  }}
+                  className="px-3 py-1.5 rounded-full bg-white/[0.06] hover:bg-cyan-500/20 border border-white/10 hover:border-cyan-500/40 text-xs text-cyan-200 transition-all active:scale-95"
+                >
+                  {chip}
+                </button>
+              ))}
+            </div>
+          </div>
+        )}
+
         {messages.map((msg) => {
           const isMe = msg.senderId === currentUser.id;
           const isSwipingThis = swipingMessageId === msg.id;
@@ -909,8 +1015,39 @@ export const ChatRoom: React.FC<ChatRoomProps> = ({
                 />
               )}
 
+              {/* Message Selection Checkbox */}
+              {isSelectionMode && (
+                <div
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    setSelectedMsgIds((prev) =>
+                      prev.includes(msg.id) ? prev.filter((id) => id !== msg.id) : [...prev, msg.id]
+                    );
+                  }}
+                  className="shrink-0 self-center cursor-pointer mr-1.5"
+                >
+                  <div
+                    className={`w-5 h-5 rounded-lg flex items-center justify-center border transition-all ${
+                      selectedMsgIds.includes(msg.id)
+                        ? 'bg-cyan-500 border-cyan-400 text-slate-950 shadow-sm shadow-cyan-500/20'
+                        : 'bg-white/5 border-white/20 text-transparent'
+                    }`}
+                  >
+                    <Check className="w-3.5 h-3.5 stroke-[3]" />
+                  </div>
+                </div>
+              )}
+
               {/* Message Bubble */}
               <div
+                onClick={(e) => {
+                  if (isSelectionMode) {
+                    e.stopPropagation();
+                    setSelectedMsgIds((prev) =>
+                      prev.includes(msg.id) ? prev.filter((id) => id !== msg.id) : [...prev, msg.id]
+                    );
+                  }
+                }}
                 onTouchStart={(e) => handleMessageTouchStart(msg, e)}
                 onTouchMove={handleMessageTouchMove}
                 onTouchEnd={() => handleMessageTouchEnd(msg)}
@@ -923,7 +1060,9 @@ export const ChatRoom: React.FC<ChatRoomProps> = ({
                   });
                 }}
                 className={`relative max-w-[85%] sm:max-w-[75%] rounded-2xl p-3 text-xs leading-relaxed transition-all cursor-pointer ${
-                  isMe
+                  selectedMsgIds.includes(msg.id) && isSelectionMode
+                    ? 'ring-2 ring-cyan-400 bg-cyan-950/40'
+                    : isMe
                     ? `${activeTheme.userBubbleClass} rounded-br-none`
                     : `${activeTheme.otherBubbleClass} rounded-bl-none`
                 }`}

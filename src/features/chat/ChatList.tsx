@@ -18,6 +18,10 @@ import {
   ShieldCheck,
   UserPlus,
   MessageSquarePlus,
+  Sparkles,
+  Trash2,
+  CheckSquare,
+  AlertTriangle,
 } from 'lucide-react';
 import {
   collection,
@@ -39,6 +43,8 @@ import freshKkAvatar from '../../assets/images/fresh_kk_avatar_1791078365294.jpg
 
 interface ChatListProps {
   currentUser: UserProfile;
+  conversations?: Conversation[];
+  onSetConversations?: (convs: Conversation[]) => void;
   activeConversationId?: string;
   onSelectConversation: (conv: Conversation) => void;
   onStartNewChat: () => void;
@@ -51,6 +57,7 @@ interface ChatListProps {
   onOpenProfile?: () => void;
   onUpdateConversation?: (conv: Conversation) => void;
   onDeleteConversation?: (convId: string) => void;
+  onDeleteAllConversations?: () => void;
   onOpenCreateStatus?: () => void;
   customStatuses?: StatusItem[];
   onStartChatWithBusiness?: (
@@ -63,6 +70,8 @@ interface ChatListProps {
 
 export const ChatList: React.FC<ChatListProps> = ({
   currentUser,
+  conversations: propConversations,
+  onSetConversations,
   activeConversationId,
   onSelectConversation,
   onStartNewChat,
@@ -70,11 +79,56 @@ export const ChatList: React.FC<ChatListProps> = ({
   onOpenProfile,
   onUpdateConversation,
   onDeleteConversation,
+  onDeleteAllConversations,
   onOpenCreateStatus,
   customStatuses,
   onStartChatWithBusiness,
 }) => {
-  const [conversations, setConversations] = useState<Conversation[]>(INITIAL_CONVERSATIONS);
+  const [internalConversations, setInternalConversations] = useState<Conversation[]>(() => {
+    if (!currentUser || currentUser.id === 'guest_user') return [];
+    try {
+      const saved = localStorage.getItem(`zenia_user_conversations_${currentUser.id}`);
+      if (saved) return JSON.parse(saved);
+    } catch (_) {}
+    return [];
+  });
+
+  const conversations = propConversations ?? internalConversations;
+  const setConversations = (action: React.SetStateAction<Conversation[]>) => {
+    if (typeof action === 'function') {
+      const updated = action(conversations);
+      if (onSetConversations) {
+        onSetConversations(updated);
+      } else {
+        setInternalConversations(updated);
+      }
+      try {
+        localStorage.setItem(`zenia_user_conversations_${currentUser.id}`, JSON.stringify(updated));
+      } catch (_) {}
+    } else {
+      if (onSetConversations) {
+        onSetConversations(action);
+      } else {
+        setInternalConversations(action);
+      }
+      try {
+        localStorage.setItem(`zenia_user_conversations_${currentUser.id}`, JSON.stringify(action));
+      } catch (_) {}
+    }
+  };
+
+  // Reload when currentUser changes if using internal state
+  useEffect(() => {
+    if (!propConversations && currentUser && currentUser.id !== 'guest_user') {
+      try {
+        const saved = localStorage.getItem(`zenia_user_conversations_${currentUser.id}`);
+        setInternalConversations(saved ? JSON.parse(saved) : []);
+      } catch (_) {
+        setInternalConversations([]);
+      }
+    }
+  }, [currentUser?.id, propConversations]);
+
   const [searchQuery, setSearchQuery] = useState('');
   const [activeFilter, setActiveFilter] = useState<'all' | 'unread' | 'favorites' | 'groups' | 'archived' | 'locked'>('all');
   const [customLists, setCustomLists] = useState<string[]>(['Family', 'Work', 'VIP', 'Close Friends']);
@@ -113,6 +167,33 @@ export const ChatList: React.FC<ChatListProps> = ({
     isOpen: false,
     conversation: null,
   });
+
+  // Multi-Selection Mode State (for deleting one, multiple, or all chats at once)
+  const [isSelectionMode, setIsSelectionMode] = useState(false);
+  const [selectedConversationIds, setSelectedConversationIds] = useState<Set<string>>(new Set());
+
+  // Options Menu dropdown state in the search row
+  const [isListMenuOpen, setIsListMenuOpen] = useState(false);
+  const listMenuRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    const handleOutsideClick = (event: MouseEvent) => {
+      if (listMenuRef.current && !listMenuRef.current.contains(event.target as Node)) {
+        setIsListMenuOpen(false);
+      }
+    };
+    if (isListMenuOpen) {
+      document.addEventListener('mousedown', handleOutsideClick);
+    }
+    return () => {
+      document.removeEventListener('mousedown', handleOutsideClick);
+    };
+  }, [isListMenuOpen]);
+
+  // Delete Confirmation Modals States
+  const [confirmDeleteSingle, setConfirmDeleteSingle] = useState<Conversation | null>(null);
+  const [confirmDeleteAll, setConfirmDeleteAll] = useState(false);
+  const [confirmDeleteSelected, setConfirmDeleteSelected] = useState(false);
 
   const handleUpdateAvatar = (convId: string, newAvatarUrl: string) => {
     setConversations((prev) =>
@@ -411,7 +492,77 @@ export const ChatList: React.FC<ChatListProps> = ({
     if (onDeleteConversation) {
       onDeleteConversation(conv.id);
     }
+    try {
+      localStorage.removeItem(`zenia_msgs_${conv.id}`);
+    } catch (_) {}
+    setSelectedConversationIds((prev) => {
+      const next = new Set(prev);
+      next.delete(conv.id);
+      return next;
+    });
     showToast('Mazungumzo yamefutwa kabisa (Chat deleted)');
+  };
+
+  const toggleSelectConversation = (convId: string) => {
+    setSelectedConversationIds((prev) => {
+      const next = new Set(prev);
+      if (next.has(convId)) next.delete(convId);
+      else next.add(convId);
+      return next;
+    });
+  };
+
+  const handleSelectAllConversations = () => {
+    const allFilteredIds = filteredConversations.map((c) => c.id);
+    if (selectedConversationIds.size === allFilteredIds.length && allFilteredIds.length > 0) {
+      setSelectedConversationIds(new Set());
+    } else {
+      setSelectedConversationIds(new Set(allFilteredIds));
+    }
+  };
+
+  const handleDeleteSelectedConversations = () => {
+    if (selectedConversationIds.size === 0) return;
+    const idsToDelete = new Set(selectedConversationIds);
+    const count = idsToDelete.size;
+
+    setConversations((prev) => prev.filter((c) => !idsToDelete.has(c.id)));
+    idsToDelete.forEach((id) => {
+      if (onDeleteConversation) {
+        onDeleteConversation(id);
+      }
+      try {
+        localStorage.removeItem(`zenia_msgs_${id}`);
+      } catch (_) {}
+    });
+
+    setSelectedConversationIds(new Set());
+    setIsSelectionMode(false);
+    setConfirmDeleteSelected(false);
+    showToast(`Mazungumzo ${count} yamefutwa kabisa! 🗑️`);
+  };
+
+  const handleDeleteAllChats = () => {
+    const total = conversations.length;
+    setConversations([]);
+    if (onDeleteAllConversations) {
+      onDeleteAllConversations();
+    } else {
+      try {
+        localStorage.removeItem(`zenia_user_conversations_${currentUser.id}`);
+      } catch (_) {}
+    }
+    conversations.forEach((c) => {
+      if (onDeleteConversation) onDeleteConversation(c.id);
+      try {
+        localStorage.removeItem(`zenia_msgs_${c.id}`);
+      } catch (_) {}
+    });
+
+    setSelectedConversationIds(new Set());
+    setIsSelectionMode(false);
+    setConfirmDeleteAll(false);
+    showToast(`Mazungumzo yote ${total > 0 ? `(${total}) ` : ''}yamefutwa kwapamoja! 🗑️`);
   };
 
   const handleExitGroup = (conv: Conversation) => {
@@ -586,108 +737,199 @@ export const ChatList: React.FC<ChatListProps> = ({
         }}
       />
 
-      {/* Search Input Bar, Dedicated "Tafuta Mtu" Button & PIN Security Key */}
-      <div className="px-3.5 pt-2 pb-1.5 flex items-center gap-2">
-        <div className="relative flex-1 flex items-center">
-          <Search className="w-4 h-4 text-slate-400 absolute left-3 pointer-events-none" />
-          <input
-            type="text"
-            value={searchQuery}
-            onChange={(e) => setSearchQuery(e.target.value)}
-            placeholder="Tafuta mtu (@username), marafiki, au chats..."
-            className="w-full bg-[#0E1324] border border-white/[0.08] focus:border-cyan-400/80 rounded-xl pl-9 pr-8 py-2 text-xs text-white placeholder-slate-400 focus:outline-none focus:ring-1 focus:ring-cyan-400/40 transition-all shadow-inner"
-          />
-          {searchQuery && (
+      {/* Search Input Bar or Selection Mode Header */}
+      {isSelectionMode ? (
+        <div className="px-3.5 pt-2 pb-2 flex items-center justify-between gap-2 bg-[#0E1324] border-b border-cyan-500/30 animate-in slide-in-from-top-1">
+          <div className="flex items-center gap-2 min-w-0">
             <button
-              onClick={() => setSearchQuery('')}
-              className="absolute right-2.5 p-1 rounded-full text-slate-400 hover:text-white"
-            >
-              <X className="w-3.5 h-3.5" />
-            </button>
-          )}
-        </div>
-
-        {/* Dedicated "Tafuta Mtu" (Find People) Button */}
-        <button
-          onClick={onStartNewChat}
-          className="px-2.5 py-2 rounded-xl bg-cyan-500/15 border border-cyan-500/40 hover:bg-cyan-500/25 text-cyan-300 font-bold transition-all shrink-0 active:scale-95 shadow-sm flex items-center gap-1.5 text-xs"
-          title="Tafuta watu na anza mazungumzo mapya"
-        >
-          <UserPlus className="w-4 h-4 text-cyan-400" />
-          <span className="hidden sm:inline text-[11px]">Tafuta Mtu</span>
-        </button>
-
-        {/* PIN Security Key Button */}
-        <button
-          onClick={() => {
-            const savedPin = localStorage.getItem('zenia_chat_security_pin');
-            setPinModalState({
-              isOpen: true,
-              mode: savedPin ? 'change' : 'create',
-              chatTitle: 'Usalama wa Meseji (Chat Security)',
-            });
-          }}
-          className="p-2 rounded-xl bg-[#0E1324] border border-white/[0.08] hover:border-cyan-400/50 hover:bg-cyan-500/10 text-slate-400 hover:text-cyan-400 transition-all shrink-0 active:scale-95 shadow-sm"
-          title="Badili au Weka PIN ya Mazungumzo (Set/Change PIN)"
-        >
-          <KeyRound className="w-4 h-4" />
-        </button>
-      </div>
-
-      {/* Filter Tabs (All, Unread, Favorites, Groups, Locked, Archived) */}
-      <div className="px-3.5 pb-2 flex items-center gap-1.5 overflow-x-auto no-scrollbar">
-        {[
-          { id: 'all', label: 'All' },
-          { id: 'unread', label: 'Unread' },
-          { id: 'favorites', label: 'Favorites' },
-          { id: 'groups', label: 'Groups' },
-          ...(lockedCount > 0
-            ? [{ id: 'locked', label: `🔒 Locked (${lockedCount})` }]
-            : []),
-          ...(archivedCount > 0
-            ? [{ id: 'archived', label: `Archived (${archivedCount})` }]
-            : []),
-        ].map((pill) => {
-          const isActive = activeFilter === pill.id && !activeListFilter;
-          return (
-            <button
-              key={pill.id}
               onClick={() => {
-                setActiveListFilter(null);
-                setActiveFilter(pill.id as any);
+                setIsSelectionMode(false);
+                setSelectedConversationIds(new Set());
               }}
-              className={`px-3.5 py-1.5 rounded-full text-xs font-semibold transition-all shrink-0 active:scale-95 ${
-                isActive
-                  ? 'bg-gradient-to-r from-cyan-400 to-blue-500 text-slate-950 font-bold shadow-md shadow-cyan-500/25'
-                  : 'bg-[#121626] border border-white/[0.06] text-slate-300 hover:text-white'
+              className="p-1.5 rounded-xl hover:bg-white/10 text-slate-400 hover:text-white transition-colors"
+              title="Ghairi uchaguzi (Cancel)"
+            >
+              <X className="w-4 h-4" />
+            </button>
+            <span className="text-xs font-bold text-white truncate">
+              {selectedConversationIds.size}{' '}
+              {selectedConversationIds.size === 1 ? 'limechaguliwa' : 'yamechaguliwa'}
+            </span>
+          </div>
+
+          <div className="flex items-center gap-1.5 shrink-0">
+            <button
+              onClick={handleSelectAllConversations}
+              className="px-2.5 py-1.5 rounded-xl bg-white/10 hover:bg-white/15 text-slate-200 text-xs font-medium transition-all active:scale-95"
+            >
+              {selectedConversationIds.size === filteredConversations.length && filteredConversations.length > 0
+                ? 'Ondoa Zote'
+                : 'Chagua Zote'}
+            </button>
+
+            <button
+              disabled={selectedConversationIds.size === 0}
+              onClick={() => setConfirmDeleteSelected(true)}
+              className={`px-3 py-1.5 rounded-xl font-bold text-xs flex items-center gap-1.5 transition-all active:scale-95 ${
+                selectedConversationIds.size > 0
+                  ? 'bg-rose-600 hover:bg-rose-500 text-white shadow-sm'
+                  : 'bg-white/5 text-slate-500 cursor-not-allowed'
               }`}
             >
-              {pill.label}
+              <Trash2 className="w-3.5 h-3.5" />
+              <span>Futa ({selectedConversationIds.size})</span>
+            </button>
+          </div>
+        </div>
+      ) : (
+        <div className="px-3.5 pt-2 pb-1.5 flex items-center gap-2">
+          {/* Wide & clean search bar */}
+          <div className="relative flex-1 flex items-center">
+            <Search className="w-4 h-4 text-slate-400 absolute left-3 pointer-events-none" />
+            <input
+              type="text"
+              value={searchQuery}
+              onChange={(e) => setSearchQuery(e.target.value)}
+              placeholder="Tafuta mazungumzo au watu..."
+              className="w-full bg-white/[0.04] border border-white/[0.08] focus:border-cyan-400/60 rounded-xl pl-9 pr-8 py-2 text-xs text-white placeholder-slate-400 focus:outline-none transition-all"
+            />
+            {searchQuery && (
+              <button
+                onClick={() => setSearchQuery('')}
+                className="absolute right-2.5 p-1 rounded-full text-slate-400 hover:text-white"
+                title="Futa utafutaji"
+              >
+                <X className="w-3.5 h-3.5" />
+              </button>
+            )}
+          </div>
+
+          {/* Consolidated Chat Management Menu Button */}
+          <div className="relative shrink-0" ref={listMenuRef}>
+            <button
+              onClick={() => setIsListMenuOpen(!isListMenuOpen)}
+              className={`p-2 rounded-xl border transition-all active:scale-95 ${
+                isListMenuOpen
+                  ? 'bg-white/10 border-white/20 text-white'
+                  : 'bg-white/[0.04] border-white/[0.08] hover:bg-white/[0.08] text-slate-400 hover:text-white'
+              }`}
+              title="Chaguzi za mazungumzo"
+              aria-label="Chat options"
+            >
+              <MoreVertical className="w-4 h-4" />
+            </button>
+
+            {/* Dropdown Menu */}
+            {isListMenuOpen && (
+              <div className="absolute right-0 top-full mt-2 w-56 bg-[#0E1324] border border-white/10 rounded-2xl p-1.5 shadow-2xl z-50 animate-in fade-in zoom-in-95 duration-150 backdrop-blur-xl">
+                <button
+                  onClick={() => {
+                    setIsListMenuOpen(false);
+                    onStartNewChat();
+                  }}
+                  className="w-full flex items-center gap-2.5 px-3 py-2 rounded-xl text-xs text-slate-200 hover:text-white hover:bg-white/5 transition-colors text-left"
+                >
+                  <UserPlus className="w-3.5 h-3.5 text-cyan-400" />
+                  <span>Tafuta Mtu / Chat Mpya</span>
+                </button>
+
+                {filteredConversations.length > 0 && (
+                  <button
+                    onClick={() => {
+                      setIsListMenuOpen(false);
+                      setIsSelectionMode(true);
+                    }}
+                    className="w-full flex items-center gap-2.5 px-3 py-2 rounded-xl text-xs text-slate-200 hover:text-white hover:bg-white/5 transition-colors text-left"
+                  >
+                    <CheckSquare className="w-3.5 h-3.5 text-cyan-400" />
+                    <span>Chagua Mazungumzo (Select)</span>
+                  </button>
+                )}
+
+                <button
+                  onClick={() => {
+                    setIsListMenuOpen(false);
+                    const savedPin = localStorage.getItem('zenia_chat_security_pin');
+                    setPinModalState({
+                      isOpen: true,
+                      mode: savedPin ? 'change' : 'create',
+                      chatTitle: 'Usalama wa Meseji (Chat Security)',
+                    });
+                  }}
+                  className="w-full flex items-center gap-2.5 px-3 py-2 rounded-xl text-xs text-slate-200 hover:text-white hover:bg-white/5 transition-colors text-left"
+                >
+                  <KeyRound className="w-3.5 h-3.5 text-indigo-400" />
+                  <span>Usalama wa PIN (Lock chats)</span>
+                </button>
+
+                {filteredConversations.length > 0 && (
+                  <button
+                    onClick={() => {
+                      setIsListMenuOpen(false);
+                      setConfirmDeleteAll(true);
+                    }}
+                    className="w-full flex items-center gap-2.5 px-3 py-2 rounded-xl text-xs text-rose-300 hover:text-rose-200 hover:bg-rose-500/10 transition-colors text-left border-t border-white/5 mt-1 pt-2"
+                  >
+                    <Trash2 className="w-3.5 h-3.5 text-rose-400" />
+                    <span>Futa Mazungumzo Yote</span>
+                  </button>
+                )}
+              </div>
+            )}
+          </div>
+        </div>
+      )}
+
+      {/* Filter Tabs - Clean, subtle segmented design adhering to Zero-Pill discipline */}
+      <div className="px-3.5 pb-2 flex items-center gap-1 overflow-x-auto no-scrollbar">
+        {[
+          { id: 'all', label: 'Zote' },
+          { id: 'unread', label: 'Hazijasomwa' },
+          { id: 'groups', label: 'Vikundi' },
+          { id: 'favorites', label: 'Vipendwa' },
+          ...(lockedCount > 0
+            ? [{ id: 'locked', label: `Zilizofungwa (${lockedCount})` }]
+            : []),
+          ...(archivedCount > 0
+            ? [{ id: 'archived', label: `Kumbukumbu (${archivedCount})` }]
+            : []),
+        ].map((tab) => {
+          const isActive = activeFilter === tab.id && !activeListFilter;
+          return (
+            <button
+              key={tab.id}
+              onClick={() => {
+                setActiveListFilter(null);
+                setActiveFilter(tab.id as any);
+              }}
+              className={`px-3 py-1.5 rounded-xl text-xs font-medium transition-all shrink-0 active:scale-95 ${
+                isActive
+                  ? 'bg-white/10 text-white font-semibold shadow-sm'
+                  : 'text-slate-400 hover:text-slate-200 hover:bg-white/[0.04]'
+              }`}
+            >
+              {tab.label}
             </button>
           );
         })}
 
-        {/* Custom Lists Filter Pills with quick delete */}
+        {/* Custom Lists (Quiet, clean text tags) */}
         {customLists.map((list) => {
           const isActive = activeListFilter === list;
           return (
             <div
               key={list}
-              className={`flex items-center gap-1 rounded-full text-xs font-medium transition-all shrink-0 pl-3 pr-1.5 py-1 ${
+              className={`flex items-center gap-1 rounded-xl text-xs font-medium transition-all shrink-0 pl-2.5 pr-1 py-1 ${
                 isActive
-                  ? 'bg-purple-600 text-white font-bold shadow-md shadow-purple-600/30'
-                  : 'bg-white/5 border border-white/5 text-slate-400 hover:text-white'
+                  ? 'bg-purple-500/20 text-purple-200 border border-purple-500/30'
+                  : 'bg-white/[0.03] text-slate-400 hover:text-white'
               }`}
             >
               <button
                 onClick={() => {
-                  if (activeListFilter === list) {
-                    setActiveListFilter(null);
-                  } else {
-                    setActiveListFilter(list);
-                  }
+                  setActiveListFilter(activeListFilter === list ? null : list);
                 }}
-                className="hover:underline active:scale-95 truncate max-w-[100px]"
+                className="hover:underline truncate max-w-[90px]"
               >
                 #{list}
               </button>
@@ -696,9 +938,7 @@ export const ChatList: React.FC<ChatListProps> = ({
                   e.stopPropagation();
                   handleDeleteCustomList(list);
                 }}
-                className={`p-0.5 rounded-full transition-colors ${
-                  isActive ? 'hover:bg-white/20 text-white/80' : 'hover:bg-rose-500/20 text-slate-500 hover:text-rose-400'
-                }`}
+                className="p-0.5 rounded-full hover:bg-white/10 text-slate-400 hover:text-rose-400"
                 title={`Futa #${list}`}
               >
                 <X className="w-3 h-3" />
@@ -787,17 +1027,69 @@ export const ChatList: React.FC<ChatListProps> = ({
         )}
 
         {filteredConversations.length === 0 && matchingContacts.length === 0 ? (
-          <div className="p-8 text-center text-slate-400 text-xs">
-            <UserPlus className="w-8 h-8 text-slate-500 mx-auto mb-2 opacity-50" />
-            <p className="font-semibold text-slate-300">Hakuna mazungumzo au watu waliopatikana</p>
-            <p className="text-[11px] text-slate-500 mt-1">Gusa kitufe hapa chini kutafuta mtu na kuanza chat mpya.</p>
+          <div className="py-10 px-4 text-center text-slate-400 text-xs flex flex-col items-center justify-center animate-in fade-in duration-300">
+            <div className="w-16 h-16 rounded-3xl bg-gradient-to-tr from-cyan-500/15 via-blue-500/15 to-purple-500/15 border border-cyan-500/30 flex items-center justify-center mb-3 shadow-lg shadow-cyan-500/10">
+              <MessageSquarePlus className="w-8 h-8 text-cyan-400 animate-pulse" />
+            </div>
+            <h4 className="font-bold text-sm text-white mb-1">
+              {searchQuery.trim() ? 'Hakuna Matokeo Yaliyopatikana' : 'Hakuna Mazungumzo Bado'}
+            </h4>
+            <p className="text-[11px] text-slate-400 max-w-xs leading-relaxed mb-4">
+              {searchQuery.trim()
+                ? `Hakuna mazungumzo wala mawasiliano yanayolingana na "${searchQuery}". Jaribu jina lingine au anza chat mpya.`
+                : 'Bado hujaanza kuchati na mtu yeyote. Mazungumzo yako yataonekana hapa pindi utakapoanza kuchati.'}
+            </p>
             <button
               onClick={onStartNewChat}
-              className="mt-3 px-4 py-2 rounded-xl bg-cyan-500/20 hover:bg-cyan-500/30 border border-cyan-500/40 text-cyan-300 font-bold text-xs inline-flex items-center gap-1.5 transition-all"
+              className="px-5 py-2.5 rounded-2xl bg-gradient-to-r from-cyan-400 to-blue-500 text-slate-950 font-bold text-xs shadow-lg shadow-cyan-500/20 hover:scale-105 active:scale-95 transition-all flex items-center gap-2 mb-5"
             >
-              <UserPlus className="w-3.5 h-3.5" />
-              <span>Tafuta Mtu & Anza Chat</span>
+              <UserPlus className="w-4 h-4 stroke-[2.5]" />
+              <span>+ Anza Kuchati Sasa</span>
             </button>
+
+            {/* Quick contact suggestion chips */}
+            {!searchQuery.trim() && (
+              <div className="w-full max-w-xs text-left bg-white/[0.03] border border-white/5 rounded-2xl p-3 shadow-inner">
+                <p className="text-[10px] font-bold text-cyan-400 uppercase tracking-wider mb-2.5 flex items-center gap-1.5">
+                  <Sparkles className="w-3 h-3 text-cyan-400" />
+                  <span>Marafiki Waliopo Mtandaoni:</span>
+                </p>
+                <div className="space-y-2">
+                  {AVAILABLE_CONTACTS.filter((c) => c.id !== currentUser.id).slice(0, 3).map((contact) => (
+                    <div
+                      key={contact.id}
+                      className="flex items-center justify-between gap-2 p-1.5 rounded-xl hover:bg-white/5 transition-colors"
+                    >
+                      <div className="flex items-center gap-2 min-w-0">
+                        <SafeImage
+                          src={contact.photoURL}
+                          fallbackText={contact.displayName}
+                          fallbackGradient="from-cyan-800 to-indigo-900"
+                          alt={contact.displayName}
+                          className="w-7 h-7 rounded-lg object-cover ring-1 ring-white/10"
+                        />
+                        <div className="min-w-0">
+                          <p className="text-xs font-semibold text-white truncate">{contact.displayName}</p>
+                          <p className="text-[9px] text-slate-400 truncate">@{contact.username}</p>
+                        </div>
+                      </div>
+                      <button
+                        onClick={() => {
+                          if (onStartNewChatWithUser) {
+                            onStartNewChatWithUser(contact);
+                          } else {
+                            onStartNewChat();
+                          }
+                        }}
+                        className="px-2.5 py-1 rounded-lg bg-cyan-500/20 hover:bg-cyan-500 text-cyan-300 hover:text-slate-950 text-[10px] font-bold transition-all shrink-0 active:scale-95"
+                      >
+                        Chat
+                      </button>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
           </div>
         ) : (
           filteredConversations.map((conv) => {
@@ -832,11 +1124,17 @@ export const ChatList: React.FC<ChatListProps> = ({
                   });
                 }}
                 className={`relative group w-full flex items-center gap-3.5 p-3 rounded-2xl transition-all text-left cursor-pointer ${
-                  isSelected
+                  (isSelectionMode && selectedConversationIds.has(conv.id)) || isSelected
                     ? 'bg-cyan-500/15 border border-cyan-500/30 shadow-sm'
                     : 'hover:bg-white/[0.04] active:bg-white/[0.08] border border-transparent'
                 }`}
                 onClick={(e) => {
+                  if (isSelectionMode) {
+                    e.preventDefault();
+                    e.stopPropagation();
+                    toggleSelectConversation(conv.id);
+                    return;
+                  }
                   if (isLongPressTriggeredRef.current) {
                     e.preventDefault();
                     e.stopPropagation();
@@ -859,6 +1157,26 @@ export const ChatList: React.FC<ChatListProps> = ({
                   onSelectConversation(conv);
                 }}
               >
+                {/* Selection Mode Checkbox */}
+                {isSelectionMode && (
+                  <div
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      toggleSelectConversation(conv.id);
+                    }}
+                    className="shrink-0 -mr-1 animate-in zoom-in-75 duration-150"
+                  >
+                    <div
+                      className={`w-5 h-5 rounded-lg flex items-center justify-center border transition-all ${
+                        selectedConversationIds.has(conv.id)
+                          ? 'bg-cyan-500 border-cyan-400 text-slate-950 shadow-sm shadow-cyan-500/20'
+                          : 'bg-white/5 border-white/20 text-transparent'
+                      }`}
+                    >
+                      <Check className="w-3.5 h-3.5 stroke-[3]" />
+                    </div>
+                  </div>
+                )}
                 {/* Avatar with status dot and status icon badge */}
                 <div
                   onClick={(e) => {
@@ -973,26 +1291,42 @@ export const ChatList: React.FC<ChatListProps> = ({
                         </span>
                       )}
 
-                      {/* Desktop 3-dots Hover Menu (ONLY for 1-on-1 person-to-person direct chat) */}
-                      {!conv.isGroup && (
-                        <button
-                          onClick={(e) => {
-                            e.stopPropagation();
-                            const rect = e.currentTarget.getBoundingClientRect();
-                            setContextMenuState({
-                              isOpen: true,
-                              conversation: conv,
-                              position: {
-                                x: rect.left - 180,
-                                y: rect.bottom + 4,
-                              },
-                            });
-                          }}
-                          className="opacity-0 group-hover:opacity-100 p-1 rounded-lg hover:bg-white/10 text-slate-400 hover:text-white transition-opacity"
-                          title="Chaguzi za mazungumzo (Chat options)"
-                        >
-                          <MoreVertical className="w-4 h-4" />
-                        </button>
+                      {!isSelectionMode && (
+                        <div className="flex items-center gap-0.5">
+                          {/* Quick Delete Single Chat Button (kufuta moja) */}
+                          <button
+                            type="button"
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              setConfirmDeleteSingle(conv);
+                            }}
+                            className="p-1.5 rounded-lg hover:bg-rose-500/20 text-slate-400 hover:text-rose-400 transition-colors active:scale-90 opacity-0 group-hover:opacity-100 focus:opacity-100"
+                            title={`Futa mazungumzo na ${title}`}
+                          >
+                            <Trash2 className="w-3.5 h-3.5" />
+                          </button>
+
+                          {/* Options Menu Button */}
+                          <button
+                            type="button"
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              const rect = e.currentTarget.getBoundingClientRect();
+                              setContextMenuState({
+                                isOpen: true,
+                                conversation: conv,
+                                position: {
+                                  x: Math.min(rect.left - 180, window.innerWidth - 250),
+                                  y: Math.min(rect.bottom + 4, window.innerHeight - 360),
+                                },
+                              });
+                            }}
+                            className="p-1 rounded-lg hover:bg-white/10 text-slate-400 hover:text-white transition-colors"
+                            title="Chaguzi za mazungumzo"
+                          >
+                            <MoreVertical className="w-4 h-4" />
+                          </button>
+                        </div>
                       )}
                     </div>
                   </div>
@@ -1004,14 +1338,16 @@ export const ChatList: React.FC<ChatListProps> = ({
       </div>
 
       {/* Floating Action Button (FAB) at bottom right: Anza Chat Mpya */}
-      <button
-        onClick={onStartNewChat}
-        className="fixed sm:absolute bottom-20 md:bottom-6 right-4 px-4 py-3 rounded-full bg-gradient-to-r from-cyan-400 via-blue-500 to-indigo-600 text-slate-950 hover:text-white font-extrabold text-xs shadow-2xl shadow-cyan-500/40 border border-white/20 hover:scale-105 active:scale-95 transition-all z-30 flex items-center gap-2 group"
-        title="Tafuta mtu au anza chat mpya (New Chat)"
-      >
-        <MessageSquarePlus className="w-5 h-5 text-slate-950 group-hover:text-white stroke-[2.5] transition-colors" />
-        <span className="tracking-wide">Chat Mpya</span>
-      </button>
+      {!isSelectionMode && (
+        <button
+          onClick={onStartNewChat}
+          className="fixed sm:absolute bottom-20 md:bottom-6 right-4 w-12 h-12 rounded-full bg-cyan-500 hover:bg-cyan-400 text-slate-950 shadow-lg shadow-cyan-500/25 active:scale-95 transition-all z-30 flex items-center justify-center group"
+          title="Anza Mazungumzo Mapya (New Chat)"
+          aria-label="New Chat"
+        >
+          <MessageSquarePlus className="w-5 h-5 stroke-[2.5]" />
+        </button>
+      )}
 
       {/* Context Menu for 1-on-1 Person-to-Person Chat */}
       {contextMenuState.isOpen && contextMenuState.conversation && (
@@ -1074,6 +1410,115 @@ export const ChatList: React.FC<ChatListProps> = ({
         onOpenInfo={(conv) => onSelectConversation(conv)}
         onUpdateAvatar={handleUpdateAvatar}
       />
+
+      {/* 1. Modal: Delete Single Chat Confirmation (kufuta moja) */}
+      {confirmDeleteSingle && (
+        <div className="fixed inset-0 z-[60] flex items-center justify-center p-4 bg-black/80 backdrop-blur-md animate-in fade-in duration-200">
+          <div className="w-full max-w-sm bg-[#111628] border border-rose-500/30 rounded-3xl p-5 shadow-2xl animate-in zoom-in-95">
+            <div className="w-12 h-12 rounded-2xl bg-rose-500/20 text-rose-400 flex items-center justify-center mb-3">
+              <Trash2 className="w-6 h-6 stroke-[2.5]" />
+            </div>
+            <h3 className="text-base font-bold text-white mb-1">Futa Mazungumzo?</h3>
+            <p className="text-xs text-slate-300 mb-5 leading-relaxed">
+              Je, una uhakika unataka kufuta mazungumzo haya na{' '}
+              <strong className="text-white">
+                {confirmDeleteSingle.isGroup
+                  ? confirmDeleteSingle.groupName
+                  : Object.values(confirmDeleteSingle.participantDetails || {})[0]?.displayName || 'Direct Chat'}
+              </strong>
+              ? Mazungumzo haya na jumbe zake zote zitaondolewa kabisa.
+            </p>
+            <div className="flex gap-2.5">
+              <button
+                type="button"
+                onClick={() => setConfirmDeleteSingle(null)}
+                className="flex-1 py-2.5 rounded-xl bg-white/10 hover:bg-white/15 text-slate-300 text-xs font-semibold transition-colors"
+              >
+                Ghairi
+              </button>
+              <button
+                type="button"
+                onClick={() => {
+                  const target = confirmDeleteSingle;
+                  setConfirmDeleteSingle(null);
+                  handleDeleteChat(target);
+                }}
+                className="flex-1 py-2.5 rounded-xl bg-rose-600 hover:bg-rose-500 text-white text-xs font-bold shadow-lg shadow-rose-600/30 transition-colors flex items-center justify-center gap-1.5"
+              >
+                <Trash2 className="w-4 h-4" />
+                <span>Futa Mazungumzo</span>
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* 2. Modal: Delete All Chats Confirmation (zote kwapamoja) */}
+      {confirmDeleteAll && (
+        <div className="fixed inset-0 z-[60] flex items-center justify-center p-4 bg-black/80 backdrop-blur-md animate-in fade-in duration-200">
+          <div className="w-full max-w-sm bg-[#111628] border border-rose-500/30 rounded-3xl p-5 shadow-2xl animate-in zoom-in-95">
+            <div className="w-12 h-12 rounded-2xl bg-rose-500/20 text-rose-400 flex items-center justify-center mb-3">
+              <AlertTriangle className="w-6 h-6 stroke-[2.5]" />
+            </div>
+            <h3 className="text-base font-bold text-white mb-1">Futa Mazungumzo Yote Kwapamoja?</h3>
+            <p className="text-xs text-slate-300 mb-5 leading-relaxed">
+              Je, una uhakika unataka kufuta mazungumzo yako yote{' '}
+              <span className="text-rose-400 font-bold">({conversations.length})</span>? Mazungumzo yote na jumbe zote zitaondolewa mara moja na hautakuwa na mazungumzo yoyote mpaka utakapoanza kuchat tena.
+            </p>
+            <div className="flex gap-2.5">
+              <button
+                type="button"
+                onClick={() => setConfirmDeleteAll(false)}
+                className="flex-1 py-2.5 rounded-xl bg-white/10 hover:bg-white/15 text-slate-300 text-xs font-semibold transition-colors"
+              >
+                Ghairi
+              </button>
+              <button
+                type="button"
+                onClick={handleDeleteAllChats}
+                className="flex-1 py-2.5 rounded-xl bg-rose-600 hover:bg-rose-500 text-white text-xs font-bold shadow-lg shadow-rose-600/30 transition-colors flex items-center justify-center gap-1.5"
+              >
+                <Trash2 className="w-4 h-4" />
+                <span>Futa Yote Sasa</span>
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* 3. Modal: Delete Selected Chats Confirmation (kufuta yaliyochaguliwa kwapamoja) */}
+      {confirmDeleteSelected && (
+        <div className="fixed inset-0 z-[60] flex items-center justify-center p-4 bg-black/80 backdrop-blur-md animate-in fade-in duration-200">
+          <div className="w-full max-w-sm bg-[#111628] border border-rose-500/30 rounded-3xl p-5 shadow-2xl animate-in zoom-in-95">
+            <div className="w-12 h-12 rounded-2xl bg-rose-500/20 text-rose-400 flex items-center justify-center mb-3">
+              <Trash2 className="w-6 h-6 stroke-[2.5]" />
+            </div>
+            <h3 className="text-base font-bold text-white mb-1">
+              Futa Mazungumzo {selectedConversationIds.size} Uliyochagua?
+            </h3>
+            <p className="text-xs text-slate-300 mb-5 leading-relaxed">
+              Je, una uhakika unataka kufuta mazungumzo {selectedConversationIds.size} uliyochagua kwapamoja? Mazungumzo na jumbe zake zote zitaondolewa kabisa.
+            </p>
+            <div className="flex gap-2.5">
+              <button
+                type="button"
+                onClick={() => setConfirmDeleteSelected(false)}
+                className="flex-1 py-2.5 rounded-xl bg-white/10 hover:bg-white/15 text-slate-300 text-xs font-semibold transition-colors"
+              >
+                Ghairi
+              </button>
+              <button
+                type="button"
+                onClick={handleDeleteSelectedConversations}
+                className="flex-1 py-2.5 rounded-xl bg-rose-600 hover:bg-rose-500 text-white text-xs font-bold shadow-lg shadow-rose-600/30 transition-colors flex items-center justify-center gap-1.5"
+              >
+                <Trash2 className="w-4 h-4" />
+                <span>Futa ({selectedConversationIds.size})</span>
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 };

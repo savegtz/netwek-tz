@@ -2,6 +2,7 @@ import {
   collection,
   doc,
   setDoc,
+  deleteDoc,
   getDocs,
   onSnapshot,
   query,
@@ -203,6 +204,53 @@ export const ChatSyncService = {
       await setDoc(msgRef, updates, { merge: true });
     } catch (e) {
       console.warn('Firestore message update error:', e);
+    }
+  },
+
+  // Delete a single message
+  async deleteMessage(conversationId: string, messageId: string) {
+    const localKey = `zenia_msgs_${conversationId}`;
+    try {
+      const cached = localStorage.getItem(localKey);
+      if (cached) {
+        const list: ChatMessage[] = JSON.parse(cached);
+        const filtered = list.filter((m) => m.id !== messageId);
+        localStorage.setItem(localKey, JSON.stringify(filtered));
+      }
+    } catch (_) {}
+
+    if (chatChannel) {
+      try {
+        chatChannel.postMessage({
+          type: 'DELETE_MESSAGE',
+          conversationId,
+          messageId,
+        });
+      } catch (_) {}
+    }
+
+    try {
+      const msgRef = doc(db, 'conversations', conversationId, 'messages', messageId);
+      await deleteDoc(msgRef);
+    } catch (e) {
+      console.warn('Firestore message delete error:', e);
+    }
+  },
+
+  // Clear all messages in a conversation
+  async clearAllMessages(conversationId: string) {
+    const localKey = `zenia_msgs_${conversationId}`;
+    try {
+      localStorage.removeItem(localKey);
+    } catch (_) {}
+
+    if (chatChannel) {
+      try {
+        chatChannel.postMessage({
+          type: 'CLEAR_MESSAGES',
+          conversationId,
+        });
+      } catch (_) {}
     }
   },
 };

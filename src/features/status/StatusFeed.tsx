@@ -549,104 +549,117 @@ export const StatusFeed: React.FC<StatusFeedProps> = ({
             </button>
           </div>
 
-          <div className="flex items-center gap-3 overflow-x-auto no-scrollbar py-1">
-            {/* My Status Bubble */}
+          <div className="flex items-center gap-2.5 overflow-x-auto no-scrollbar py-1">
+            {/* My Status Card */}
             <div
               onClick={onOpenCreateMenu}
-              className="relative w-36 sm:w-44 h-22 sm:h-26 rounded-[26px] overflow-hidden bg-gradient-to-tr from-[#101426] via-[#1a213d] to-[#252f55] border border-white/10 shrink-0 cursor-pointer group active:scale-95 transition-all shadow-md hover:border-cyan-400/50"
+              className="relative w-[102px] min-w-[102px] sm:w-[110px] sm:min-w-[110px] h-[152px] sm:h-[158px] rounded-2xl overflow-hidden bg-[#0E1428] border border-white/10 shrink-0 cursor-pointer group active:scale-95 transition-all shadow-md hover:border-cyan-400/60 flex flex-col justify-between"
             >
-              <div className="absolute inset-0 bg-black/25" />
-              <div className="absolute top-2 left-2 z-10">
-                <div className="relative">
-                  <SafeImage
-                    src={currentUser.photoURL || 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=200&auto=format&fit=crop&q=80'}
-                    fallbackText="Me"
-                    alt="My Status"
-                    className="w-9 h-9 sm:w-10 sm:h-10 rounded-full object-cover border-[2.5px] border-white shadow-md bg-black"
-                  />
-                  <span className="absolute -bottom-0.5 -right-0.5 w-4 h-4 rounded-full bg-emerald-500 text-white flex items-center justify-center text-[10px] font-bold border-2 border-[#101426]">
-                    <Plus className="w-2.5 h-2.5 stroke-[3]" />
-                  </span>
+              {/* Top Photo */}
+              <div className="relative w-full h-[62%] overflow-hidden bg-slate-800">
+                <SafeImage
+                  src={currentUser.photoURL || 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=200&auto=format&fit=crop&q=80'}
+                  fallbackText="Me"
+                  alt="My Status"
+                  className="w-full h-full object-cover group-hover:scale-108 transition-transform duration-500"
+                />
+                <div className="absolute inset-0 bg-gradient-to-b from-black/40 via-transparent to-[#0E1428]" />
+              </div>
+
+              {/* Floating Plus Button */}
+              <div className="absolute top-[54%] left-1/2 -translate-x-1/2 -translate-y-1/2 z-10">
+                <div className="w-8 h-8 rounded-full bg-gradient-to-tr from-cyan-400 via-blue-500 to-indigo-600 text-white flex items-center justify-center shadow-lg shadow-cyan-500/40 ring-[3.5px] ring-[#0E1428] group-hover:scale-110 transition-transform">
+                  <Plus className="w-4 h-4 stroke-[3]" />
                 </div>
               </div>
-              <div className="absolute bottom-1.5 left-2.5 right-2 z-10">
-                <p className="text-[11px] font-bold text-white truncate drop-shadow">
+
+              {/* Bottom Info */}
+              <div className="w-full h-[38%] pt-3.5 pb-2 px-1 flex flex-col items-center justify-center bg-[#0E1428]">
+                <p className="text-[11px] font-bold text-white truncate max-w-full">
                   Hali Yangu
                 </p>
-                <p className="text-[9px] text-cyan-300/80 truncate">Gusa kuongeza</p>
+                <p className="text-[9px] font-semibold text-cyan-400/90 truncate mt-0.5">
+                  Weka Mpya
+                </p>
               </div>
             </div>
 
-            {/* Other Status Story Bubbles */}
+            {/* Other Status Story Cards */}
             {statusCards.map((item, idx) => {
               const isSelected = activeStoryIndex === idx;
               return (
                 <div
                   key={item.id}
                   onClick={() => setActiveStoryIndex(idx)}
-                  className={`relative w-36 sm:w-44 h-22 sm:h-26 rounded-[26px] overflow-hidden shrink-0 cursor-pointer group active:scale-95 transition-all shadow-md border ${
+                  className={`relative w-[102px] min-w-[102px] sm:w-[110px] sm:min-w-[110px] h-[152px] sm:h-[158px] rounded-2xl overflow-hidden shrink-0 cursor-pointer group active:scale-95 transition-all shadow-md border ${
                     isSelected
-                      ? 'border-cyan-400 ring-2 ring-cyan-400/50 scale-[1.02]'
-                      : 'border-white/10 hover:border-white/30'
+                      ? 'border-cyan-400 ring-2 ring-cyan-400/50 shadow-cyan-500/20 scale-[1.02]'
+                      : 'border-white/10 hover:border-cyan-400/50'
                   }`}
                 >
                   <SafeImage
                     src={item.mediaUrl}
                     fallbackGradient="from-purple-900 via-indigo-900 to-cyan-900"
                     alt={item.authorName}
-                    className="absolute inset-0 w-full h-full object-cover group-hover:scale-105 transition-transform duration-300"
+                    className="absolute inset-0 w-full h-full object-cover group-hover:scale-110 transition-transform duration-500"
                   />
-                  <div className="absolute inset-0 bg-gradient-to-t from-black/85 via-black/20 to-black/40" />
+                  {/* Scrims */}
+                  <div className="absolute inset-x-0 top-0 h-14 bg-gradient-to-b from-black/80 via-black/30 to-transparent" />
+                  <div className="absolute inset-x-0 bottom-0 h-20 bg-gradient-to-t from-black/95 via-black/60 to-transparent" />
 
-                  {/* Top-Left Avatar */}
+                  {/* Top-Left Avatar with Glowing Gradient Ring */}
                   <div className="absolute top-2 left-2 z-10">
-                    <SafeImage
-                      src={item.authorPhoto}
-                      fallbackText={item.authorName}
-                      alt={item.authorName}
-                      className="w-9 h-9 sm:w-10 sm:h-10 rounded-full object-cover border-[2.5px] border-white shadow-md bg-black"
-                    />
+                    <div className="w-7 h-7 rounded-full p-[1.5px] bg-gradient-to-tr from-cyan-400 via-fuchsia-500 to-amber-400 shadow-md ring-1 ring-black/60">
+                      <div className="w-full h-full rounded-full overflow-hidden bg-slate-950">
+                        <SafeImage
+                          src={item.authorPhoto}
+                          fallbackText={item.authorName}
+                          alt={item.authorName}
+                          className="w-full h-full object-cover"
+                        />
+                      </div>
+                    </div>
                   </div>
 
-                  {/* Badge */}
+                  {/* Badge in Top-Right */}
                   {item.type === 'job' && (
                     <span className="absolute top-2 right-2 px-1.5 py-0.5 rounded-full bg-amber-500 text-slate-950 font-black text-[9px] shadow-sm">
-                      💼 Job
+                      💼 Kazi
                     </span>
                   )}
                   {item.type === 'food' && (
                     <span className="absolute top-2 right-2 px-1.5 py-0.5 rounded-full bg-amber-500 text-slate-950 font-black text-[9px] shadow-sm">
-                      🍕 Food
+                      🍕 Ofa
                     </span>
                   )}
                   {item.type === 'poll' && (
                     <span className="absolute top-2 right-2 px-1.5 py-0.5 rounded-full bg-blue-500 text-white font-bold text-[9px] shadow-sm">
-                      📊 Poll
+                      📊 Kura
                     </span>
                   )}
                   {item.type === 'product' && (
                     <span className="absolute top-2 right-2 px-1.5 py-0.5 rounded-full bg-emerald-500 text-slate-950 font-bold text-[9px] shadow-sm">
-                      🛍️ Shop
+                      🛍️ Duka
                     </span>
                   )}
                   {item.type === 'event' && (
                     <span className="absolute top-2 right-2 px-1.5 py-0.5 rounded-full bg-purple-500 text-white font-bold text-[9px] shadow-sm">
-                      🎪 Event
+                      🎪 Tukio
                     </span>
                   )}
                   {item.type === 'giveaway' && (
                     <span className="absolute top-2 right-2 px-1.5 py-0.5 rounded-full bg-amber-500 text-slate-950 font-black text-[9px] shadow-sm">
-                      🎁 Giveaway
+                      🎁 Zawadi
                     </span>
                   )}
                   {item.type === 'quiz' && (
                     <span className="absolute top-2 right-2 px-1.5 py-0.5 rounded-full bg-teal-500 text-slate-950 font-black text-[9px] shadow-sm">
-                      ❓ Quiz
+                      ❓ Maswali
                     </span>
                   )}
                   {item.type === 'property' && (
                     <span className="absolute top-2 right-2 px-1.5 py-0.5 rounded-full bg-cyan-500 text-slate-950 font-black text-[9px] shadow-sm">
-                      🏠 Property
+                      🏠 Nyumba
                     </span>
                   )}
                   {item.type === 'live' && (
@@ -656,16 +669,21 @@ export const StatusFeed: React.FC<StatusFeedProps> = ({
                   )}
                   {item.type === 'advertisement' && (
                     <span className="absolute top-2 right-2 px-1.5 py-0.5 rounded-full bg-yellow-400 text-slate-950 font-black text-[9px] shadow-sm">
-                      📢 Ad
+                      📢 Tangazo
+                    </span>
+                  )}
+                  {!['job', 'food', 'poll', 'product', 'event', 'giveaway', 'quiz', 'property', 'live', 'advertisement'].includes(item.type) && (
+                    <span className="absolute top-2 right-2 px-1.5 py-0.5 rounded-full bg-black/60 text-slate-200 text-[9px] font-medium backdrop-blur-md">
+                      {item.createdAt}
                     </span>
                   )}
 
                   {/* Bottom Info */}
-                  <div className="absolute bottom-1.5 left-2.5 right-2 z-10">
-                    <p className="text-[11px] font-bold text-white truncate drop-shadow">
-                      {item.authorName}
+                  <div className="absolute bottom-2 left-2 right-2 z-10">
+                    <p className="text-[11px] font-bold text-white truncate drop-shadow-md leading-tight">
+                      {item.authorName.split(' ')[0]}
                     </p>
-                    <p className="text-[9px] text-slate-300 truncate drop-shadow">
+                    <p className="text-[9.5px] text-cyan-300 font-medium truncate drop-shadow-sm mt-0.5">
                       {item.createdAt}
                     </p>
                   </div>
