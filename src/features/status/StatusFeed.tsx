@@ -553,32 +553,35 @@ export const StatusFeed: React.FC<StatusFeedProps> = ({
             {/* My Status Card */}
             <div
               onClick={onOpenCreateMenu}
-              className="relative w-[102px] min-w-[102px] sm:w-[110px] sm:min-w-[110px] h-[152px] sm:h-[158px] rounded-2xl overflow-hidden bg-[#0E1428] border border-white/10 shrink-0 cursor-pointer group active:scale-95 transition-all shadow-md hover:border-cyan-400/60 flex flex-col justify-between"
+              className="relative w-[100px] min-w-[100px] h-[100px] sm:w-[108px] sm:min-w-[108px] sm:h-[108px] aspect-square rounded-[30px] overflow-hidden bg-[#0E1428] border-2 border-cyan-400/80 shrink-0 cursor-pointer group active:scale-95 transition-all shadow-[0_0_15px_rgba(6,182,212,0.25)] hover:border-cyan-300 hover:shadow-cyan-400/45 flex flex-col justify-between"
             >
-              {/* Top Photo */}
-              <div className="relative w-full h-[62%] overflow-hidden bg-slate-800">
+              {/* Background User Avatar with smooth overlay */}
+              <div className="absolute inset-0 z-0 bg-slate-900">
                 <SafeImage
                   src={currentUser.photoURL || 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=200&auto=format&fit=crop&q=80'}
                   fallbackText="Me"
                   alt="My Status"
-                  className="w-full h-full object-cover group-hover:scale-108 transition-transform duration-500"
+                  className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-500 opacity-80"
                 />
-                <div className="absolute inset-0 bg-gradient-to-b from-black/40 via-transparent to-[#0E1428]" />
+                <div className="absolute inset-0 bg-gradient-to-t from-[#070A14] via-black/40 to-transparent" />
               </div>
 
-              {/* Floating Plus Button */}
-              <div className="absolute top-[54%] left-1/2 -translate-x-1/2 -translate-y-1/2 z-10">
-                <div className="w-8 h-8 rounded-full bg-gradient-to-tr from-cyan-400 via-blue-500 to-indigo-600 text-white flex items-center justify-center shadow-lg shadow-cyan-500/40 ring-[3.5px] ring-[#0E1428] group-hover:scale-110 transition-transform">
-                  <Plus className="w-4 h-4 stroke-[3]" />
+              {/* Top-Right Badge: Plus icon inside glowing ring */}
+              <div className="relative z-10 pt-2.5 px-2.5 pb-1 flex items-center justify-between w-full">
+                <span className="inline-flex items-center px-1.5 py-0.5 rounded-full text-[8.5px] font-bold bg-cyan-500/25 text-cyan-300 border border-cyan-400/40 backdrop-blur-md">
+                  + Story
+                </span>
+                <div className="w-6 h-6 rounded-full bg-gradient-to-tr from-cyan-400 via-blue-500 to-indigo-600 text-white flex items-center justify-center shadow-md shadow-cyan-500/40 ring-2 ring-black/40 group-hover:scale-110 group-hover:rotate-90 transition-all">
+                  <Plus className="w-3.5 h-3.5 stroke-[3]" />
                 </div>
               </div>
 
               {/* Bottom Info */}
-              <div className="w-full h-[38%] pt-3.5 pb-2 px-1 flex flex-col items-center justify-center bg-[#0E1428]">
-                <p className="text-[11px] font-bold text-white truncate max-w-full">
+              <div className="relative z-10 pb-2.5 px-2.5 pt-0 w-full text-left">
+                <p className="text-[11px] font-extrabold text-white tracking-tight leading-tight drop-shadow-md truncate">
                   Hali Yangu
                 </p>
-                <p className="text-[9px] font-semibold text-cyan-400/90 truncate mt-0.5">
+                <p className="text-[9px] font-medium text-cyan-300/90 tracking-tight leading-none mt-0.5 drop-shadow">
                   Weka Mpya
                 </p>
               </div>
@@ -591,10 +594,10 @@ export const StatusFeed: React.FC<StatusFeedProps> = ({
                 <div
                   key={item.id}
                   onClick={() => setActiveStoryIndex(idx)}
-                  className={`relative w-[102px] min-w-[102px] sm:w-[110px] sm:min-w-[110px] h-[152px] sm:h-[158px] rounded-2xl overflow-hidden shrink-0 cursor-pointer group active:scale-95 transition-all shadow-md border ${
+                  className={`relative w-[100px] min-w-[100px] h-[100px] sm:w-[108px] sm:min-w-[108px] sm:h-[108px] aspect-square rounded-[30px] overflow-hidden shrink-0 cursor-pointer group active:scale-95 transition-all border-2 ${
                     isSelected
-                      ? 'border-cyan-400 ring-2 ring-cyan-400/50 shadow-cyan-500/20 scale-[1.02]'
-                      : 'border-white/10 hover:border-cyan-400/50'
+                      ? 'border-cyan-300 ring-2 ring-cyan-400/60 shadow-[0_0_18px_rgba(6,182,212,0.45)] scale-[1.03]'
+                      : 'border-cyan-400 shadow-[0_0_15px_rgba(6,182,212,0.28)] hover:border-cyan-300 hover:shadow-cyan-400/50'
                   }`}
                 >
                   <SafeImage
@@ -604,11 +607,11 @@ export const StatusFeed: React.FC<StatusFeedProps> = ({
                     className="absolute inset-0 w-full h-full object-cover group-hover:scale-110 transition-transform duration-500"
                   />
                   {/* Scrims */}
-                  <div className="absolute inset-x-0 top-0 h-14 bg-gradient-to-b from-black/80 via-black/30 to-transparent" />
-                  <div className="absolute inset-x-0 bottom-0 h-20 bg-gradient-to-t from-black/95 via-black/60 to-transparent" />
+                  <div className="absolute inset-x-0 top-0 h-11 bg-gradient-to-b from-black/85 via-black/30 to-transparent" />
+                  <div className="absolute inset-x-0 bottom-0 h-14 bg-gradient-to-t from-black/95 via-black/60 to-transparent" />
 
                   {/* Top-Left Avatar with Glowing Gradient Ring */}
-                  <div className="absolute top-2 left-2 z-10">
+                  <div className="absolute top-2.5 left-2.5 z-10">
                     <div className="w-7 h-7 rounded-full p-[1.5px] bg-gradient-to-tr from-cyan-400 via-fuchsia-500 to-amber-400 shadow-md ring-1 ring-black/60">
                       <div className="w-full h-full rounded-full overflow-hidden bg-slate-950">
                         <SafeImage
@@ -623,63 +626,63 @@ export const StatusFeed: React.FC<StatusFeedProps> = ({
 
                   {/* Badge in Top-Right */}
                   {item.type === 'job' && (
-                    <span className="absolute top-2 right-2 px-1.5 py-0.5 rounded-full bg-amber-500 text-slate-950 font-black text-[9px] shadow-sm">
+                    <span className="absolute top-2.5 right-2.5 px-1.5 py-0.5 rounded-full bg-amber-500 text-slate-950 font-black text-[9px] shadow-sm">
                       💼 Kazi
                     </span>
                   )}
                   {item.type === 'food' && (
-                    <span className="absolute top-2 right-2 px-1.5 py-0.5 rounded-full bg-amber-500 text-slate-950 font-black text-[9px] shadow-sm">
+                    <span className="absolute top-2.5 right-2.5 px-1.5 py-0.5 rounded-full bg-amber-500 text-slate-950 font-black text-[9px] shadow-sm">
                       🍕 Ofa
                     </span>
                   )}
                   {item.type === 'poll' && (
-                    <span className="absolute top-2 right-2 px-1.5 py-0.5 rounded-full bg-blue-500 text-white font-bold text-[9px] shadow-sm">
+                    <span className="absolute top-2.5 right-2.5 px-1.5 py-0.5 rounded-full bg-blue-500 text-white font-bold text-[9px] shadow-sm">
                       📊 Kura
                     </span>
                   )}
                   {item.type === 'product' && (
-                    <span className="absolute top-2 right-2 px-1.5 py-0.5 rounded-full bg-emerald-500 text-slate-950 font-bold text-[9px] shadow-sm">
+                    <span className="absolute top-2.5 right-2.5 px-1.5 py-0.5 rounded-full bg-emerald-500 text-slate-950 font-bold text-[9px] shadow-sm">
                       🛍️ Duka
                     </span>
                   )}
                   {item.type === 'event' && (
-                    <span className="absolute top-2 right-2 px-1.5 py-0.5 rounded-full bg-purple-500 text-white font-bold text-[9px] shadow-sm">
+                    <span className="absolute top-2.5 right-2.5 px-1.5 py-0.5 rounded-full bg-purple-500 text-white font-bold text-[9px] shadow-sm">
                       🎪 Tukio
                     </span>
                   )}
                   {item.type === 'giveaway' && (
-                    <span className="absolute top-2 right-2 px-1.5 py-0.5 rounded-full bg-amber-500 text-slate-950 font-black text-[9px] shadow-sm">
+                    <span className="absolute top-2.5 right-2.5 px-1.5 py-0.5 rounded-full bg-amber-500 text-slate-950 font-black text-[9px] shadow-sm">
                       🎁 Zawadi
                     </span>
                   )}
                   {item.type === 'quiz' && (
-                    <span className="absolute top-2 right-2 px-1.5 py-0.5 rounded-full bg-teal-500 text-slate-950 font-black text-[9px] shadow-sm">
+                    <span className="absolute top-2.5 right-2.5 px-1.5 py-0.5 rounded-full bg-teal-500 text-slate-950 font-black text-[9px] shadow-sm">
                       ❓ Maswali
                     </span>
                   )}
                   {item.type === 'property' && (
-                    <span className="absolute top-2 right-2 px-1.5 py-0.5 rounded-full bg-cyan-500 text-slate-950 font-black text-[9px] shadow-sm">
+                    <span className="absolute top-2.5 right-2.5 px-1.5 py-0.5 rounded-full bg-cyan-500 text-slate-950 font-black text-[9px] shadow-sm">
                       🏠 Nyumba
                     </span>
                   )}
                   {item.type === 'live' && (
-                    <span className="absolute top-2 right-2 px-1.5 py-0.5 rounded-full bg-rose-500 text-white font-black text-[9px] shadow-sm animate-pulse">
+                    <span className="absolute top-2.5 right-2.5 px-1.5 py-0.5 rounded-full bg-rose-500 text-white font-black text-[9px] shadow-sm animate-pulse">
                       🔴 Live
                     </span>
                   )}
                   {item.type === 'advertisement' && (
-                    <span className="absolute top-2 right-2 px-1.5 py-0.5 rounded-full bg-yellow-400 text-slate-950 font-black text-[9px] shadow-sm">
+                    <span className="absolute top-2.5 right-2.5 px-1.5 py-0.5 rounded-full bg-yellow-400 text-slate-950 font-black text-[9px] shadow-sm">
                       📢 Tangazo
                     </span>
                   )}
                   {!['job', 'food', 'poll', 'product', 'event', 'giveaway', 'quiz', 'property', 'live', 'advertisement'].includes(item.type) && (
-                    <span className="absolute top-2 right-2 px-1.5 py-0.5 rounded-full bg-black/60 text-slate-200 text-[9px] font-medium backdrop-blur-md">
+                    <span className="absolute top-2.5 right-2.5 px-1.5 py-0.5 rounded-full bg-black/60 text-slate-200 text-[9px] font-medium backdrop-blur-md">
                       {item.createdAt}
                     </span>
                   )}
 
                   {/* Bottom Info */}
-                  <div className="absolute bottom-2 left-2 right-2 z-10">
+                  <div className="absolute bottom-2.5 left-2.5 right-2.5 z-10">
                     <p className="text-[11px] font-bold text-white truncate drop-shadow-md leading-tight">
                       {item.authorName.split(' ')[0]}
                     </p>

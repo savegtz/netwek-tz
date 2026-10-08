@@ -293,35 +293,38 @@ export const ChatListStatusRow: React.FC<ChatListStatusRowProps> = ({
           {/* ============================================================== */}
           <button
             onClick={onOpenCreateStatus}
-            className="group relative w-[102px] min-w-[102px] sm:w-[110px] sm:min-w-[110px] h-[152px] sm:h-[158px] rounded-2xl overflow-hidden border border-white/10 hover:border-cyan-400/60 shadow-md hover:shadow-cyan-500/15 hover:-translate-y-1 active:scale-[0.98] transition-all duration-300 flex flex-col justify-between text-left focus:outline-none shrink-0 bg-[#0E1428]"
+            className="group relative w-[100px] min-w-[100px] h-[100px] sm:w-[108px] sm:min-w-[108px] sm:h-[108px] aspect-square rounded-[30px] overflow-hidden border-2 border-cyan-400/80 shadow-[0_0_15px_rgba(6,182,212,0.25)] hover:border-cyan-300 hover:shadow-cyan-400/45 hover:-translate-y-0.5 active:scale-95 transition-all duration-300 flex flex-col justify-between text-left focus:outline-none shrink-0 bg-[#0E1428]"
             title="Weka Hali Yako (Post Status)"
           >
-            {/* Top Photo Section with User Avatar */}
-            <div className="relative w-full h-[62%] overflow-hidden bg-slate-800">
+            {/* Background User Avatar with smooth overlay */}
+            <div className="absolute inset-0 z-0 bg-slate-900">
               <SafeImage
                 src={currentUser?.photoURL || aminaAvatar}
                 fallbackText="Me"
                 alt="My Status"
-                className="w-full h-full object-cover group-hover:scale-108 transition-transform duration-500"
+                className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-500 opacity-80"
               />
-              <div className="absolute inset-0 bg-gradient-to-b from-black/40 via-transparent to-[#0E1428]" />
+              <div className="absolute inset-0 bg-gradient-to-t from-[#070A14] via-black/40 to-transparent" />
             </div>
 
-            {/* Floating Plus Button (Split overlapping line) */}
-            <div className="absolute top-[54%] left-1/2 -translate-x-1/2 -translate-y-1/2 z-10">
-              <div className="w-8 h-8 rounded-full bg-gradient-to-tr from-cyan-400 via-blue-500 to-indigo-600 text-white flex items-center justify-center shadow-lg shadow-cyan-500/40 ring-[3.5px] ring-[#0E1428] group-hover:scale-110 transition-transform">
-                <Plus className="w-4 h-4 stroke-[3]" />
+            {/* Top-Right Badge: Plus icon inside glowing ring */}
+            <div className="relative z-10 pt-2.5 px-2.5 pb-1 flex items-center justify-between w-full">
+              <span className="inline-flex items-center px-1.5 py-0.5 rounded-full text-[8.5px] font-bold bg-cyan-500/25 text-cyan-300 border border-cyan-400/40 backdrop-blur-md">
+                + Story
+              </span>
+              <div className="w-6 h-6 rounded-full bg-gradient-to-tr from-cyan-400 via-blue-500 to-indigo-600 text-white flex items-center justify-center shadow-md shadow-cyan-500/40 ring-2 ring-black/40 group-hover:scale-110 group-hover:rotate-90 transition-all">
+                <Plus className="w-3.5 h-3.5 stroke-[3]" />
               </div>
             </div>
 
-            {/* Bottom Info Section */}
-            <div className="w-full h-[38%] pt-3.5 pb-2 px-1 flex flex-col items-center justify-center bg-[#0E1428]">
-              <span className="text-[11px] font-bold text-white tracking-tight leading-tight truncate max-w-full">
+            {/* Bottom Row: Text */}
+            <div className="relative z-10 pb-2.5 px-2.5 pt-0 w-full text-left">
+              <p className="text-[11px] font-extrabold text-white tracking-tight leading-tight drop-shadow-md truncate">
                 Hali Yangu
-              </span>
-              <span className="text-[9px] font-semibold text-cyan-400/90 tracking-wide mt-0.5">
-                Weka Story
-              </span>
+              </p>
+              <p className="text-[9px] font-medium text-cyan-300/90 tracking-tight leading-none mt-0.5 drop-shadow">
+                Weka Mpya
+              </p>
             </div>
           </button>
 
@@ -362,7 +365,7 @@ export const ChatListStatusRow: React.FC<ChatListStatusRowProps> = ({
               <button
                 key={item.id}
                 onClick={() => setViewerState({ isOpen: true, initialIndex: idx })}
-                className="group relative w-[102px] min-w-[102px] sm:w-[110px] sm:min-w-[110px] h-[152px] sm:h-[158px] rounded-2xl overflow-hidden border border-white/10 hover:border-cyan-400/70 shadow-md hover:shadow-cyan-500/20 hover:-translate-y-1 active:scale-[0.98] transition-all duration-300 flex flex-col justify-between text-left focus:outline-none shrink-0 bg-slate-950"
+                className="group relative w-[100px] min-w-[100px] h-[100px] sm:w-[108px] sm:min-w-[108px] sm:h-[108px] aspect-square rounded-[30px] overflow-hidden border-2 border-cyan-400 shadow-[0_0_15px_rgba(6,182,212,0.28)] hover:border-cyan-300 hover:shadow-cyan-400/50 hover:-translate-y-0.5 active:scale-95 transition-all duration-300 flex flex-col justify-between text-left focus:outline-none shrink-0 bg-slate-950"
                 title={`Tazama story ya ${item.authorName}`}
               >
                 {/* Background Image Preview with Zoom effect */}
@@ -374,15 +377,15 @@ export const ChatListStatusRow: React.FC<ChatListStatusRowProps> = ({
                     className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-500"
                   />
                   {/* Top scrim for avatar and badge */}
-                  <div className="absolute inset-x-0 top-0 h-14 bg-gradient-to-b from-black/80 via-black/30 to-transparent" />
+                  <div className="absolute inset-x-0 top-0 h-11 bg-gradient-to-b from-black/85 via-black/30 to-transparent" />
                   {/* Bottom scrim for author name and snippet */}
-                  <div className="absolute inset-x-0 bottom-0 h-20 bg-gradient-to-t from-black/95 via-black/60 to-transparent" />
+                  <div className="absolute inset-x-0 bottom-0 h-14 bg-gradient-to-t from-black/95 via-black/60 to-transparent" />
                 </div>
 
                 {/* Top Row: Creator Avatar & Story Badge */}
-                <div className="relative z-10 p-2 flex items-center justify-between w-full">
+                <div className="relative z-10 pt-2.5 px-2.5 pb-1 flex items-center justify-between w-full">
                   {/* Creator Avatar with Glowing Gradient Ring */}
-                  <div className="w-7 h-7 rounded-full p-[1.5px] bg-gradient-to-tr from-cyan-400 via-fuchsia-500 to-amber-400 shadow-md ring-1 ring-black/60 group-hover:scale-105 transition-transform">
+                  <div className="w-6 h-6 rounded-full p-[1.5px] bg-gradient-to-tr from-cyan-400 via-fuchsia-500 to-amber-400 shadow-md ring-1 ring-black/60 group-hover:scale-105 transition-transform">
                     <div className="w-full h-full rounded-full overflow-hidden bg-slate-950">
                       <SafeImage
                         src={item.authorPhoto}
@@ -395,7 +398,7 @@ export const ChatListStatusRow: React.FC<ChatListStatusRowProps> = ({
 
                   {/* Story Badge */}
                   <span
-                    className={`inline-flex items-center px-1.5 py-0.5 rounded-full text-[9px] backdrop-blur-md shadow-sm border ${badgeClass} truncate max-w-[50px]`}
+                    className={`inline-flex items-center px-1.5 py-0.5 rounded-full text-[8.5px] backdrop-blur-md shadow-sm border ${badgeClass} truncate max-w-[48px]`}
                   >
                     {badgeIcon}
                     <span className="truncate">{badgeLabel}</span>
@@ -403,11 +406,11 @@ export const ChatListStatusRow: React.FC<ChatListStatusRowProps> = ({
                 </div>
 
                 {/* Bottom Row: Creator Name & Story Snippet/Price */}
-                <div className="relative z-10 p-2 pt-0 w-full">
-                  <h4 className="text-[11px] font-bold text-white tracking-tight leading-tight truncate drop-shadow-md">
+                <div className="relative z-10 pb-2.5 px-2.5 pt-0 w-full">
+                  <h4 className="text-[10.5px] font-bold text-white tracking-tight leading-tight truncate drop-shadow-md">
                     {firstName}
                   </h4>
-                  <div className="text-[9.5px] font-medium leading-tight truncate mt-0.5 drop-shadow-sm">
+                  <div className="text-[9px] font-medium leading-tight truncate mt-0.5 drop-shadow-sm">
                     {isFood && (
                       <span className="text-amber-300 font-bold">
                         TSh {(item.metadata?.offerPrice || 12000).toLocaleString()}
