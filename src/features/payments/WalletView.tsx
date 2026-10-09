@@ -17,6 +17,7 @@ import {
 import { WalletTransaction } from '../../types';
 import { INITIAL_TRANSACTIONS } from '../../services/seed/initialData';
 import { PaymentService } from '../../services/payments/paymentService';
+import { TransactionReceiptModal } from './TransactionReceiptModal';
 
 interface WalletViewProps {
   onBack?: () => void;
@@ -30,6 +31,8 @@ export const WalletView: React.FC<WalletViewProps> = ({ onBack }) => {
   const [amountToSend, setAmountToSend] = useState('');
   const [processing, setProcessing] = useState(false);
   const [successNotice, setSuccessNotice] = useState<string | null>(null);
+  const [lastCreatedTx, setLastCreatedTx] = useState<WalletTransaction | null>(null);
+  const [selectedReceiptTx, setSelectedReceiptTx] = useState<WalletTransaction | null>(null);
 
   const services = [
     { id: 'mobile_money', label: 'Mobile Money', icon: Smartphone, color: 'text-cyan-400' },
@@ -71,13 +74,8 @@ export const WalletView: React.FC<WalletViewProps> = ({ onBack }) => {
           timestamp: 'Just now',
         };
         setTransactions([newTx, ...transactions]);
+        setLastCreatedTx(newTx);
         setSuccessNotice(`Sent TZS ${val.toLocaleString()} to ${recipientNumber}`);
-        setTimeout(() => {
-          setSuccessNotice(null);
-          setIsSendModalOpen(false);
-          setRecipientNumber('');
-          setAmountToSend('');
-        }, 1200);
       }
     } catch (e) {
       console.error(e);
@@ -210,7 +208,9 @@ export const WalletView: React.FC<WalletViewProps> = ({ onBack }) => {
               return (
                 <div
                   key={tx.id}
-                  className="p-3 rounded-2xl bg-[#14192B] hover:bg-[#181F36] border border-white/5 flex items-center justify-between transition-colors"
+                  onClick={() => setSelectedReceiptTx(tx)}
+                  className="p-3 rounded-2xl bg-[#14192B] hover:bg-[#181F36] border border-white/5 hover:border-cyan-500/30 flex items-center justify-between transition-all cursor-pointer group"
+                  title="Bofya kuona risiti rasmi"
                 >
                   <div className="flex items-center gap-3">
                     <div
@@ -223,8 +223,11 @@ export const WalletView: React.FC<WalletViewProps> = ({ onBack }) => {
                       {isPositive ? '+' : '-'}
                     </div>
                     <div>
-                      <h5 className="font-semibold text-xs text-white">{tx.title}</h5>
-                      <p className="text-[10px] text-slate-400">{tx.timestamp}</p>
+                      <h5 className="font-semibold text-xs text-white group-hover:text-cyan-300 transition-colors flex items-center gap-1.5">
+                        <span>{tx.title}</span>
+                        <span className="text-[10px] text-slate-500 opacity-0 group-hover:opacity-100 transition-opacity">🧾</span>
+                      </h5>
+                      <p className="text-[10px] text-slate-400">{tx.timestamp} • Bofya kwa risiti</p>
                     </div>
                   </div>
 
@@ -248,17 +251,47 @@ export const WalletView: React.FC<WalletViewProps> = ({ onBack }) => {
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/80 backdrop-blur-md">
           <div className="relative w-full max-w-sm bg-[#0F1424] border border-white/10 rounded-3xl p-5 shadow-2xl">
             <button
-              onClick={() => setIsSendModalOpen(false)}
+              onClick={() => {
+                setIsSendModalOpen(false);
+                setSuccessNotice(null);
+              }}
               className="absolute top-4 right-4 p-1.5 rounded-full bg-white/10 text-slate-400 hover:text-white"
             >
               <X className="w-4 h-4" />
             </button>
 
             {successNotice ? (
-              <div className="py-8 text-center">
-                <CheckCircle2 className="w-12 h-12 text-emerald-400 mx-auto mb-2" />
-                <h4 className="font-bold text-base text-white">Transfer Successful!</h4>
-                <p className="text-xs text-slate-300 mt-1">{successNotice}</p>
+              <div className="py-6 text-center space-y-4">
+                <CheckCircle2 className="w-12 h-12 text-emerald-400 mx-auto" />
+                <div>
+                  <h4 className="font-bold text-base text-white">Muamala Umekamilika!</h4>
+                  <p className="text-xs text-slate-300 mt-1">{successNotice}</p>
+                </div>
+                <div className="flex flex-col gap-2 pt-2">
+                  <button
+                    onClick={() => {
+                      setIsSendModalOpen(false);
+                      if (lastCreatedTx) {
+                        setSelectedReceiptTx(lastCreatedTx);
+                      }
+                      setSuccessNotice(null);
+                    }}
+                    className="w-full py-2.5 rounded-xl bg-gradient-to-r from-cyan-400 to-blue-500 text-slate-950 font-black text-xs shadow-lg shadow-cyan-500/20 active:scale-95 transition-all flex items-center justify-center gap-1.5"
+                  >
+                    <span>🧾 Tazama Risiti Rasmi (View Receipt)</span>
+                  </button>
+                  <button
+                    onClick={() => {
+                      setIsSendModalOpen(false);
+                      setSuccessNotice(null);
+                      setRecipientNumber('');
+                      setAmountToSend('');
+                    }}
+                    className="w-full py-2 rounded-xl bg-white/10 hover:bg-white/15 text-slate-300 text-xs font-semibold"
+                  >
+                    Funga
+                  </button>
+                </div>
               </div>
             ) : (
               <form onSubmit={handleSendPayment} className="space-y-3">
@@ -305,6 +338,13 @@ export const WalletView: React.FC<WalletViewProps> = ({ onBack }) => {
           </div>
         </div>
       )}
+
+      {/* Official PDF / Printable Transaction Receipt Modal */}
+      <TransactionReceiptModal
+        isOpen={selectedReceiptTx !== null}
+        onClose={() => setSelectedReceiptTx(null)}
+        transaction={selectedReceiptTx}
+      />
     </div>
   );
 };

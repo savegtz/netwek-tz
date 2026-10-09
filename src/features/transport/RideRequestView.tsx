@@ -9,15 +9,18 @@ import {
   ShieldCheck,
   CheckCircle2,
   X,
+  Phone,
+  Video,
 } from 'lucide-react';
 import { RideOption } from '../../types';
 import { PaymentService } from '../../services/payments/paymentService';
 
 interface RideRequestViewProps {
   onBack?: () => void;
+  onStartCall?: (name: string, avatar: string, type: 'voice' | 'video', subtitle: string) => void;
 }
 
-export const RideRequestView: React.FC<RideRequestViewProps> = ({ onBack }) => {
+export const RideRequestView: React.FC<RideRequestViewProps> = ({ onBack, onStartCall }) => {
   const [pickup, setPickup] = useState('Mlimani City, Dar es Salaam');
   const [destination, setDestination] = useState('Arusha City Center');
   const [selectedTier, setSelectedTier] = useState<'Economy' | 'Comfort' | 'XL'>('Economy');
@@ -217,9 +220,43 @@ export const RideRequestView: React.FC<RideRequestViewProps> = ({ onBack }) => {
                     {driverInfo.plate}
                   </span>
                 </div>
+
+                {/* Direct Call to Driver Buttons */}
+                <div className="grid grid-cols-2 gap-2 mt-2.5">
+                  <button
+                    onClick={() =>
+                      onStartCall?.(
+                        driverInfo.name,
+                        'https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?w=200',
+                        'voice',
+                        `Dereva wa Zenia • ${driverInfo.car} (${driverInfo.plate})`
+                      )
+                    }
+                    className="py-2 px-3 rounded-xl bg-emerald-500/20 hover:bg-emerald-500/30 border border-emerald-500/40 text-emerald-300 font-bold text-xs flex items-center justify-center gap-1.5 transition-all active:scale-95"
+                  >
+                    <Phone className="w-3.5 h-3.5" />
+                    <span>Piga Simu</span>
+                  </button>
+
+                  <button
+                    onClick={() =>
+                      onStartCall?.(
+                        driverInfo.name,
+                        'https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?w=200',
+                        'video',
+                        `Dereva wa Zenia • ${driverInfo.car} (${driverInfo.plate})`
+                      )
+                    }
+                    className="py-2 px-3 rounded-xl bg-cyan-500/20 hover:bg-cyan-500/30 border border-cyan-500/40 text-cyan-300 font-bold text-xs flex items-center justify-center gap-1.5 transition-all active:scale-95"
+                  >
+                    <Video className="w-3.5 h-3.5" />
+                    <span>Video Call</span>
+                  </button>
+                </div>
+
                 <button
                   onClick={() => setRideStatus('idle')}
-                  className="w-full mt-3 py-2 rounded-xl bg-white/10 hover:bg-white/20 text-xs font-medium text-slate-300"
+                  className="w-full mt-2.5 py-2 rounded-xl bg-white/10 hover:bg-white/20 text-xs font-medium text-slate-300"
                 >
                   Cancel / Reset Ride
                 </button>

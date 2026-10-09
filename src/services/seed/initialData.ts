@@ -21,6 +21,8 @@ export const INITIAL_USER: UserProfile = {
   bio: 'Content Creator | Fashion | Lifestyle\nDream • Create • Inspire',
   accountType: 'creator',
   verified: true,
+  role: 'superadmin',
+  walletBalance: 120000,
   followersCount: 12400,
   followingCount: 245,
   postsCount: 3200,

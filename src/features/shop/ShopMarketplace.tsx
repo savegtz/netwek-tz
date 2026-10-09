@@ -14,6 +14,8 @@ import {
   Check,
   CreditCard,
   X,
+  Phone,
+  Video,
 } from 'lucide-react';
 import { ProductItem, CartItem, OrderItem } from '../../types';
 import { INITIAL_PRODUCTS } from '../../services/seed/initialData';
@@ -23,11 +25,18 @@ import { SafeImage } from '../../components/SafeImage';
 interface ShopMarketplaceProps {
   onStartChatWithSeller: (sellerId: string, sellerName: string) => void;
   onOpenCreateProduct: () => void;
+  onStartCallWithSeller?: (
+    sellerName: string,
+    avatar?: string,
+    type?: 'voice' | 'video',
+    subtitle?: string
+  ) => void;
 }
 
 export const ShopMarketplace: React.FC<ShopMarketplaceProps> = ({
   onStartChatWithSeller,
   onOpenCreateProduct,
+  onStartCallWithSeller,
 }) => {
   const [products, setProducts] = useState<ProductItem[]>(INITIAL_PRODUCTS);
   const [selectedCategory, setSelectedCategory] = useState<string>('All');
@@ -306,7 +315,7 @@ export const ShopMarketplace: React.FC<ShopMarketplaceProps> = ({
                 In Stock ({selectedProduct.stock})
               </span>
             </div>
-            <div className="flex gap-2">
+            <div className="flex gap-2 mb-2">
               <button
                 onClick={() => {
                   addToCart(selectedProduct);
@@ -321,9 +330,48 @@ export const ShopMarketplace: React.FC<ShopMarketplaceProps> = ({
                   onStartChatWithSeller(selectedProduct.sellerId, selectedProduct.sellerName);
                   setSelectedProduct(null);
                 }}
-                className="px-3 py-2.5 rounded-xl bg-white/10 text-white text-xs font-semibold"
+                className="px-3 py-2.5 rounded-xl bg-white/10 hover:bg-white/20 text-white text-xs font-semibold"
               >
                 Chat Seller
+              </button>
+            </div>
+
+            {/* Direct Call to Seller (Voice & Video) */}
+            <div className="grid grid-cols-2 gap-2 pt-2 border-t border-white/5">
+              <button
+                onClick={() => {
+                  const sName = selectedProduct.sellerName;
+                  const sPhoto = selectedProduct.images[0];
+                  setSelectedProduct(null);
+                  onStartCallWithSeller?.(
+                    sName,
+                    sPhoto,
+                    'voice',
+                    `Muuzaji wa Sokoni • Bidhaa: ${selectedProduct.name}`
+                  );
+                }}
+                className="py-2 px-2.5 rounded-xl bg-emerald-500/20 hover:bg-emerald-500/30 border border-emerald-500/40 text-emerald-300 font-bold text-xs flex items-center justify-center gap-1.5 active:scale-95 transition-all"
+              >
+                <Phone className="w-3.5 h-3.5" />
+                <span>Piga Muuzaji</span>
+              </button>
+
+              <button
+                onClick={() => {
+                  const sName = selectedProduct.sellerName;
+                  const sPhoto = selectedProduct.images[0];
+                  setSelectedProduct(null);
+                  onStartCallWithSeller?.(
+                    sName,
+                    sPhoto,
+                    'video',
+                    `Muuzaji wa Sokoni • Bidhaa: ${selectedProduct.name}`
+                  );
+                }}
+                className="py-2 px-2.5 rounded-xl bg-cyan-500/20 hover:bg-cyan-500/30 border border-cyan-500/40 text-cyan-300 font-bold text-xs flex items-center justify-center gap-1.5 active:scale-95 transition-all"
+              >
+                <Video className="w-3.5 h-3.5" />
+                <span>Video Call</span>
               </button>
             </div>
           </div>

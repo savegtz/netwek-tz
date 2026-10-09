@@ -17,11 +17,14 @@ import {
   LogOut,
   User,
   Settings,
+  CreditCard,
+  Music,
 } from 'lucide-react';
-import { UserProfile } from '../types';
+import { UserProfile, isUserAdmin } from '../types';
 import { SafeImage } from './SafeImage';
 import { StatusIcon } from './StatusIcon';
 import { useTheme } from '../context/ThemeContext';
+import { useMusicPlayer } from '../context/MusicPlayerContext';
 
 interface HeaderProps {
   currentUser: UserProfile | null;
@@ -49,6 +52,7 @@ export const Header: React.FC<HeaderProps> = ({
   unreadNotificationsCount,
 }) => {
   const { isDark, toggleTheme } = useTheme();
+  const { openPlayer } = useMusicPlayer();
   const [isMenuOpen, setIsMenuOpen] = useState(false);
   const menuRef = useRef<HTMLDivElement>(null);
 
@@ -243,6 +247,22 @@ export const Header: React.FC<HeaderProps> = ({
                 <button
                   onClick={() => {
                     setIsMenuOpen(false);
+                    onSelectTab('wallet');
+                  }}
+                  className="w-full flex items-center justify-between px-3 py-2 rounded-xl text-xs text-slate-200 hover:text-white hover:bg-white/5 transition-colors text-left"
+                >
+                  <div className="flex items-center gap-2.5">
+                    <CreditCard className="w-3.5 h-3.5 text-emerald-400" />
+                    <span>Pochi ya Zenia (Wallet)</span>
+                  </div>
+                  <span className="text-[10px] font-mono text-emerald-400 font-bold">
+                    TZS {(currentUser?.walletBalance || 120000).toLocaleString()}
+                  </span>
+                </button>
+
+                <button
+                  onClick={() => {
+                    setIsMenuOpen(false);
                     toggleTheme();
                   }}
                   className="w-full flex items-center justify-between px-3 py-2 rounded-xl text-xs text-slate-200 hover:text-white hover:bg-white/5 transition-colors text-left"
@@ -257,6 +277,22 @@ export const Header: React.FC<HeaderProps> = ({
                   </div>
                   <span className="text-[10px] font-semibold text-slate-400">
                     {isDark ? '🌙' : '☀️'}
+                  </span>
+                </button>
+
+                <button
+                  onClick={() => {
+                    setIsMenuOpen(false);
+                    openPlayer();
+                  }}
+                  className="w-full flex items-center justify-between px-3 py-2 rounded-xl text-xs text-slate-200 hover:text-white hover:bg-white/5 transition-colors text-left"
+                >
+                  <div className="flex items-center gap-2.5">
+                    <Music className="w-3.5 h-3.5 text-purple-400" />
+                    <span>Zenia Beats (Mini-Player)</span>
+                  </div>
+                  <span className="text-[10px] px-1.5 py-0.2 rounded bg-purple-500/20 text-purple-300 font-bold">
+                    🎵 Play
                   </span>
                 </button>
 
@@ -280,16 +316,24 @@ export const Header: React.FC<HeaderProps> = ({
                   </span>
                 </button>
 
-                <button
-                  onClick={() => {
-                    setIsMenuOpen(false);
-                    onOpenAdmin();
-                  }}
-                  className="w-full flex items-center gap-2.5 px-3 py-2 rounded-xl text-xs text-slate-200 hover:text-white hover:bg-white/5 transition-colors text-left"
-                >
-                  <ShieldCheck className="w-3.5 h-3.5 text-emerald-400" />
-                  <span>Usimamizi wa Mfumo (Admin)</span>
-                </button>
+                {/* Super Admin - strictly for the ONE admin only */}
+                {isUserAdmin(currentUser) && (
+                  <button
+                    onClick={() => {
+                      setIsMenuOpen(false);
+                      onOpenAdmin();
+                    }}
+                    className="w-full flex items-center justify-between px-3 py-2 rounded-xl text-xs text-slate-200 hover:text-white hover:bg-emerald-500/10 border border-emerald-500/20 transition-colors text-left mt-1"
+                  >
+                    <div className="flex items-center gap-2.5">
+                      <ShieldCheck className="w-3.5 h-3.5 text-emerald-400" />
+                      <span>Usimamizi wa Mfumo (Admin)</span>
+                    </div>
+                    <span className="text-[9px] px-1.5 py-0.5 rounded bg-emerald-500/20 text-emerald-300 font-bold uppercase">
+                      Admin Mkuu
+                    </span>
+                  </button>
+                )}
               </div>
             )}
           </div>

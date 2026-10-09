@@ -6,15 +6,19 @@ import {
   VideoOff,
   PhoneOff,
   RefreshCw,
-  Sparkles,
   ArrowLeft,
   Volume2,
   VolumeX,
   Lock,
   Phone,
   Radio,
+  Sliders,
+  Check,
+  PhoneCall,
+  ShieldCheck,
 } from 'lucide-react';
 import { CallService } from '../../services/calls/callService';
+import { soundEffects } from '../../services/audio/soundEffects';
 import { UserProfile } from '../../types';
 import freshKkAvatar from '../../assets/images/fresh_kk_avatar_1791078365294.jpg';
 
@@ -22,6 +26,8 @@ interface VideoCallScreenProps {
   callType?: 'video' | 'voice';
   remoteUserName?: string;
   remoteUserAvatar?: string;
+  remoteUserSubtitle?: string;
+  isIncoming?: boolean;
   onEndCall: () => void;
   currentUser: UserProfile;
 }
@@ -30,27 +36,50 @@ export const VideoCallScreen: React.FC<VideoCallScreenProps> = ({
   callType = 'voice',
   remoteUserName = 'Fresh kk',
   remoteUserAvatar = freshKkAvatar,
+  remoteUserSubtitle = 'Zenia Call • P2P Encrypted',
+  isIncoming = false,
   onEndCall,
   currentUser,
 }) => {
-  const [callStatus, setCallStatus] = useState<'ringing' | 'connected'>('ringing');
+  const [callStatus, setCallStatus] = useState<'incoming' | 'ringing' | 'connected'>(
+    isIncoming ? 'incoming' : 'ringing'
+  );
   const [seconds, setSeconds] = useState(0);
   const [isMuted, setIsMuted] = useState(false);
   const [isSpeakerOn, setIsSpeakerOn] = useState(true);
+  const [callVolume, setCallVolume] = useState<number>(85);
+  const [showVolumeSlider, setShowVolumeSlider] = useState(false);
   const [isVideoOff, setIsVideoOff] = useState(callType === 'voice');
   const [cameraFacing, setCameraFacing] = useState<'user' | 'environment'>('user');
   const [hasPermission, setHasPermission] = useState<boolean | null>(null);
 
   const localVideoRef = useRef<HTMLVideoElement>(null);
 
-  // Transition from "Ringing" to "Connected"
+  // Play realistic ringtone sound during ringing or incoming
   useEffect(() => {
-    const ringingTimer = setTimeout(() => {
-      setCallStatus('connected');
-    }, 2400);
+    if (callStatus === 'ringing' || callStatus === 'incoming') {
+      soundEffects.startRingtone();
+    } else {
+      soundEffects.stopRingtone();
+    }
 
-    return () => clearTimeout(ringingTimer);
-  }, []);
+    return () => {
+      soundEffects.stopRingtone();
+    };
+  }, [callStatus]);
+
+  // Outgoing automatic connect transition after 3.2s
+  useEffect(() => {
+    if (callStatus === 'ringing') {
+      const ringTimer = setTimeout(() => {
+        soundEffects.stopRingtone();
+        soundEffects.playConnectedChime();
+        setCallStatus('connected');
+      }, 3200);
+
+      return () => clearTimeout(ringTimer);
+    }
+  }, [callStatus]);
 
   // Duration timer once connected
   useEffect(() => {
@@ -68,11 +97,9 @@ export const VideoCallScreen: React.FC<VideoCallScreenProps> = ({
   // WebRTC real stream setup if video call
   useEffect(() => {
     if (callType !== 'video') return;
-    let activeStream: MediaStream | null = null;
     async function initMedia() {
       const stream = await CallService.startMedia(true, true);
       if (stream) {
-        activeStream = stream;
         setHasPermission(true);
         if (localVideoRef.current) {
           localVideoRef.current.srcObject = stream;
@@ -98,8 +125,21 @@ export const VideoCallScreen: React.FC<VideoCallScreenProps> = ({
     setIsVideoOff(!isVideoOff);
   };
 
+  const handleAcceptIncoming = () => {
+    soundEffects.stopRingtone();
+    soundEffects.playConnectedChime();
+    setCallStatus('connected');
+  };
+
+  const handleHangup = () => {
+    soundEffects.stopRingtone();
+    soundEffects.playHangupTone();
+    CallService.stopMedia();
+    onEndCall();
+  };
+
   return (
-    <div className="relative w-full max-w-lg mx-auto h-[100dvh] sm:h-[680px] bg-[#070A14] sm:rounded-3xl overflow-hidden shadow-2xl border sm:border-white/10 flex flex-col justify-between select-none">
+    <div className="relative w-full max-w-lg mx-auto h-[100dvh] sm:h-[700px] bg-[#070A14] sm:rounded-3xl overflow-hidden shadow-2xl border sm:border-white/10 flex flex-col justify-between select-none">
       {/* Background Decor */}
       {callType === 'video' && !isVideoOff ? (
         <div className="absolute inset-0 z-0">
@@ -108,12 +148,15 @@ export const VideoCallScreen: React.FC<VideoCallScreenProps> = ({
             alt={remoteUserName}
             className="w-full h-full object-cover filter blur-[2px]"
           />
-          <div className="absolute inset-0 bg-gradient-to-b from-black/80 via-black/40 to-black/90" />
+          <div className="absolute inset-0 bg-gradient-to-b from-black/85 via-black/40 to-black/95" />
         </div>
       ) : (
         <div className="absolute inset-0 z-0 overflow-hidden pointer-events-none">
           <div className="absolute -top-32 -left-32 w-80 h-80 rounded-full bg-cyan-600/15 blur-3xl animate-pulse" />
-          <div className="absolute -bottom-32 -right-32 w-80 h-80 rounded-full bg-indigo-600/15 blur-3xl animate-pulse" style={{ animationDelay: '1s' }} />
+          <div
+            className="absolute -bottom-32 -right-32 w-80 h-80 rounded-full bg-indigo-600/15 blur-3xl animate-pulse"
+            style={{ animationDelay: '1s' }}
+          />
           <div className="absolute inset-0 bg-[radial-gradient(#1e293b_1px,transparent_1px)] [background-size:24px_24px] opacity-25" />
         </div>
       )}
@@ -121,7 +164,7 @@ export const VideoCallScreen: React.FC<VideoCallScreenProps> = ({
       {/* Top Header */}
       <div className="relative z-10 p-5 flex items-center justify-between text-white">
         <button
-          onClick={onEndCall}
+          onClick={handleHangup}
           className="p-2.5 rounded-full bg-white/10 backdrop-blur-md hover:bg-white/20 transition-all active:scale-95 text-slate-300 hover:text-white"
           title="Rudi Nyuma"
         >
@@ -133,14 +176,37 @@ export const VideoCallScreen: React.FC<VideoCallScreenProps> = ({
           <span>E2E Encrypted • P2P Direct</span>
         </div>
 
-        <div className="w-9" />
+        {/* Volume controls dropdown toggle */}
+        <div className="relative">
+          <button
+            onClick={() => setShowVolumeSlider(!showVolumeSlider)}
+            className="p-2.5 rounded-full bg-white/10 backdrop-blur-md hover:bg-white/20 text-slate-300 hover:text-white transition-all"
+            title="Kiwango cha Sauti"
+          >
+            <Sliders className="w-4 h-4" />
+          </button>
+
+          {showVolumeSlider && (
+            <div className="absolute right-0 top-12 bg-black/80 backdrop-blur-xl border border-white/10 p-3 rounded-2xl shadow-2xl flex flex-col items-center gap-2 w-36 animate-in fade-in">
+              <span className="text-[10px] text-slate-400 font-bold uppercase">Sauti: {callVolume}%</span>
+              <input
+                type="range"
+                min="0"
+                max="100"
+                value={callVolume}
+                onChange={(e) => setCallVolume(Number(e.target.value))}
+                className="w-full accent-cyan-400 cursor-pointer"
+              />
+            </div>
+          )}
+        </div>
       </div>
 
       {/* Center Remote Contact Area */}
       <div className="relative z-10 flex-1 flex flex-col items-center justify-center p-6 text-center">
         {/* Pulsing Avatar Container */}
         <div className="relative mb-6">
-          {callStatus === 'ringing' ? (
+          {callStatus !== 'connected' ? (
             <>
               <div className="absolute -inset-4 rounded-full bg-cyan-500/20 animate-ping opacity-75" />
               <div className="absolute -inset-8 rounded-full bg-indigo-500/10 animate-pulse" />
@@ -169,16 +235,23 @@ export const VideoCallScreen: React.FC<VideoCallScreenProps> = ({
         </div>
 
         {/* Contact Info */}
-        <h2 className="text-2xl font-bold text-white tracking-tight mb-1 drop-shadow-md">
+        <h2 className="text-2xl sm:text-3xl font-extrabold text-white tracking-tight mb-1 drop-shadow-md">
           {remoteUserName}
         </h2>
-        <p className="text-xs text-slate-400 font-mono mb-3">
-          @{remoteUserName.toLowerCase().replace(/\s+/g, '_')} • Zenia Call
+        <p className="text-xs text-cyan-300 font-medium mb-3">
+          {remoteUserSubtitle}
         </p>
 
         {/* Calling Status Indicator */}
         <div className="flex items-center gap-2 px-4 py-1.5 rounded-full bg-white/5 border border-white/10 backdrop-blur-md">
-          {callStatus === 'ringing' ? (
+          {callStatus === 'incoming' ? (
+            <>
+              <PhoneCall className="w-4 h-4 text-emerald-400 animate-bounce" />
+              <span className="text-xs font-bold text-emerald-300">
+                Simu Inayoingia... (Incoming Call)
+              </span>
+            </>
+          ) : callStatus === 'ringing' ? (
             <>
               <Radio className="w-4 h-4 text-cyan-400 animate-spin" />
               <span className="text-xs font-semibold text-cyan-300">
@@ -189,7 +262,7 @@ export const VideoCallScreen: React.FC<VideoCallScreenProps> = ({
             <>
               <span className="w-2 h-2 rounded-full bg-emerald-400 animate-ping" />
               <span className="text-xs font-mono font-bold text-emerald-300">
-                {formatDuration(seconds)} • HD Voice
+                {formatDuration(seconds)} • HD Audio (48kHz)
               </span>
             </>
           )}
@@ -204,7 +277,7 @@ export const VideoCallScreen: React.FC<VideoCallScreenProps> = ({
                 className="w-1 rounded-full bg-gradient-to-t from-cyan-400 to-indigo-400 animate-pulse"
                 style={{
                   height: `${h}%`,
-                  animationDuration: `${0.6 + (i % 4) * 0.2}s`,
+                  animationDuration: `${0.5 + (i % 4) * 0.2}s`,
                 }}
               />
             ))}
@@ -240,69 +313,90 @@ export const VideoCallScreen: React.FC<VideoCallScreenProps> = ({
 
       {/* Bottom Controls Bar */}
       <div className="relative z-10 p-6 pt-2 pb-8">
-        <div className="max-w-sm mx-auto flex items-center justify-between px-5 py-3.5 rounded-full bg-black/60 backdrop-blur-2xl border border-white/10 shadow-2xl">
-          {/* Mute Mic */}
-          <button
-            onClick={toggleMute}
-            className={`p-3.5 rounded-full transition-all active:scale-95 ${
-              isMuted
-                ? 'bg-rose-500/80 text-white shadow-lg shadow-rose-500/30'
-                : 'bg-white/10 text-white hover:bg-white/20'
-            }`}
-            title={isMuted ? 'Washa Mic' : 'Zima Mic'}
-          >
-            {isMuted ? <MicOff className="w-5 h-5" /> : <Mic className="w-5 h-5" />}
-          </button>
-
-          {/* Speakerphone Toggle */}
-          <button
-            onClick={() => setIsSpeakerOn(!isSpeakerOn)}
-            className={`p-3.5 rounded-full transition-all active:scale-95 ${
-              isSpeakerOn
-                ? 'bg-cyan-500/30 text-cyan-300 border border-cyan-500/40'
-                : 'bg-white/10 text-white hover:bg-white/20'
-            }`}
-            title="Loudspeaker"
-          >
-            {isSpeakerOn ? <Volume2 className="w-5 h-5" /> : <VolumeX className="w-5 h-5" />}
-          </button>
-
-          {/* Toggle Camera (If Video Call) or Switch to Video */}
-          <button
-            onClick={toggleVideo}
-            className={`p-3.5 rounded-full transition-all active:scale-95 ${
-              isVideoOff
-                ? 'bg-white/10 text-slate-300 hover:bg-white/20'
-                : 'bg-cyan-500 text-slate-950 font-bold shadow-lg shadow-cyan-500/30'
-            }`}
-            title="Kamera ya Video"
-          >
-            {isVideoOff ? <VideoOff className="w-5 h-5" /> : <Video className="w-5 h-5" />}
-          </button>
-
-          {/* Switch Camera facing */}
-          {callType === 'video' && !isVideoOff && (
+        {callStatus === 'incoming' ? (
+          /* Incoming Call Accept/Decline Controls */
+          <div className="max-w-xs mx-auto flex items-center justify-around px-6 py-4 rounded-full bg-black/70 backdrop-blur-2xl border border-white/10 shadow-2xl">
+            {/* Decline */}
             <button
-              onClick={() => setCameraFacing((f) => (f === 'user' ? 'environment' : 'user'))}
-              className="p-3.5 rounded-full bg-white/10 text-white hover:bg-white/20 active:scale-95 transition-all"
-              title="Geuza Kamera"
+              onClick={handleHangup}
+              className="p-4 rounded-full bg-rose-600 hover:bg-rose-500 text-white shadow-xl shadow-rose-600/50 hover:scale-105 active:scale-95 transition-all flex items-center justify-center"
+              title="Kata (Decline)"
             >
-              <RefreshCw className="w-5 h-5" />
+              <PhoneOff className="w-6 h-6 stroke-[2.5]" />
             </button>
-          )}
 
-          {/* End Call Button */}
-          <button
-            onClick={() => {
-              CallService.stopMedia();
-              onEndCall();
-            }}
-            className="p-4 rounded-full bg-rose-600 hover:bg-rose-500 text-white shadow-xl shadow-rose-600/50 hover:scale-105 active:scale-90 transition-all"
-            title="Kata Simu (End Call)"
-          >
-            <PhoneOff className="w-6 h-6 stroke-[2.5]" />
-          </button>
-        </div>
+            {/* Accept */}
+            <button
+              onClick={handleAcceptIncoming}
+              className="p-4 rounded-full bg-emerald-500 hover:bg-emerald-400 text-white shadow-xl shadow-emerald-500/50 hover:scale-105 active:scale-95 transition-all flex items-center justify-center animate-pulse"
+              title="Pokea (Accept)"
+            >
+              <Phone className="w-6 h-6 stroke-[2.5]" />
+            </button>
+          </div>
+        ) : (
+          /* Active / Ringing Call Controls */
+          <div className="max-w-sm mx-auto flex items-center justify-between px-5 py-3.5 rounded-full bg-black/60 backdrop-blur-2xl border border-white/10 shadow-2xl">
+            {/* Mute Mic */}
+            <button
+              onClick={toggleMute}
+              className={`p-3.5 rounded-full transition-all active:scale-95 ${
+                isMuted
+                  ? 'bg-rose-500/80 text-white shadow-lg shadow-rose-500/30'
+                  : 'bg-white/10 text-white hover:bg-white/20'
+              }`}
+              title={isMuted ? 'Washa Mic' : 'Zima Mic'}
+            >
+              {isMuted ? <MicOff className="w-5 h-5" /> : <Mic className="w-5 h-5" />}
+            </button>
+
+            {/* Speakerphone Toggle */}
+            <button
+              onClick={() => setIsSpeakerOn(!isSpeakerOn)}
+              className={`p-3.5 rounded-full transition-all active:scale-95 ${
+                isSpeakerOn
+                  ? 'bg-cyan-500/30 text-cyan-300 border border-cyan-500/40'
+                  : 'bg-white/10 text-white hover:bg-white/20'
+              }`}
+              title="Loudspeaker"
+            >
+              {isSpeakerOn ? <Volume2 className="w-5 h-5" /> : <VolumeX className="w-5 h-5" />}
+            </button>
+
+            {/* Toggle Camera (If Video Call) or Switch to Video */}
+            <button
+              onClick={toggleVideo}
+              className={`p-3.5 rounded-full transition-all active:scale-95 ${
+                isVideoOff
+                  ? 'bg-white/10 text-slate-300 hover:bg-white/20'
+                  : 'bg-cyan-500 text-slate-950 font-bold shadow-lg shadow-cyan-500/30'
+              }`}
+              title="Kamera ya Video"
+            >
+              {isVideoOff ? <VideoOff className="w-5 h-5" /> : <Video className="w-5 h-5" />}
+            </button>
+
+            {/* Switch Camera facing */}
+            {callType === 'video' && !isVideoOff && (
+              <button
+                onClick={() => setCameraFacing((f) => (f === 'user' ? 'environment' : 'user'))}
+                className="p-3.5 rounded-full bg-white/10 text-white hover:bg-white/20 active:scale-95 transition-all"
+                title="Geuza Kamera"
+              >
+                <RefreshCw className="w-5 h-5" />
+              </button>
+            )}
+
+            {/* End Call Button */}
+            <button
+              onClick={handleHangup}
+              className="p-4 rounded-full bg-rose-600 hover:bg-rose-500 text-white shadow-xl shadow-rose-600/50 hover:scale-105 active:scale-90 transition-all"
+              title="Kata Simu (End Call)"
+            >
+              <PhoneOff className="w-6 h-6 stroke-[2.5]" />
+            </button>
+          </div>
+        )}
       </div>
     </div>
   );

@@ -7,7 +7,7 @@ import React, { useState, useEffect } from 'react';
 import { onAuthStateChanged, signOut } from 'firebase/auth';
 import { doc, getDoc, setDoc } from 'firebase/firestore';
 import { auth, db } from './services/firebase/config';
-import { UserProfile, Conversation, StatusType, StatusItem, NotificationItem } from './types';
+import { UserProfile, Conversation, StatusType, StatusItem, NotificationItem, isUserAdmin } from './types';
 import { INITIAL_USER, INITIAL_CONVERSATIONS, INITIAL_NOTIFICATIONS } from './services/seed/initialData';
 import { MessageSquare, Plus, Sparkles, ShieldCheck, Lock } from 'lucide-react';
 
@@ -38,6 +38,8 @@ import { AIAssistantModal } from './features/ai/AIAssistantModal';
 import { VideoCallScreen } from './features/calls/VideoCallScreen';
 import { NotificationsView } from './features/notifications/NotificationsView';
 import { AdminDevPanel } from './features/admin/AdminDevPanel';
+import { BroadcastBanner } from './components/BroadcastBanner';
+import { ZeniaMiniPlayer } from './components/ZeniaMiniPlayer';
 import freshKkAvatar from './assets/images/fresh_kk_avatar_1791078365294.jpg';
 
 export default function App() {
@@ -107,10 +109,51 @@ export default function App() {
   const [isAIOpen, setIsAIOpen] = useState(false);
   const [isAdminOpen, setIsAdminOpen] = useState(false);
   const [isNotificationsOpen, setIsNotificationsOpen] = useState(false);
-  const [activeCallType, setActiveCallType] = useState<'video' | 'voice' | null>(null);
+  const [activeCallSession, setActiveCallSession] = useState<{
+    type: 'video' | 'voice';
+    remoteName: string;
+    remoteAvatar?: string;
+    subtitle?: string;
+    isIncoming?: boolean;
+  } | null>(null);
   const [createStatusType, setCreateStatusType] = useState<StatusType | 'ai' | null>(null);
   const [customStatuses, setCustomStatuses] = useState<StatusItem[]>([]);
   const [isFrameMode, setIsFrameMode] = useState<boolean>(false); // Full-width responsive web view by default
+
+  const handleStartCallFromConversation = (type: 'video' | 'voice') => {
+    if (!activeConversation) return;
+    const rName =
+      (activeConversation.isGroup
+        ? activeConversation.groupName
+        : activeConversation?.participantDetails &&
+          activeConversation.participants.find((p) => p !== activeUser.id)
+        ? activeConversation.participantDetails[
+            activeConversation.participants.find((p) => p !== activeUser.id)!
+          ]?.displayName
+        : 'Fresh kk') || 'Fresh kk';
+    const rAvatar =
+      (activeConversation.isGroup
+        ? activeConversation.groupAvatar
+        : activeConversation?.participantDetails &&
+          activeConversation.participants.find((p) => p !== activeUser.id)
+        ? activeConversation.participantDetails[
+            activeConversation.participants.find((p) => p !== activeUser.id)!
+          ]?.photoURL
+        : freshKkAvatar) || freshKkAvatar;
+    setActiveCallSession({
+      type,
+      remoteName: rName,
+      remoteAvatar: rAvatar,
+      subtitle: activeConversation.isGroup ? 'Kikundi cha Zenia • Simu ya Pamoja' : 'Zenia Call • E2E Encrypted',
+    });
+  };
+
+  // Single admin security guard: Only the designated admin (savegamour@gmail.com) can open admin panel
+  const handleOpenAdmin = () => {
+    if (isUserAdmin(currentUser)) {
+      setIsAdminOpen(true);
+    }
+  };
 
   // Notifications state with localStorage persistence
   const [notifications, setNotifications] = useState<NotificationItem[]>(() => {
@@ -362,12 +405,15 @@ export default function App() {
           onOpenNotifications={() => setIsNotificationsOpen(true)}
           onOpenAI={() => setIsAIOpen(true)}
           onOpenAuth={() => setIsAuthOpen(true)}
-          onOpenAdmin={() => setIsAdminOpen(true)}
+          onOpenAdmin={handleOpenAdmin}
           isFrameMode={isFrameMode}
           onToggleFrameMode={() => setIsFrameMode(!isFrameMode)}
           unreadNotificationsCount={notifications.filter((n) => !n.read).length}
         />
       </div>
+
+      {/* Global Real-Time Broadcast Announcement Banner */}
+      <BroadcastBanner onNavigate={(tab) => setActiveTab(tab)} />
 
       {/* Main View Area */}
       <main className="flex-1 flex items-stretch justify-center overflow-hidden p-0">
@@ -455,7 +501,7 @@ export default function App() {
                             conversation={activeConversation}
                             currentUser={currentUser}
                             onBack={() => setActiveConversation(null)}
-                            onStartCall={(type) => setActiveCallType(type)}
+                            onStartCall={handleStartCallFromConversation}
                             onUpdateConversation={(updated) => {
                               setConversations((prev) =>
                                 prev.map((c) => (c.id === updated.id ? updated : c))
@@ -476,7 +522,7 @@ export default function App() {
                             conversation={activeConversation}
                             currentUser={currentUser}
                             onBack={() => setActiveConversation(null)}
-                            onStartCall={(type) => setActiveCallType(type)}
+                            onStartCall={handleStartCallFromConversation}
                             onSwitchUser={(u) => setCurrentUser(u)}
                             onUpdateConversation={(updated) => {
                               setConversations((prev) =>
@@ -554,6 +600,14 @@ export default function App() {
               <ShopMarketplace
                 onStartChatWithSeller={handleStartChatWithSeller}
                 onOpenCreateProduct={() => setIsCreateMenuOpen(true)}
+                onStartCallWithSeller={(name, avatar, type, subtitle) =>
+                  setActiveCallSession({
+                    type: type || 'voice',
+                    remoteName: name,
+                    remoteAvatar: avatar,
+                    subtitle: subtitle || 'Muuzaji wa Sokoni • Zenia Call',
+                  })
+                }
               />
             )}
 
@@ -568,7 +622,7 @@ export default function App() {
                     setIsAuthOpen(true);
                   }
                 }}
-                onOpenAdmin={() => setIsAdminOpen(true)}
+                onOpenAdmin={handleOpenAdmin}
                 onSelectService={(tab) => setActiveTab(tab)}
                 onOpenAuth={() => setIsAuthOpen(true)}
                 onSignOut={handleSignOut}
@@ -610,7 +664,19 @@ export default function App() {
 
             {activeTab === 'jobs' && <JobsView currentUser={activeUser} />}
 
-            {activeTab === 'transport' && <RideRequestView onBack={() => setActiveTab('chats')} />}
+            {activeTab === 'transport' && (
+              <RideRequestView
+                onBack={() => setActiveTab('chats')}
+                onStartCall={(name, avatar, type, subtitle) =>
+                  setActiveCallSession({
+                    type,
+                    remoteName: name,
+                    remoteAvatar: avatar,
+                    subtitle: subtitle || 'Dereva wa Zenia Mobility',
+                  })
+                }
+              />
+            )}
 
             {activeTab === 'wallet' && <WalletView onBack={() => setActiveTab('chats')} />}
 
@@ -682,11 +748,14 @@ export default function App() {
 
       <AIAssistantModal isOpen={isAIOpen} onClose={() => setIsAIOpen(false)} />
 
-      <AdminDevPanel
-        isOpen={isAdminOpen}
-        onClose={() => setIsAdminOpen(false)}
-        currentUser={activeUser}
-      />
+      {/* Admin Dev Panel - Strictly single admin only */}
+      {isUserAdmin(currentUser) && (
+        <AdminDevPanel
+          isOpen={isAdminOpen}
+          onClose={() => setIsAdminOpen(false)}
+          currentUser={currentUser || activeUser}
+        />
+      )}
 
       <StartNewChatModal
         isOpen={isNewChatModalOpen}
@@ -718,35 +787,22 @@ export default function App() {
       )}
 
       {/* Direct Voice & Video Call Modal */}
-      {activeCallType && (
+      {activeCallSession && (
         <div className="fixed inset-0 z-50 flex items-center justify-center p-0 sm:p-4 bg-black/90 backdrop-blur-xl">
           <VideoCallScreen
-            callType={activeCallType}
-            remoteUserName={
-              activeConversation?.isGroup
-                ? activeConversation.groupName
-                : (activeConversation?.participantDetails &&
-                  activeConversation.participants.find((p) => p !== activeUser.id)
-                    ? activeConversation.participantDetails[
-                        activeConversation.participants.find((p) => p !== activeUser.id)!
-                      ]?.displayName
-                    : 'Fresh kk') || 'Fresh kk'
-            }
-            remoteUserAvatar={
-              activeConversation?.isGroup
-                ? activeConversation.groupAvatar
-                : (activeConversation?.participantDetails &&
-                  activeConversation.participants.find((p) => p !== activeUser.id)
-                    ? activeConversation.participantDetails[
-                        activeConversation.participants.find((p) => p !== activeUser.id)!
-                      ]?.photoURL
-                    : freshKkAvatar) || freshKkAvatar
-            }
+            callType={activeCallSession.type}
+            remoteUserName={activeCallSession.remoteName}
+            remoteUserAvatar={activeCallSession.remoteAvatar || freshKkAvatar}
+            remoteUserSubtitle={activeCallSession.subtitle}
+            isIncoming={activeCallSession.isIncoming}
             currentUser={activeUser}
-            onEndCall={() => setActiveCallType(null)}
+            onEndCall={() => setActiveCallSession(null)}
           />
         </div>
       )}
+
+      {/* Floating Zenia Beats & Podcasts Mini-Player */}
+      <ZeniaMiniPlayer />
     </div>
   );
 }

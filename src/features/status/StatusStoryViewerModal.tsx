@@ -16,6 +16,10 @@ import {
   Flame,
   Briefcase,
   Check,
+  Music,
+  Disc,
+  Clock,
+  Sparkles,
 } from 'lucide-react';
 import { StatusItem, UserProfile } from '../../types';
 import { SafeImage } from '../../components/SafeImage';
@@ -58,7 +62,10 @@ export const StatusStoryViewerModal: React.FC<StatusStoryViewerModalProps> = ({
 
   // Poll voting inside story
   const [votedOption, setVotedOption] = useState<string | null>(null);
+  const [extraPollVotes, setExtraPollVotes] = useState<Record<string, number>>({});
   const [copiedToast, setCopiedToast] = useState(false);
+  const [reactionToast, setReactionToast] = useState<string | null>(null);
+  const [floatingEmojis, setFloatingEmojis] = useState<Array<{ id: number; emoji: string; x: number }>>([]);
 
   // Submodals
   const [isFoodOrderOpen, setIsFoodOrderOpen] = useState(false);
@@ -88,8 +95,35 @@ export const StatusStoryViewerModal: React.FC<StatusStoryViewerModalProps> = ({
       setIsPaused(false);
       setShowComments(false);
       setVotedOption(null);
+      setFloatingEmojis([]);
     }
   }, [isOpen, initialIndex]);
+
+  const handleVotePoll = (optId: string) => {
+    if (votedOption) return; // already voted
+    setVotedOption(optId);
+    setExtraPollVotes((prev) => ({
+      ...prev,
+      [optId]: (prev[optId] || 0) + 1,
+    }));
+    triggerFloatingEmoji('🗳️');
+  };
+
+  const triggerFloatingEmoji = (emoji: string) => {
+    const id = Date.now() + Math.random();
+    const x = Math.floor(Math.random() * 60) + 20; // 20% to 80%
+    setFloatingEmojis((prev) => [...prev, { id, emoji, x }]);
+    setTimeout(() => {
+      setFloatingEmojis((prev) => prev.filter((item) => item.id !== id));
+    }, 1800);
+  };
+
+  const handleQuickReaction = (emoji: string) => {
+    triggerFloatingEmoji(emoji);
+    setReactionToast(`Umetuma maoni ya ${emoji}`);
+    setTimeout(() => setReactionToast(null), 1800);
+    onReplyRef.current?.(current, emoji);
+  };
 
   // Pause timer when a submodal or comment drawer is active
   const anyModalActive = isFoodOrderOpen || isProductPurchaseOpen || isEventTicketOpen || showComments;
@@ -315,13 +349,27 @@ export const StatusStoryViewerModal: React.FC<StatusStoryViewerModalProps> = ({
         {/* BOTTOM RICH STORY DETAILS (FOOD, POLL, PRODUCT, EVENT) */}
         {/* ============================================================== */}
         <div className="relative z-20 p-4 pt-2 space-y-3 bg-gradient-to-t from-slate-950 via-slate-950/95 to-transparent">
-          {/* Location Badge */}
-          {current.location && (
-            <div className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-black/60 backdrop-blur-md border border-white/10 text-xs text-white">
-              <MapPin className="w-3.5 h-3.5 text-amber-400" />
-              <span>{current.location}</span>
+          {/* Badges: Location, 24h Expiry & Music Sticker */}
+          <div className="flex items-center gap-2 flex-wrap">
+            {current.location && (
+              <div className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-black/60 backdrop-blur-md border border-white/10 text-xs text-white">
+                <MapPin className="w-3.5 h-3.5 text-amber-400" />
+                <span>{current.location}</span>
+              </div>
+            )}
+
+            {/* 24-Hour Expiration Indicator */}
+            <div className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-cyan-500/15 backdrop-blur-md border border-cyan-400/30 text-xs text-cyan-300 font-bold shadow-sm">
+              <Clock className="w-3.5 h-3.5 text-cyan-400" />
+              <span>⏳ Masaa 24 • Imebaki saa 18</span>
             </div>
-          )}
+
+            {/* Music Sticker with spinning disc */}
+            <div className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-purple-500/20 backdrop-blur-md border border-purple-400/30 text-xs text-purple-200 font-bold">
+              <Disc className="w-3.5 h-3.5 text-purple-400 animate-spin" style={{ animationDuration: '3s' }} />
+              <span>🎵 Diamond Platnumz - Komasava</span>
+            </div>
+          </div>
 
           {/* ==================== 1. FOOD STORY CONTENT ==================== */}
           {current.type === 'food' && (
@@ -404,36 +452,47 @@ export const StatusStoryViewerModal: React.FC<StatusStoryViewerModalProps> = ({
           {/* ==================== 2. POLL STORY CONTENT ==================== */}
           {current.type === 'poll' && (
             <div className="p-3.5 rounded-2xl bg-[#0F1426]/90 backdrop-blur-md border border-blue-500/30 space-y-2.5">
-              <h4 className="font-bold text-sm text-white flex items-center gap-1.5">
-                <BarChart2 className="w-4 h-4 text-blue-400" />
-                <span>{current.metadata?.pollQuestion || 'Leo tukatoke wapi? 😎'}</span>
-              </h4>
+              <div className="flex items-center justify-between">
+                <h4 className="font-bold text-sm text-white flex items-center gap-1.5">
+                  <BarChart2 className="w-4 h-4 text-blue-400" />
+                  <span>{current.metadata?.pollQuestion || 'Leo tukatoke wapi? 😎'}</span>
+                </h4>
+                <span className="text-[10px] text-blue-300 font-bold px-2 py-0.5 rounded-full bg-blue-500/20">
+                  {votedOption ? '✓ Umepiga Kura' : 'Gusa Kupiga Kura'}
+                </span>
+              </div>
 
               <div className="space-y-1.5">
                 {current.metadata?.pollOptions?.map((opt) => {
                   const isSelected = votedOption === opt.id;
+                  const added = extraPollVotes[opt.id] || 0;
+                  const currentOptVotes = opt.votes + added;
                   const totalVotes =
-                    current.metadata?.pollOptions?.reduce((s, o) => s + o.votes, 0) || 1;
-                  const pct = Math.round((opt.votes / totalVotes) * 100);
+                    (current.metadata?.pollOptions?.reduce((s, o) => s + o.votes + (extraPollVotes[o.id] || 0), 0) || 1);
+                  const pct = Math.round((currentOptVotes / totalVotes) * 100);
+
                   return (
                     <button
                       key={opt.id}
                       type="button"
-                      onClick={() => setVotedOption(opt.id)}
-                      className={`relative w-full p-2.5 rounded-xl border text-left overflow-hidden transition-all text-xs font-semibold ${
+                      onClick={() => handleVotePoll(opt.id)}
+                      className={`relative w-full p-2.5 rounded-xl border text-left overflow-hidden transition-all text-xs font-semibold active:scale-[0.99] ${
                         isSelected
-                          ? 'border-blue-400 bg-blue-500/20 text-white'
+                          ? 'border-blue-400 bg-blue-500/30 text-white shadow-md'
                           : 'border-white/10 bg-black/40 text-slate-200 hover:border-blue-400/50'
                       }`}
                     >
                       <div
-                        className="absolute inset-y-0 left-0 bg-blue-500/25 transition-all duration-500"
+                        className="absolute inset-y-0 left-0 bg-blue-500/35 transition-all duration-500"
                         style={{ width: `${pct}%` }}
                       />
                       <div className="relative z-10 flex items-center justify-between">
-                        <span>{opt.text}</span>
-                        <span className="font-mono text-blue-300 font-bold">
-                          {pct}% ({opt.votes})
+                        <span className="flex items-center gap-1.5">
+                          {isSelected && <span className="text-blue-300 font-bold">✓</span>}
+                          <span>{opt.text}</span>
+                        </span>
+                        <span className="font-mono text-blue-300 font-bold text-[11px]">
+                          {pct}% ({currentOptVotes})
                         </span>
                       </div>
                     </button>
@@ -629,10 +688,30 @@ export const StatusStoryViewerModal: React.FC<StatusStoryViewerModalProps> = ({
             </button>
           </div>
 
+          {/* Quick Emoji Reaction Buttons: 🔥, ❤️, 😂, 👏, 😮, 💯 */}
+          <div className="flex items-center justify-between gap-1.5 px-3 py-1.5 rounded-2xl bg-black/50 backdrop-blur-md border border-white/10">
+            <span className="text-[10px] text-slate-400 font-bold uppercase tracking-wider">
+              Maoni ya Haraka:
+            </span>
+            <div className="flex items-center gap-1.5">
+              {['🔥', '❤️', '😂', '👏', '😮', '💯'].map((emo) => (
+                <button
+                  key={emo}
+                  type="button"
+                  onClick={() => handleQuickReaction(emo)}
+                  className="w-8 h-8 rounded-full bg-white/10 hover:bg-white/20 active:scale-125 transition-all flex items-center justify-center text-sm shadow-sm"
+                  title={`Gusa kutuma ${emo}`}
+                >
+                  {emo}
+                </button>
+              ))}
+            </div>
+          </div>
+
           {/* Quick Reply or Comment Input */}
           <form
             onSubmit={handleSendReply}
-            className="flex items-center gap-2 pt-1"
+            className="flex items-center gap-2 pt-0.5"
           >
             <input
               type="text"
@@ -649,6 +728,28 @@ export const StatusStoryViewerModal: React.FC<StatusStoryViewerModalProps> = ({
               <Send className="w-3.5 h-3.5" />
             </button>
           </form>
+        </div>
+
+        {/* Floating Emojis Animation Layer */}
+        <div className="absolute inset-0 pointer-events-none z-30 overflow-hidden">
+          {floatingEmojis.map((fe) => (
+            <div
+              key={fe.id}
+              className="absolute bottom-28 text-3xl animate-pulse transition-all duration-1000"
+              style={{
+                left: `${fe.x}%`,
+                transform: 'translateY(-120px) scale(1.4)',
+                opacity: 0.95,
+              }}
+            >
+              {fe.emoji}
+            </div>
+          ))}
+          {reactionToast && (
+            <div className="absolute top-16 left-1/2 -translate-x-1/2 bg-black/80 backdrop-blur-md border border-cyan-400/40 text-cyan-300 font-bold text-xs px-3.5 py-1.5 rounded-full shadow-xl animate-in fade-in">
+              {reactionToast}
+            </div>
+          )}
         </div>
       </div>
 

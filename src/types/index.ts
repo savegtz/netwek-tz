@@ -23,6 +23,20 @@ export interface UserProfile {
   role?: 'user' | 'admin' | 'superadmin';
 }
 
+export const PRIMARY_ADMIN_EMAIL = 'savegamour@gmail.com';
+
+/**
+ * Strict single-admin check: Admin anatakiwa kuwa mmoja tu (savegamour@gmail.com)
+ */
+export const isUserAdmin = (user?: UserProfile | null): boolean => {
+  if (!user) return false;
+  if (user.id === 'guest') return false;
+  const email = (user.email || '').trim().toLowerCase();
+  if (email === PRIMARY_ADMIN_EMAIL.toLowerCase()) return true;
+  if (user.role === 'superadmin' && user.id === 'current_user_id') return true;
+  return false;
+};
+
 export type MessageType =
   | 'text'
   | 'image'

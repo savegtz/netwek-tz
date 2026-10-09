@@ -38,7 +38,7 @@ import {
 } from 'lucide-react';
 import { auth, db, testFirestoreConnection } from '../../services/firebase/config';
 import { doc, setDoc } from 'firebase/firestore';
-import { UserProfile, ProductItem, EventItem, JobItem } from '../../types';
+import { UserProfile, ProductItem, EventItem, JobItem, PRIMARY_ADMIN_EMAIL, isUserAdmin } from '../../types';
 import {
   INITIAL_CONVERSATIONS,
   INITIAL_PRODUCTS,
@@ -48,6 +48,7 @@ import {
   INITIAL_COMMUNITIES,
 } from '../../services/seed/initialData';
 import { SafeImage } from '../../components/SafeImage';
+import { AdminVisualCharts } from './AdminVisualCharts';
 import freshKkAvatar from '../../assets/images/fresh_kk_avatar_1791078365294.jpg';
 
 interface AdminDevPanelProps {
@@ -264,6 +265,20 @@ export const AdminDevPanel: React.FC<AdminDevPanelProps> = ({
   const [broadcastTitle, setBroadcastTitle] = useState('');
   const [broadcastMessage, setBroadcastMessage] = useState('');
   const [isMaintenanceMode, setIsMaintenanceMode] = useState(false);
+  const [activeAnnouncement, setActiveAnnouncement] = useState<{
+    id: string;
+    title: string;
+    message: string;
+    urgency: string;
+    createdAt: string;
+  } | null>(() => {
+    try {
+      const saved = localStorage.getItem('zenia_global_announcement');
+      return saved ? JSON.parse(saved) : null;
+    } catch {
+      return null;
+    }
+  });
 
   useEffect(() => {
     if (!isOpen) return;
@@ -308,6 +323,11 @@ export const AdminDevPanel: React.FC<AdminDevPanelProps> = ({
   };
 
   const handleToggleSuspend = (userId: string) => {
+    const target = usersList.find((u) => u.id === userId);
+    if (target?.email?.toLowerCase() === PRIMARY_ADMIN_EMAIL.toLowerCase()) {
+      showToast('Admin Mkuu hawezi kusimamishwa au kufungiwa!');
+      return;
+    }
     setUsersList((prev) =>
       prev.map((u) => {
         if (u.id === userId) {
@@ -374,9 +394,30 @@ export const AdminDevPanel: React.FC<AdminDevPanelProps> = ({
   const handleSendBroadcast = (e: React.FormEvent) => {
     e.preventDefault();
     if (!broadcastTitle.trim() || !broadcastMessage.trim()) return;
-    showToast(`Tangazo la Mfumo limetumwa kwa watumiaji wote 1,480! 📢`);
+    const ann = {
+      id: String(Date.now()),
+      title: broadcastTitle.trim(),
+      message: broadcastMessage.trim(),
+      urgency: 'high',
+      createdAt: 'Sasa hivi',
+    };
+    try {
+      localStorage.setItem('zenia_global_announcement', JSON.stringify(ann));
+      window.dispatchEvent(new Event('zenia_announcement_updated'));
+    } catch {}
+    setActiveAnnouncement(ann);
+    showToast(`Tangazo la Mfumo limetumwa na kuonekana hewani! 📢`);
     setBroadcastTitle('');
     setBroadcastMessage('');
+  };
+
+  const handleRemoveAnnouncement = () => {
+    try {
+      localStorage.removeItem('zenia_global_announcement');
+      window.dispatchEvent(new Event('zenia_announcement_updated'));
+    } catch {}
+    setActiveAnnouncement(null);
+    showToast('Tangazo la mfumo limeondolewa hewani.');
   };
 
   // DATABASE SEEDING
@@ -544,6 +585,9 @@ export const AdminDevPanel: React.FC<AdminDevPanelProps> = ({
                 </div>
               </div>
 
+              {/* Interactive Visual Charts for Revenue, Fees & Growth */}
+              <AdminVisualCharts />
+
               {/* Infrastructure Real-time Health */}
               <div className="p-5 rounded-3xl bg-[#0F1326] border border-white/10 space-y-4">
                 <h4 className="font-bold text-sm text-white flex items-center gap-2">
@@ -650,87 +694,123 @@ export const AdminDevPanel: React.FC<AdminDevPanelProps> = ({
                 </div>
               </div>
 
+              {/* Single Admin Policy Banner */}
+              <div className="p-3.5 rounded-2xl bg-gradient-to-r from-emerald-950/40 via-cyan-950/30 to-[#0F1326] border border-emerald-500/30 flex items-center justify-between gap-3 text-xs">
+                <div className="flex items-center gap-2.5 text-emerald-300 min-w-0">
+                  <Shield className="w-4 h-4 text-emerald-400 shrink-0" />
+                  <span className="truncate">
+                    <strong>Sera ya Utawala:</strong> Mfumo una Admin Mmoja Tu Mwenye Mamlaka ({PRIMARY_ADMIN_EMAIL}). Watumiaji wote wengine wanasimamiwa bila haki za kiutawala.
+                  </span>
+                </div>
+                <span className="text-[10px] font-mono font-bold bg-emerald-500/20 text-emerald-300 px-2 py-0.5 rounded-full border border-emerald-500/30 shrink-0">
+                  1 Admin Pekee
+                </span>
+              </div>
+
               {/* Users Table / Cards */}
               <div className="space-y-2.5">
-                {filteredUsers.map((u) => (
-                  <div
-                    key={u.id}
-                    className="p-4 rounded-2xl bg-[#0F1326] border border-white/5 hover:border-white/15 flex flex-col md:flex-row items-start md:items-center justify-between gap-4 transition-all"
-                  >
-                    <div className="flex items-center gap-3 min-w-0">
-                      <SafeImage
-                        src={u.photoURL}
-                        fallbackText={u.displayName}
-                        fallbackGradient="from-cyan-800 to-indigo-900"
-                        alt={u.displayName}
-                        className="w-11 h-11 rounded-2xl object-cover shrink-0 ring-2 ring-white/10"
-                      />
-                      <div className="min-w-0">
-                        <div className="flex items-center gap-2">
-                          <h4 className="font-bold text-sm text-white truncate">{u.displayName}</h4>
-                          {u.verified && (
-                            <span className="p-0.5 rounded-full bg-cyan-500 text-slate-950 font-bold" title="Verified Blue Badge">
-                              <Check className="w-3 h-3 stroke-[3]" />
-                            </span>
-                          )}
-                          <span className="text-[10px] px-2 py-0.5 rounded-md font-bold uppercase bg-white/5 text-slate-300 border border-white/10">
-                            {u.accountType}
-                          </span>
-                          {u.isSuspended && (
-                            <span className="text-[10px] px-2 py-0.5 rounded-md font-bold bg-rose-500/20 text-rose-300 border border-rose-500/30">
-                              Imesimamishwa
-                            </span>
-                          )}
+                {filteredUsers.map((u) => {
+                  const isPrimaryAdmin = u.email?.toLowerCase() === PRIMARY_ADMIN_EMAIL.toLowerCase();
+
+                  return (
+                    <div
+                      key={u.id}
+                      className={`p-4 rounded-2xl border flex flex-col md:flex-row items-start md:items-center justify-between gap-4 transition-all ${
+                        isPrimaryAdmin
+                          ? 'bg-[#0F182E] border-emerald-500/30 shadow-sm shadow-emerald-500/10'
+                          : 'bg-[#0F1326] border-white/5 hover:border-white/15'
+                      }`}
+                    >
+                      <div className="flex items-center gap-3 min-w-0">
+                        <SafeImage
+                          src={u.photoURL}
+                          fallbackText={u.displayName}
+                          fallbackGradient="from-cyan-800 to-indigo-900"
+                          alt={u.displayName}
+                          className="w-11 h-11 rounded-2xl object-cover shrink-0 ring-2 ring-white/10"
+                        />
+                        <div className="min-w-0">
+                          <div className="flex items-center gap-2 flex-wrap">
+                            <h4 className="font-bold text-sm text-white truncate">{u.displayName}</h4>
+                            {u.verified && (
+                              <span className="p-0.5 rounded-full bg-cyan-500 text-slate-950 font-bold" title="Verified Blue Badge">
+                                <Check className="w-3 h-3 stroke-[3]" />
+                              </span>
+                            )}
+                            {isPrimaryAdmin ? (
+                              <span className="text-[10px] px-2 py-0.5 rounded-md font-bold uppercase bg-emerald-500/20 text-emerald-300 border border-emerald-500/30 flex items-center gap-1">
+                                <Shield className="w-3 h-3 text-emerald-400" />
+                                Admin Mkuu (Pekee)
+                              </span>
+                            ) : (
+                              <span className="text-[10px] px-2 py-0.5 rounded-md font-bold uppercase bg-white/5 text-slate-300 border border-white/10">
+                                {u.accountType}
+                              </span>
+                            )}
+                            {u.isSuspended && (
+                              <span className="text-[10px] px-2 py-0.5 rounded-md font-bold bg-rose-500/20 text-rose-300 border border-rose-500/30">
+                                Imesimamishwa
+                              </span>
+                            )}
+                          </div>
+                          <p className="text-xs text-slate-400 font-mono mt-0.5">
+                            @{u.username} • {u.email} • Salio: TZS {(u.walletBalance || 0).toLocaleString()}
+                          </p>
                         </div>
-                        <p className="text-xs text-slate-400 font-mono mt-0.5">
-                          @{u.username} • {u.email} • Salio: TZS {(u.walletBalance || 0).toLocaleString()}
-                        </p>
+                      </div>
+
+                      {/* Admin Action Buttons */}
+                      <div className="flex items-center gap-2 w-full md:w-auto justify-end flex-wrap">
+                        {isPrimaryAdmin ? (
+                          <span className="text-xs text-emerald-400 font-semibold px-3 py-1.5 bg-emerald-500/15 border border-emerald-500/30 rounded-xl">
+                            Akaunti ya Mmiliki (Super Admin)
+                          </span>
+                        ) : (
+                          <>
+                            {/* Toggle Verification Blue Badge */}
+                            <button
+                              onClick={() => handleToggleVerify(u.id)}
+                              className={`px-3 py-1.5 rounded-xl text-xs font-bold flex items-center gap-1.5 transition-all ${
+                                u.verified
+                                  ? 'bg-cyan-500/20 text-cyan-300 border border-cyan-500/40 hover:bg-cyan-500/30'
+                                  : 'bg-white/5 text-slate-300 hover:bg-white/10 border border-white/10'
+                              }`}
+                              title={u.verified ? 'Ondoa Uthibitisho' : 'Thibitisha na Upe Beji ya Bluu'}
+                            >
+                              <Award className="w-3.5 h-3.5" />
+                              <span>{u.verified ? 'Imeidhinishwa' : 'Thibitisha'}</span>
+                            </button>
+
+                            {/* Change Account Type Dropdown */}
+                            <select
+                              value={u.accountType}
+                              onChange={(e) => handleChangeAccountType(u.id, e.target.value)}
+                              className="bg-[#182038] border border-white/10 rounded-xl px-2.5 py-1.5 text-xs text-white focus:outline-none focus:border-cyan-400"
+                            >
+                              <option value="personal">Personal</option>
+                              <option value="creator">Creator</option>
+                              <option value="business">Business</option>
+                              <option value="organization">Organization</option>
+                            </select>
+
+                            {/* Suspend / Unsuspend */}
+                            <button
+                              onClick={() => handleToggleSuspend(u.id)}
+                              className={`p-2 rounded-xl border text-xs font-bold transition-all ${
+                                u.isSuspended
+                                  ? 'bg-rose-500/20 border-rose-500/40 text-rose-300 hover:bg-rose-500/30'
+                                  : 'bg-white/5 border-white/10 text-slate-400 hover:text-rose-400'
+                              }`}
+                              title={u.isSuspended ? 'Fungulia Akaunti' : 'Simamisha Akaunti'}
+                            >
+                              {u.isSuspended ? <Unlock className="w-4 h-4" /> : <Ban className="w-4 h-4" />}
+                            </button>
+                          </>
+                        )}
                       </div>
                     </div>
-
-                    {/* Admin Action Buttons */}
-                    <div className="flex items-center gap-2 w-full md:w-auto justify-end flex-wrap">
-                      {/* Toggle Verification Blue Badge */}
-                      <button
-                        onClick={() => handleToggleVerify(u.id)}
-                        className={`px-3 py-1.5 rounded-xl text-xs font-bold flex items-center gap-1.5 transition-all ${
-                          u.verified
-                            ? 'bg-cyan-500/20 text-cyan-300 border border-cyan-500/40 hover:bg-cyan-500/30'
-                            : 'bg-white/5 text-slate-300 hover:bg-white/10 border border-white/10'
-                        }`}
-                        title={u.verified ? 'Ondoa Uthibitisho' : 'Thibitisha na Upe Beji ya Bluu'}
-                      >
-                        <Award className="w-3.5 h-3.5" />
-                        <span>{u.verified ? 'Imeidhinishwa' : 'Thibitisha'}</span>
-                      </button>
-
-                      {/* Change Account Type Dropdown */}
-                      <select
-                        value={u.accountType}
-                        onChange={(e) => handleChangeAccountType(u.id, e.target.value)}
-                        className="bg-[#182038] border border-white/10 rounded-xl px-2.5 py-1.5 text-xs text-white focus:outline-none focus:border-cyan-400"
-                      >
-                        <option value="personal">Personal</option>
-                        <option value="creator">Creator</option>
-                        <option value="business">Business</option>
-                        <option value="organization">Organization</option>
-                      </select>
-
-                      {/* Suspend / Unsuspend */}
-                      <button
-                        onClick={() => handleToggleSuspend(u.id)}
-                        className={`p-2 rounded-xl border text-xs font-bold transition-all ${
-                          u.isSuspended
-                            ? 'bg-rose-500/20 border-rose-500/40 text-rose-300 hover:bg-rose-500/30'
-                            : 'bg-white/5 border-white/10 text-slate-400 hover:text-rose-400'
-                        }`}
-                        title={u.isSuspended ? 'Fungulia Akaunti' : 'Simamisha Akaunti'}
-                      >
-                        {u.isSuspended ? <Unlock className="w-4 h-4" /> : <Ban className="w-4 h-4" />}
-                      </button>
-                    </div>
-                  </div>
-                ))}
+                  );
+                })}
               </div>
             </div>
           )}
@@ -1015,6 +1095,32 @@ export const AdminDevPanel: React.FC<AdminDevPanelProps> = ({
                     </p>
                   </div>
                 </div>
+
+                {/* Currently Active Announcement if any */}
+                {activeAnnouncement && (
+                  <div className="p-4 rounded-2xl bg-amber-500/10 border border-amber-500/30 flex items-start justify-between gap-3 animate-in fade-in">
+                    <div>
+                      <div className="flex items-center gap-2">
+                        <span className="px-2 py-0.5 rounded-full bg-amber-500 text-slate-950 font-black text-[10px]">
+                          HEWANI SASA (ACTIVE)
+                        </span>
+                        <h5 className="font-bold text-xs text-white">{activeAnnouncement.title}</h5>
+                      </div>
+                      <p className="text-xs text-slate-300 mt-1">{activeAnnouncement.message}</p>
+                      <span className="text-[10px] text-slate-400 mt-1 block">
+                        Ilichapishwa: {activeAnnouncement.createdAt}
+                      </span>
+                    </div>
+
+                    <button
+                      type="button"
+                      onClick={handleRemoveAnnouncement}
+                      className="px-3 py-1.5 rounded-xl bg-rose-500/20 hover:bg-rose-500/30 border border-rose-500/40 text-rose-300 font-bold text-xs shrink-0"
+                    >
+                      Ondoa Tangazo
+                    </button>
+                  </div>
+                )}
 
                 <form onSubmit={handleSendBroadcast} className="space-y-3">
                   <input

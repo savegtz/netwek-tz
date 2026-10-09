@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useRef, useEffect } from 'react';
 import {
   CheckCircle2,
   Share2,
@@ -33,6 +33,7 @@ import {
   LogOut,
   AlertCircle,
   Check,
+  MoreVertical,
 } from 'lucide-react';
 import {
   signInWithEmailAndPassword,
@@ -41,7 +42,7 @@ import {
 } from 'firebase/auth';
 import { doc, setDoc, getDoc } from 'firebase/firestore';
 import { auth, db, googleProvider } from '../../services/firebase/config';
-import { UserProfile, AccountType } from '../../types';
+import { UserProfile, AccountType, isUserAdmin } from '../../types';
 import { SafeImage } from '../../components/SafeImage';
 import { useTheme } from '../../context/ThemeContext';
 import { INITIAL_USER } from '../../services/seed/initialData';
@@ -109,6 +110,25 @@ export const ProfileView: React.FC<ProfileViewProps> = ({
   const [activeTab, setActiveTab] = useState<'posts' | 'status' | 'videos' | 'shop'>('posts');
   const [selectedPost, setSelectedPost] = useState<PostItem | null>(null);
   const [likedPosts, setLikedPosts] = useState<Record<string, boolean>>({});
+
+  // 3-Dots Options Menu ("Vidoti") state
+  const [isOptionsMenuOpen, setIsOptionsMenuOpen] = useState(false);
+  const optionsMenuRef = useRef<HTMLDivElement>(null);
+
+  // Close options menu when clicking outside
+  useEffect(() => {
+    const handleClickOutside = (event: MouseEvent) => {
+      if (optionsMenuRef.current && !optionsMenuRef.current.contains(event.target as Node)) {
+        setIsOptionsMenuOpen(false);
+      }
+    };
+    if (isOptionsMenuOpen) {
+      document.addEventListener('mousedown', handleClickOutside);
+    }
+    return () => {
+      document.removeEventListener('mousedown', handleClickOutside);
+    };
+  }, [isOptionsMenuOpen]);
 
   // State for guest login / register form inside Profile View
   const [authTab, setAuthTab] = useState<'signin' | 'signup'>('signin');
@@ -326,14 +346,6 @@ export const ProfileView: React.FC<ProfileViewProps> = ({
                 title={isDark ? 'Badili kwenda Light Mode ☀️' : 'Badili kwenda Night Mode 🌙'}
               >
                 {isDark ? <Moon className="w-4 h-4 text-indigo-400" /> : <Sun className="w-4 h-4 text-amber-400" />}
-              </button>
-
-              <button
-                onClick={onOpenAdmin}
-                className="p-2 rounded-xl bg-white/5 hover:bg-white/10 border border-white/10 text-cyan-400 transition-colors"
-                title="Super Admin Panel"
-              >
-                <Shield className="w-4 h-4" />
               </button>
             </div>
           </div>
@@ -721,29 +733,157 @@ export const ProfileView: React.FC<ProfileViewProps> = ({
               <span>@{currentUser.username || 'user'}</span>
             </span>
 
-            <div className="flex items-center gap-2">
+            {/* Vidoti (3-Dots Options Menu Button & Dropdown) */}
+            <div className="relative" ref={optionsMenuRef}>
               <button
-                onClick={onOpenAdmin}
-                className="w-8 h-8 rounded-full bg-black/50 backdrop-blur-md hover:bg-black/70 border border-white/10 flex items-center justify-center text-cyan-400 transition-colors shadow-lg active:scale-95"
-                title="Super Admin Panel"
+                onClick={() => setIsOptionsMenuOpen(!isOptionsMenuOpen)}
+                className={`w-9 h-9 rounded-full backdrop-blur-md border flex items-center justify-center transition-all shadow-lg active:scale-95 ${
+                  isOptionsMenuOpen
+                    ? 'bg-cyan-500 text-slate-950 border-cyan-400 shadow-cyan-500/20'
+                    : 'bg-black/60 hover:bg-black/80 border-white/15 text-white hover:text-cyan-300'
+                }`}
+                title="Chaguo Zaidi (Vidoti)"
+                aria-label="Chaguo za Wasifu"
               >
-                <Shield className="w-4 h-4" />
+                <MoreVertical className="w-4 h-4" />
               </button>
-              <button
-                onClick={handleShare}
-                className="w-8 h-8 rounded-full bg-black/50 backdrop-blur-md hover:bg-black/70 border border-white/10 flex items-center justify-center text-white transition-colors shadow-lg active:scale-95"
-                title="Share Profile"
-              >
-                <Share2 className="w-4 h-4" />
-              </button>
-              {onSignOut && (
-                <button
-                  onClick={onSignOut}
-                  className="w-8 h-8 rounded-full bg-rose-500/30 hover:bg-rose-500/50 border border-rose-500/40 flex items-center justify-center text-rose-300 transition-colors shadow-lg active:scale-95"
-                  title="Toka kwenye Akaunti (Log Out)"
-                >
-                  <LogOut className="w-4 h-4" />
-                </button>
+
+              {/* Dropdown Menu ya Vidoti */}
+              {isOptionsMenuOpen && (
+                <div className="absolute right-0 top-full mt-2 w-64 bg-[#0E1326]/95 backdrop-blur-xl border border-white/15 rounded-2xl p-2 shadow-2xl z-50 animate-in fade-in zoom-in-95 duration-150">
+                  <div className="px-3 py-2 border-b border-white/5 mb-1.5 flex items-center justify-between">
+                    <div className="min-w-0 pr-2">
+                      <p className="text-xs font-bold text-white truncate">{currentUser.displayName}</p>
+                      <p className="text-[10px] text-cyan-400 truncate">@{currentUser.username}</p>
+                    </div>
+                    {isUserAdmin(currentUser) && (
+                      <span className="text-[9px] px-1.5 py-0.5 rounded bg-emerald-500/20 text-emerald-300 border border-emerald-500/30 font-bold uppercase shrink-0">
+                        Admin Mkuu
+                      </span>
+                    )}
+                  </div>
+
+                  {/* 1. Pochi ya Zenia (Wallet) */}
+                  <button
+                    onClick={() => {
+                      setIsOptionsMenuOpen(false);
+                      onSelectService && onSelectService('wallet');
+                    }}
+                    className="w-full flex items-center justify-between px-3 py-2.5 rounded-xl text-xs text-slate-200 hover:text-white hover:bg-white/5 transition-colors text-left group"
+                  >
+                    <div className="flex items-center gap-2.5">
+                      <div className="w-7 h-7 rounded-lg bg-emerald-500/15 text-emerald-400 flex items-center justify-center shrink-0 group-hover:scale-105 transition-transform">
+                        <CreditCard className="w-3.5 h-3.5" />
+                      </div>
+                      <div>
+                        <span className="font-semibold block text-white">Pochi ya Zenia</span>
+                        <span className="text-[10px] text-emerald-400 font-mono font-medium">
+                          Salio: TZS {(currentUser.walletBalance || 120000).toLocaleString()}
+                        </span>
+                      </div>
+                    </div>
+                    <ChevronRight className="w-3.5 h-3.5 text-slate-500 group-hover:text-emerald-400 group-hover:translate-x-0.5 transition-all" />
+                  </button>
+
+                  {/* 2. Mandhari (Night / Light Mode) */}
+                  <button
+                    onClick={() => {
+                      toggleTheme();
+                    }}
+                    className="w-full flex items-center justify-between px-3 py-2.5 rounded-xl text-xs text-slate-200 hover:text-white hover:bg-white/5 transition-colors text-left group"
+                  >
+                    <div className="flex items-center gap-2.5">
+                      <div className="w-7 h-7 rounded-lg bg-indigo-500/15 text-indigo-400 flex items-center justify-center shrink-0 group-hover:scale-105 transition-transform">
+                        {isDark ? <Moon className="w-3.5 h-3.5" /> : <Sun className="w-3.5 h-3.5 text-amber-400" />}
+                      </div>
+                      <div>
+                        <span className="font-semibold block text-white">
+                          Mandhari ({isDark ? 'Hali ya Usiku' : 'Hali ya Mchana'})
+                        </span>
+                        <span className="text-[10px] text-slate-400">
+                          {isDark ? 'Gusa kuweka Mchana ☀️' : 'Gusa kuweka Giza 🌙'}
+                        </span>
+                      </div>
+                    </div>
+                    <span className="text-xs">{isDark ? '🌙' : '☀️'}</span>
+                  </button>
+
+                  {/* 3. Hariri Wasifu */}
+                  <button
+                    onClick={() => {
+                      setIsOptionsMenuOpen(false);
+                      onOpenEditProfile();
+                    }}
+                    className="w-full flex items-center gap-2.5 px-3 py-2.5 rounded-xl text-xs text-slate-200 hover:text-white hover:bg-white/5 transition-colors text-left group"
+                  >
+                    <div className="w-7 h-7 rounded-lg bg-cyan-500/15 text-cyan-400 flex items-center justify-center shrink-0 group-hover:scale-105 transition-transform">
+                      <Edit className="w-3.5 h-3.5" />
+                    </div>
+                    <div>
+                      <span className="font-semibold block text-white">Hariri Wasifu</span>
+                      <span className="text-[10px] text-slate-400">Badili picha, jina na maelezo</span>
+                    </div>
+                  </button>
+
+                  {/* 4. Shiriki Wasifu */}
+                  <button
+                    onClick={() => {
+                      setIsOptionsMenuOpen(false);
+                      handleShare();
+                    }}
+                    className="w-full flex items-center gap-2.5 px-3 py-2.5 rounded-xl text-xs text-slate-200 hover:text-white hover:bg-white/5 transition-colors text-left group"
+                  >
+                    <div className="w-7 h-7 rounded-lg bg-purple-500/15 text-purple-400 flex items-center justify-center shrink-0 group-hover:scale-105 transition-transform">
+                      <Share2 className="w-3.5 h-3.5" />
+                    </div>
+                    <div>
+                      <span className="font-semibold block text-white">Shiriki Wasifu</span>
+                      <span className="text-[10px] text-slate-400">Tuma kiungo cha akaunti yako</span>
+                    </div>
+                  </button>
+
+                  {/* 5. Usimamizi wa Mfumo (Super Admin) - Strictly for ONE admin only! */}
+                  {isUserAdmin(currentUser) && (
+                    <button
+                      onClick={() => {
+                        setIsOptionsMenuOpen(false);
+                        onOpenAdmin();
+                      }}
+                      className="w-full flex items-center justify-between px-3 py-2.5 rounded-xl text-xs text-slate-200 hover:text-white hover:bg-emerald-500/10 border border-emerald-500/25 transition-colors text-left group mt-1"
+                    >
+                      <div className="flex items-center gap-2.5">
+                        <div className="w-7 h-7 rounded-lg bg-emerald-500/20 text-emerald-400 flex items-center justify-center shrink-0 group-hover:scale-105 transition-transform">
+                          <Shield className="w-3.5 h-3.5" />
+                        </div>
+                        <div>
+                          <span className="font-bold text-white block">Usimamizi wa Mfumo</span>
+                          <span className="text-[10px] text-emerald-400/90">Super Admin Panel (Admin Pekee)</span>
+                        </div>
+                      </div>
+                      <span className="text-[9px] px-1.5 py-0.5 rounded bg-emerald-500/20 text-emerald-300 font-bold uppercase">
+                        Admin
+                      </span>
+                    </button>
+                  )}
+
+                  {/* 6. Toka Kwenye Akaunti */}
+                  {onSignOut && (
+                    <div className="pt-1 mt-1 border-t border-white/5">
+                      <button
+                        onClick={() => {
+                          setIsOptionsMenuOpen(false);
+                          onSignOut();
+                        }}
+                        className="w-full flex items-center gap-2.5 px-3 py-2 rounded-xl text-xs text-rose-300 hover:text-rose-100 hover:bg-rose-500/15 transition-colors text-left group"
+                      >
+                        <div className="w-7 h-7 rounded-lg bg-rose-500/15 text-rose-400 flex items-center justify-center shrink-0">
+                          <LogOut className="w-3.5 h-3.5" />
+                        </div>
+                        <span className="font-semibold">Toka kwenye Akaunti</span>
+                      </button>
+                    </div>
+                  )}
+                </div>
               )}
             </div>
           </div>
@@ -880,95 +1020,6 @@ export const ProfileView: React.FC<ProfileViewProps> = ({
               </p>
               <p className="text-[10px] sm:text-xs text-slate-400 font-medium">Likes</p>
             </div>
-          </div>
-
-          {/* ============================================================== */}
-          {/* 2. THREE QUICK ACCESS FEATURE TILES (WALLET, ADMIN, NIGHT/LIGHT MODE) */}
-          {/* ============================================================== */}
-          <div className="grid grid-cols-1 sm:grid-cols-3 gap-2.5 sm:gap-3 mb-5">
-            {/* Tile 1: Zenia Wallet */}
-            <button
-              onClick={() => onSelectService && onSelectService('wallet')}
-              className="flex items-center justify-between p-3.5 rounded-2xl bg-gradient-to-br from-[#0F182F] to-[#0A1020] border border-emerald-500/30 hover:border-emerald-400 hover:bg-emerald-500/10 transition-all text-left group active:scale-98 shadow-sm"
-            >
-              <div className="flex items-center gap-3 min-w-0">
-                <div className="w-10 h-10 rounded-xl bg-emerald-500/20 text-emerald-400 flex items-center justify-center shrink-0 group-hover:scale-105 transition-transform shadow-md shadow-emerald-500/20">
-                  <CreditCard className="w-5 h-5" />
-                </div>
-                <div className="min-w-0">
-                  <p className="text-xs font-bold text-white group-hover:text-emerald-300 truncate">
-                    Zenia Wallet
-                  </p>
-                  <p className="text-[11px] text-emerald-400 font-mono font-extrabold truncate">
-                    TSh 120,000
-                  </p>
-                </div>
-              </div>
-              <ChevronRight className="w-4 h-4 text-emerald-400/80 group-hover:translate-x-0.5 transition-transform shrink-0" />
-            </button>
-
-            {/* Tile 2: Super Admin Panel */}
-            <button
-              onClick={onOpenAdmin}
-              className="flex items-center justify-between p-3.5 rounded-2xl bg-gradient-to-br from-[#0F182F] to-[#0A1020] border border-cyan-500/30 hover:border-cyan-400 hover:bg-cyan-500/10 transition-all text-left group active:scale-98 shadow-sm"
-            >
-              <div className="flex items-center gap-3 min-w-0">
-                <div className="w-10 h-10 rounded-xl bg-cyan-500/20 text-cyan-400 flex items-center justify-center shrink-0 group-hover:scale-105 transition-transform shadow-md shadow-cyan-500/20">
-                  <Shield className="w-5 h-5" />
-                </div>
-                <div className="min-w-0">
-                  <p className="text-xs font-bold text-white group-hover:text-cyan-300 truncate">
-                    Super Admin
-                  </p>
-                  <p className="text-[10px] text-cyan-400/80 truncate">
-                    Usimamizi & Watumiaji
-                  </p>
-                </div>
-              </div>
-              <ChevronRight className="w-4 h-4 text-cyan-400/80 group-hover:translate-x-0.5 transition-transform shrink-0" />
-            </button>
-
-            {/* Tile 3: Night Mode & Light Mode */}
-            <button
-              onClick={toggleTheme}
-              className={`flex items-center justify-between p-3.5 rounded-2xl border transition-all text-left group active:scale-98 shadow-sm ${
-                isDark
-                  ? 'bg-gradient-to-br from-[#12182F] to-[#0B0F20] border-indigo-500/40 hover:border-indigo-400'
-                  : 'bg-gradient-to-br from-amber-50 to-white border-amber-300 hover:border-amber-400 shadow-md'
-              }`}
-              title={isDark ? 'Badili kwenda Light Mode' : 'Badili kwenda Night Mode'}
-            >
-              <div className="flex items-center gap-3 min-w-0">
-                <div
-                  className={`w-10 h-10 rounded-xl flex items-center justify-center shrink-0 group-hover:scale-105 transition-transform shadow-md ${
-                    isDark
-                      ? 'bg-indigo-500/20 text-indigo-300 shadow-indigo-500/20'
-                      : 'bg-amber-500/20 text-amber-600 shadow-amber-500/20'
-                  }`}
-                >
-                  {isDark ? <Moon className="w-5 h-5 text-indigo-400" /> : <Sun className="w-5 h-5 text-amber-500 fill-amber-500" />}
-                </div>
-                <div className="min-w-0">
-                  <p className={`text-xs font-bold truncate ${isDark ? 'text-white' : 'text-slate-900'}`}>
-                    {isDark ? 'Night Mode 🌙' : 'Light Mode ☀️'}
-                  </p>
-                  <p className={`text-[10px] truncate ${isDark ? 'text-indigo-300/80' : 'text-amber-800'}`}>
-                    {isDark ? 'Hali ya Usiku (Giza)' : 'Hali ya Mchana (Mwangaza)'}
-                  </p>
-                </div>
-              </div>
-
-              {/* Toggle Switch */}
-              <div
-                className={`w-11 h-6 rounded-full p-0.5 transition-colors flex items-center shrink-0 ${
-                  isDark ? 'bg-indigo-600 justify-end' : 'bg-amber-400 justify-start'
-                }`}
-              >
-                <div className="w-5 h-5 rounded-full bg-white shadow-md flex items-center justify-center">
-                  {isDark ? <Moon className="w-3 h-3 text-indigo-600" /> : <Sun className="w-3 h-3 text-amber-500" />}
-                </div>
-              </div>
-            </button>
           </div>
 
           {/* ============================================================== */}
