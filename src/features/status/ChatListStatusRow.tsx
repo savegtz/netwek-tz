@@ -265,37 +265,37 @@ export const ChatListStatusRow: React.FC<ChatListStatusRowProps> = ({
           style={{ WebkitOverflowScrolling: 'touch' }}
         >
           {/* ============================================================== */}
-          {/* 1. MY STORY CIRCLE (Hali Yangu / Weka Mpya)                     */}
+          {/* 1. MY STORY SQUIRCLE (Hali Yangu / Weka Mpya)                   */}
           {/* ============================================================== */}
           <button
             onClick={onOpenCreateStatus}
-            className="flex flex-col items-center gap-1 shrink-0 group focus:outline-none"
+            className="flex flex-col items-center gap-1.5 shrink-0 group focus:outline-none"
             title="Weka Hali Yako (Post Status)"
           >
             <div className="relative">
-              {/* Outer Ring */}
-              <div className="w-[52px] h-[52px] rounded-full p-[2px] bg-slate-800 ring-1 ring-white/10 group-hover:ring-cyan-400 transition-all">
-                <div className="w-full h-full rounded-full overflow-hidden bg-slate-900">
+              {/* Outer Ring: 1:1 Square with Large Rounded Corners (Squircle) */}
+              <div className="w-[56px] h-[56px] aspect-square rounded-[20px] p-[2.5px] bg-slate-800 ring-2 ring-white/10 group-hover:ring-cyan-400 group-hover:scale-105 transition-all shadow-md">
+                <div className="w-full h-full rounded-[17.5px] overflow-hidden bg-slate-900">
                   <SafeImage
                     src={currentUser?.photoURL || aminaAvatar}
                     fallbackText="Me"
                     alt="My Status"
-                    className="w-full h-full object-cover group-hover:scale-105 transition-transform"
+                    className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-300"
                   />
                 </div>
               </div>
               {/* Plus Badge at bottom-right */}
-              <div className="absolute -bottom-0.5 -right-0.5 w-4 h-4 rounded-full bg-gradient-to-tr from-cyan-400 to-blue-500 text-slate-950 flex items-center justify-center shadow-md ring-2 ring-[#080B16] group-hover:scale-110 transition-transform">
-                <Plus className="w-3 h-3 stroke-[3]" />
+              <div className="absolute -bottom-1 -right-1 w-5 h-5 rounded-[8px] bg-gradient-to-tr from-cyan-400 to-blue-500 text-slate-950 flex items-center justify-center shadow-md ring-2 ring-[#080B16] group-hover:scale-110 transition-transform">
+                <Plus className="w-3.5 h-3.5 stroke-[3]" />
               </div>
             </div>
-            <span className="text-[10px] font-semibold text-slate-300 group-hover:text-cyan-300 transition-colors truncate max-w-[58px] text-center leading-tight">
+            <span className="text-[10px] font-semibold text-slate-300 group-hover:text-cyan-300 transition-colors truncate max-w-[62px] text-center leading-tight">
               Hali Yangu
             </span>
           </button>
 
           {/* ============================================================== */}
-          {/* 2. CONTACT / COMMUNITY STORY CIRCLES                           */}
+          {/* 2. CONTACT / COMMUNITY STORY SQUIRCLES (1:1 Rounded Rect)       */}
           {/* ============================================================== */}
           {allStatuses.map((item, idx) => {
             const firstName = item.authorName.split(' ')[0];
@@ -326,14 +326,14 @@ export const ChatListStatusRow: React.FC<ChatListStatusRowProps> = ({
               <button
                 key={item.id}
                 onClick={() => setViewerState({ isOpen: true, initialIndex: idx })}
-                className="flex flex-col items-center gap-1 shrink-0 group focus:outline-none"
+                className="flex flex-col items-center gap-1.5 shrink-0 group focus:outline-none"
                 title={`Tazama story ya ${item.authorName}`}
               >
                 <div className="relative">
-                  {/* Glowing Story Gradient Ring */}
-                  <div className={`w-[52px] h-[52px] rounded-full p-[2px] bg-gradient-to-tr ${ringGradient} shadow-sm group-hover:scale-105 active:scale-95 transition-transform duration-200`}>
-                    <div className="w-full h-full rounded-full overflow-hidden bg-[#080B16] p-[1.5px]">
-                      <div className="w-full h-full rounded-full overflow-hidden">
+                  {/* Glowing Story Gradient Ring: 1:1 Square with Large Rounded Corners */}
+                  <div className={`w-[56px] h-[56px] aspect-square rounded-[20px] p-[2.5px] bg-gradient-to-tr ${ringGradient} shadow-md group-hover:scale-105 active:scale-95 transition-transform duration-200`}>
+                    <div className="w-full h-full rounded-[17.5px] overflow-hidden bg-[#080B16] p-[1.5px]">
+                      <div className="w-full h-full rounded-[16px] overflow-hidden">
                         <SafeImage
                           src={item.authorPhoto}
                           fallbackText={item.authorName}
@@ -344,14 +344,14 @@ export const ChatListStatusRow: React.FC<ChatListStatusRowProps> = ({
                     </div>
                   </div>
 
-                  {/* Micro Category Tag */}
-                  <span className="absolute -bottom-0.5 -right-0.5 w-4 h-4 rounded-full bg-[#0D1224] border border-white/20 flex items-center justify-center text-[8px] shadow-sm">
+                  {/* Micro Category Tag at bottom-right */}
+                  <span className="absolute -bottom-1 -right-1 w-4.5 h-4.5 rounded-[7px] bg-[#0D1224] border border-white/25 flex items-center justify-center text-[9px] shadow-sm ring-2 ring-[#080B16]">
                     {microEmoji}
                   </span>
                 </div>
 
                 {/* Author Name */}
-                <span className="text-[10px] font-medium text-slate-300 group-hover:text-cyan-300 transition-colors truncate max-w-[58px] text-center leading-tight">
+                <span className="text-[10px] font-medium text-slate-300 group-hover:text-cyan-300 transition-colors truncate max-w-[62px] text-center leading-tight">
                   {firstName}
                 </span>
               </button>

@@ -926,11 +926,11 @@ export const ProfileView: React.FC<ProfileViewProps> = ({
       </div>
 
       {/* ============================================================== */}
-      {/* 2. PROFILE HEADER & METRICS (ORGANIZED, NATURAL TOP-TO-BOTTOM) */}
+      {/* 2. PROFILE HEADER & METRICS (CLEAN, WORLD-CLASS MOBILE LAYOUT) */}
       {/* ============================================================== */}
       <div className="max-w-4xl mx-auto w-full px-4 sm:px-6 relative z-10">
-        {/* ROW 1: AVATAR ON LEFT + ACTION BUTTONS ON RIGHT (Fills the horizontal space!) */}
-        <div className="flex items-end justify-between gap-3 -mt-10 sm:-mt-12 mb-3">
+        {/* ROW 1: AVATAR (LEFT) + 3 STATS METRICS (RIGHT) - INSTAGRAM/THREADS STANDARD */}
+        <div className="flex items-center justify-between gap-4 -mt-10 sm:-mt-12 mb-3">
           {/* Avatar with Glowing Gradient Ring */}
           <div className="relative shrink-0">
             <div
@@ -956,128 +956,137 @@ export const ProfileView: React.FC<ProfileViewProps> = ({
             />
           </div>
 
-          {/* Action Buttons Row on Right (Fills the space next to the avatar - NO EMPTY VOID!) */}
-          <div className="flex items-center gap-1.5 sm:gap-2 pb-1">
-            <button
-              onClick={onOpenEditProfile}
-              className={`py-2 px-3 sm:px-4 rounded-xl font-semibold text-xs flex items-center justify-center gap-1.5 active:scale-95 transition-all shadow-sm ${
-                isDark
-                  ? 'bg-white/10 hover:bg-white/15 border border-white/10 text-white'
-                  : 'bg-slate-200/90 hover:bg-slate-300 border border-slate-300 text-slate-800'
-              }`}
-            >
-              <Edit className="w-3.5 h-3.5 text-cyan-500 shrink-0" />
-              <span>Hariri Wasifu</span>
-            </button>
-
-            <button
-              onClick={() => onSelectService && onSelectService('wallet')}
-              className={`py-2 px-2.5 sm:px-3 rounded-xl font-semibold text-xs flex items-center justify-center gap-1.5 active:scale-95 transition-all shadow-sm ${
-                isDark
-                  ? 'bg-cyan-500/15 hover:bg-cyan-500/25 border border-cyan-400/30 text-cyan-300'
-                  : 'bg-cyan-50 hover:bg-cyan-100 border border-cyan-300 text-cyan-700'
-              }`}
-              title={`Pochi: TZS ${(currentUser.walletBalance || 120000).toLocaleString()}`}
-            >
-              <CreditCard className="w-3.5 h-3.5 text-cyan-500 shrink-0" />
-              <span>Pochi</span>
-            </button>
-
-            <button
-              onClick={handleShare}
-              className={`p-2 rounded-xl flex items-center justify-center active:scale-95 transition-all shadow-sm ${
-                isDark
-                  ? 'bg-white/5 hover:bg-white/10 border border-white/10 text-slate-300 hover:text-white'
-                  : 'bg-slate-100 hover:bg-slate-200 border border-slate-300 text-slate-700'
-              }`}
-              title="Shiriki Wasifu"
-              aria-label="Shiriki Wasifu"
-            >
-              <Share2 className="w-3.5 h-3.5" />
-            </button>
+          {/* 3 STATS HORIZONTALLY ALIGNED RIGHT BESIDE AVATAR */}
+          <div
+            className={`flex-1 flex items-center justify-around py-2.5 px-3 rounded-2xl border transition-colors ${
+              isDark
+                ? 'bg-[#0D1224]/70 border-white/[0.08]'
+                : 'bg-white border-slate-200 shadow-xs'
+            }`}
+          >
+            <div className="text-center flex-1">
+              <p className={`font-black text-sm sm:text-base font-mono leading-tight ${isDark ? 'text-white' : 'text-slate-900'}`}>
+                {currentUser.postsCount || defaultUserPosts.length}
+              </p>
+              <p className={`text-[10px] sm:text-xs mt-0.5 font-medium ${isDark ? 'text-slate-400' : 'text-slate-500'}`}>
+                Machapisho
+              </p>
+            </div>
+            <div className={`h-5 w-px ${isDark ? 'bg-white/10' : 'bg-slate-200'}`} />
+            <div className="text-center flex-1">
+              <p className="font-black text-sm sm:text-base text-cyan-600 dark:text-cyan-400 font-mono leading-tight">
+                {currentUser.followersCount ? `${(currentUser.followersCount / 1000).toFixed(1)}K` : '12.4K'}
+              </p>
+              <p className={`text-[10px] sm:text-xs mt-0.5 font-medium ${isDark ? 'text-slate-400' : 'text-slate-500'}`}>
+                Wafuasi
+              </p>
+            </div>
+            <div className={`h-5 w-px ${isDark ? 'bg-white/10' : 'bg-slate-200'}`} />
+            <div className="text-center flex-1">
+              <p className={`font-black text-sm sm:text-base font-mono leading-tight ${isDark ? 'text-white' : 'text-slate-900'}`}>
+                {currentUser.followingCount || 245}
+              </p>
+              <p className={`text-[10px] sm:text-xs mt-0.5 font-medium ${isDark ? 'text-slate-400' : 'text-slate-500'}`}>
+                Wanaofuatwa
+              </p>
+            </div>
           </div>
         </div>
 
-        {/* ROW 2: USER IDENTITY, HANDLE, ROLE & BIO (Full Width, Natural Flow) */}
-        <div className="space-y-1">
-          {/* Display Name + Verified Badge */}
+        {/* ROW 2: USER IDENTITY, HANDLE, ROLE & BIO (Full Width, Clear Hierarchy) */}
+        <div className="space-y-1 mb-3">
+          {/* Display Name + Verified Badge + Role Badge */}
           <div className="flex items-center gap-1.5 flex-wrap">
-            <h1 className={`font-black text-lg sm:text-xl tracking-tight ${isDark ? 'text-white' : 'text-slate-900'}`}>
+            <h1 className={`font-black text-base sm:text-lg tracking-tight ${isDark ? 'text-white' : 'text-slate-900'}`}>
               {currentUser.displayName || 'Mtumiaji wa Zenia'}
             </h1>
-            <CheckCircle2 className="w-4.5 h-4.5 text-cyan-500 fill-cyan-500 shrink-0" />
-          </div>
-
-          {/* @Username & Category & Location */}
-          <div className="flex items-center gap-1.5 text-xs font-medium flex-wrap">
-            <span className="font-mono font-bold text-cyan-500">
-              @{currentUser.username || 'username'}
-            </span>
-            <span aria-hidden="true" className={isDark ? 'text-slate-600' : 'text-slate-300'}>·</span>
-            <span className={isDark ? 'text-slate-300' : 'text-slate-700'}>
+            <CheckCircle2 className="w-4 h-4 text-cyan-500 fill-cyan-500 shrink-0" />
+            <span
+              className={`text-[10px] px-2 py-0.5 rounded-full font-semibold ${
+                isDark
+                  ? 'bg-cyan-500/10 text-cyan-300 border border-cyan-500/20'
+                  : 'bg-cyan-50 text-cyan-700 border border-cyan-200'
+              }`}
+            >
               {currentUser.accountType === 'creator'
                 ? 'Mbunifu (Creator)'
                 : currentUser.accountType === 'business'
-                ? 'Mfanyabiashara (Business)'
+                ? 'Biashara (Business)'
                 : 'Mtumiaji Binafsi'}
-            </span>
-            <span aria-hidden="true" className={isDark ? 'text-slate-600' : 'text-slate-300'}>·</span>
-            <span className="flex items-center gap-0.5 text-slate-500 dark:text-slate-400">
-              <MapPin className="w-3 h-3 text-cyan-500" />
-              <span>Dar es Salaam, Tanzania 🇹🇿</span>
             </span>
           </div>
 
+          {/* @Username */}
+          <p className="text-xs font-mono font-bold text-cyan-600 dark:text-cyan-400">
+            @{currentUser.username || 'username'}
+          </p>
+
           {/* Bio text */}
-          <p className={`text-xs sm:text-sm leading-relaxed pt-0.5 whitespace-pre-line font-normal ${
-            isDark ? 'text-slate-200' : 'text-slate-700'
-          }`}>
+          <p
+            className={`text-xs sm:text-sm leading-relaxed whitespace-pre-line font-normal ${
+              isDark ? 'text-slate-200' : 'text-slate-700'
+            }`}
+          >
             {currentUser.bio || 'Karibu kwenye wasifu wangu wa Zenia! ✨'}
           </p>
 
-          {/* Contact email */}
-          {currentUser.email && (
-            <div className="pt-0.5 flex items-center gap-1.5 text-[11px] font-medium text-cyan-600 dark:text-cyan-400">
-              <Mail className="w-3 h-3 text-cyan-500 shrink-0" />
-              <span>{currentUser.email}</span>
-            </div>
-          )}
+          {/* Location & Contact */}
+          <div className="flex items-center gap-3 text-[11px] text-slate-500 dark:text-slate-400 pt-0.5 flex-wrap">
+            <span className="flex items-center gap-1">
+              <MapPin className="w-3 h-3 text-cyan-500 shrink-0" />
+              <span>Dar es Salaam, Tanzania 🇹🇿</span>
+            </span>
+            {currentUser.email && (
+              <span className="flex items-center gap-1 text-cyan-600 dark:text-cyan-400">
+                <Mail className="w-3 h-3 shrink-0" />
+                <span>{currentUser.email}</span>
+              </span>
+            )}
+          </div>
         </div>
 
-        {/* ROW 3: STATS BAR (FULL WIDTH, 3 BALANCED COLUMNS, WORKS IN BOTH DARK & LIGHT MODES) */}
-        <div
-          className={`flex items-center justify-around py-2.5 my-3 rounded-2xl border transition-colors shadow-sm ${
-            isDark
-              ? 'bg-[#0D1224]/80 border-white/[0.08]'
-              : 'bg-white border-slate-200'
-          }`}
-        >
-          <div className="text-center px-2 flex-1">
-            <p className={`font-black text-sm sm:text-base font-mono leading-none ${isDark ? 'text-white' : 'text-slate-900'}`}>
-              {currentUser.postsCount || defaultUserPosts.length}
-            </p>
-            <p className={`text-[10px] sm:text-xs mt-1 font-medium ${isDark ? 'text-slate-400' : 'text-slate-500'}`}>
-              Machapisho
-            </p>
-          </div>
-          <div className={`h-6 w-px ${isDark ? 'bg-white/10' : 'bg-slate-200'}`} />
-          <div className="text-center px-2 flex-1">
-            <p className="font-black text-sm sm:text-base text-cyan-600 dark:text-cyan-400 font-mono leading-none">
-              {currentUser.followersCount ? `${(currentUser.followersCount / 1000).toFixed(1)}K` : '0'}
-            </p>
-            <p className={`text-[10px] sm:text-xs mt-1 font-medium ${isDark ? 'text-slate-400' : 'text-slate-500'}`}>
-              Wafuasi
-            </p>
-          </div>
-          <div className={`h-6 w-px ${isDark ? 'bg-white/10' : 'bg-slate-200'}`} />
-          <div className="text-center px-2 flex-1">
-            <p className={`font-black text-sm sm:text-base font-mono leading-none ${isDark ? 'text-white' : 'text-slate-900'}`}>
-              {currentUser.followingCount || 0}
-            </p>
-            <p className={`text-[10px] sm:text-xs mt-1 font-medium ${isDark ? 'text-slate-400' : 'text-slate-500'}`}>
-              Wanaofuatwa
-            </p>
-          </div>
+        {/* ROW 3: ACTION BUTTONS (FULL WIDTH ROW, BALANCED & TOUCH-FRIENDLY) */}
+        <div className="flex items-center gap-2 mb-3">
+          {/* Hariri Wasifu (Primary) */}
+          <button
+            onClick={onOpenEditProfile}
+            className={`flex-1 py-2 px-3 rounded-xl font-semibold text-xs flex items-center justify-center gap-1.5 active:scale-98 transition-all shadow-xs ${
+              isDark
+                ? 'bg-white/10 hover:bg-white/15 border border-white/10 text-white'
+                : 'bg-slate-200/90 hover:bg-slate-300 border border-slate-300 text-slate-800'
+            }`}
+          >
+            <Edit className="w-3.5 h-3.5 text-cyan-500 shrink-0" />
+            <span>Hariri Wasifu</span>
+          </button>
+
+          {/* Pochi ya Zenia */}
+          <button
+            onClick={() => onSelectService && onSelectService('wallet')}
+            className={`flex-1 py-2 px-3 rounded-xl font-semibold text-xs flex items-center justify-center gap-1.5 active:scale-98 transition-all shadow-xs ${
+              isDark
+                ? 'bg-cyan-500/15 hover:bg-cyan-500/25 border border-cyan-400/30 text-cyan-300'
+                : 'bg-cyan-50 hover:bg-cyan-100 border border-cyan-300 text-cyan-700'
+            }`}
+            title={`Pochi: TZS ${(currentUser.walletBalance || 120000).toLocaleString()}`}
+          >
+            <CreditCard className="w-3.5 h-3.5 text-cyan-500 shrink-0" />
+            <span>Pochi: TZS {((currentUser.walletBalance || 120000) >= 1000 ? `${Math.round((currentUser.walletBalance || 120000) / 1000)}k` : currentUser.walletBalance || 120000)}</span>
+          </button>
+
+          {/* Shiriki Wasifu */}
+          <button
+            onClick={handleShare}
+            className={`p-2 rounded-xl flex items-center justify-center active:scale-95 transition-all shadow-xs shrink-0 ${
+              isDark
+                ? 'bg-white/5 hover:bg-white/10 border border-white/10 text-slate-300 hover:text-white'
+                : 'bg-slate-100 hover:bg-slate-200 border border-slate-300 text-slate-700'
+            }`}
+            title="Shiriki Wasifu"
+            aria-label="Shiriki Wasifu"
+          >
+            <Share2 className="w-3.5 h-3.5" />
+          </button>
         </div>
 
         {/* ROW 4: STORY HIGHLIGHTS (Clean Circular Carousel) */}
@@ -1086,13 +1095,13 @@ export const ProfileView: React.FC<ProfileViewProps> = ({
             {/* New Highlight Action */}
             <button
               onClick={onOpenCreateStatus}
-              className="flex flex-col items-center gap-1 shrink-0 group focus:outline-none"
+              className="flex flex-col items-center gap-1.5 shrink-0 group focus:outline-none"
               title="Weka Story Mpya"
             >
               <div
-                className={`w-14 h-14 rounded-full border-2 border-dashed ${
+                className={`w-14 h-14 aspect-square rounded-[20px] border-2 border-dashed ${
                   isDark ? 'border-white/20 bg-white/[0.02]' : 'border-slate-300 bg-slate-100'
-                } group-hover:border-cyan-400 flex items-center justify-center transition-colors`}
+                } group-hover:border-cyan-400 flex items-center justify-center transition-colors shadow-xs`}
               >
                 <Plus className="w-4 h-4 text-slate-400 group-hover:text-cyan-400" />
               </div>
@@ -1102,11 +1111,11 @@ export const ProfileView: React.FC<ProfileViewProps> = ({
             {highlights.map((hl) => (
               <div
                 key={hl.id}
-                className="flex flex-col items-center gap-1 shrink-0 cursor-pointer group active:scale-95 transition-transform"
+                className="flex flex-col items-center gap-1.5 shrink-0 cursor-pointer group active:scale-95 transition-transform"
               >
-                <div className="w-14 h-14 rounded-full p-[2px] bg-gradient-to-tr from-cyan-400 to-indigo-600 group-hover:scale-105 transition-transform shadow-md">
+                <div className="w-14 h-14 aspect-square rounded-[20px] p-[2.5px] bg-gradient-to-tr from-cyan-400 to-indigo-600 group-hover:scale-105 transition-transform shadow-md">
                   <div
-                    className={`w-full h-full rounded-full overflow-hidden ${
+                    className={`w-full h-full rounded-[17.5px] overflow-hidden ${
                       isDark ? 'bg-[#070A14]' : 'bg-white'
                     } p-[1.5px]`}
                   >
@@ -1114,7 +1123,7 @@ export const ProfileView: React.FC<ProfileViewProps> = ({
                       src={hl.cover}
                       fallbackGradient={hl.gradient}
                       fallbackText={hl.title}
-                      className="w-full h-full object-cover rounded-full"
+                      className="w-full h-full object-cover rounded-[16px]"
                     />
                   </div>
                 </div>

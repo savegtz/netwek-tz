@@ -265,7 +265,7 @@ export const StatusStoryViewerModal: React.FC<StatusStoryViewerModalProps> = ({
                 src={current.authorPhoto}
                 fallbackText={current.authorName}
                 alt={current.authorName}
-                className="w-10 h-10 rounded-full object-cover border-2 border-white shadow-md bg-black"
+                className="w-10 h-10 rounded-[14px] object-cover border-2 border-white shadow-md bg-black"
               />
               <div>
                 <h4 className="font-extrabold text-sm text-white drop-shadow leading-tight flex items-center gap-1">
