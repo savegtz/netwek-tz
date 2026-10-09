@@ -31,68 +31,71 @@ export const BottomNav: React.FC<BottomNavProps> = ({
   const isServicesActive = ['events', 'jobs', 'transport', 'community'].includes(activeTab);
 
   return (
-    <div className="shrink-0 z-40 bg-[#070A12]/95 backdrop-blur-md border-t border-white/[0.06] px-3 sm:px-6 pt-2 pb-3 transition-all relative">
-      {/* Quick Switcher Bar for the 4 Services when any of them is active */}
-      {isServicesActive && (
-        <div className="max-w-md mx-auto mb-2 px-1 flex items-center justify-between gap-1 overflow-x-auto no-scrollbar animate-in slide-in-from-bottom-2">
-          {[
-            { id: 'events', label: 'Events', icon: Calendar, color: 'text-purple-400', activeBg: 'bg-purple-500/15 border-purple-500/30 text-purple-300 font-semibold' },
-            { id: 'jobs', label: 'Jobs', icon: Briefcase, color: 'text-amber-400', activeBg: 'bg-amber-500/15 border-amber-500/30 text-amber-300 font-semibold' },
-            { id: 'transport', label: 'Rides', icon: Car, color: 'text-blue-400', activeBg: 'bg-blue-500/15 border-blue-500/30 text-blue-300 font-semibold' },
-            { id: 'community', label: 'Community', icon: Users, color: 'text-cyan-400', activeBg: 'bg-cyan-500/15 border-cyan-500/30 text-cyan-300 font-semibold' },
-          ].map((item) => {
-            const Icon = item.icon;
-            const isCurrent = activeTab === item.id;
-            return (
-              <button
-                key={item.id}
-                onClick={() => onSelectTab(item.id)}
-                className={`flex-1 py-1 px-1.5 rounded-xl text-[10px] font-medium border flex items-center justify-center gap-1 transition-all whitespace-nowrap active:scale-95 ${
-                  isCurrent
-                    ? item.activeBg
-                    : 'bg-white/[0.03] border-white/5 text-slate-400 hover:text-white'
-                }`}
-              >
-                <Icon className={`w-3 h-3 shrink-0 ${item.color}`} />
-                <span className="truncate">{item.label}</span>
-              </button>
-            );
-          })}
-        </div>
-      )}
-
-      {/* Services Popover Sheet (Attached to Center Button) */}
+    <div className="shrink-0 z-40 bg-[#070A12]/95 backdrop-blur-md border-t border-white/[0.08] px-3 sm:px-6 py-2 transition-all relative">
+      {/* Services Modal Sheet (Clean, native mobile bottom sheet) */}
       {servicesMenuOpen && (
-        <div className="absolute bottom-full left-0 right-0 mb-3 mx-auto max-w-sm px-3 animate-in slide-in-from-bottom-3 duration-200 z-50">
-          <div className="bg-[#0E1324]/98 backdrop-blur-2xl border border-white/10 rounded-3xl p-3.5 shadow-2xl">
-            <div className="flex items-center justify-between pb-2 mb-2 border-b border-white/5">
-              <span className="text-xs font-bold text-white flex items-center gap-1.5">
+        <div
+          className="fixed inset-0 z-50 flex items-end sm:items-center justify-center bg-black/75 backdrop-blur-sm animate-in fade-in p-0 sm:p-4"
+          onClick={() => setServicesMenuOpen(false)}
+        >
+          <div
+            className="w-full max-w-md bg-[#0D1224] border-t sm:border border-white/15 rounded-t-[28px] sm:rounded-3xl p-4 sm:p-5 shadow-2xl animate-in slide-in-from-bottom-4 duration-200"
+            onClick={(e) => e.stopPropagation()}
+          >
+            {/* Sheet Handle for Mobile */}
+            <div className="w-10 h-1 bg-white/20 rounded-full mx-auto mb-3 sm:hidden" />
+
+            <div className="flex items-center justify-between pb-3 mb-3 border-b border-white/10">
+              <span className="text-sm font-bold text-white flex items-center gap-2">
                 <Layers className="w-4 h-4 text-cyan-400" />
-                Huduma za Zenia (Services)
+                Huduma za Zenia
               </span>
               <button
                 onClick={() => setServicesMenuOpen(false)}
-                className="p-1 rounded-full text-slate-400 hover:text-white"
+                className="p-1.5 rounded-full bg-white/5 hover:bg-white/10 text-slate-300 hover:text-white"
+                title="Funga"
               >
                 <X className="w-4 h-4" />
               </button>
             </div>
 
-            <div className="grid grid-cols-2 gap-2">
-              {/* 1. Events & Tickets */}
+            {/* Grid of All Services */}
+            <div className="grid grid-cols-2 gap-2.5">
+              {/* 1. Rides & Transport */}
+              <button
+                onClick={() => {
+                  onSelectTab('transport');
+                  setServicesMenuOpen(false);
+                }}
+                className={`flex items-center gap-2.5 p-3 rounded-2xl border text-left transition-all active:scale-95 ${
+                  activeTab === 'transport'
+                    ? 'bg-blue-500/20 border-blue-400/50 text-blue-300'
+                    : 'bg-white/[0.03] border-white/5 hover:border-blue-400/30 text-white'
+                }`}
+              >
+                <div className="w-9 h-9 rounded-xl bg-blue-500/20 text-blue-400 flex items-center justify-center shrink-0">
+                  <Car className="w-5 h-5" />
+                </div>
+                <div className="min-w-0">
+                  <p className="text-xs font-bold truncate">Zenia Rides</p>
+                  <p className="text-[10px] text-slate-400 truncate">Teksi & safari</p>
+                </div>
+              </button>
+
+              {/* 2. Events & Tickets */}
               <button
                 onClick={() => {
                   onSelectTab('events');
                   setServicesMenuOpen(false);
                 }}
-                className={`flex items-center gap-2.5 p-2.5 rounded-2xl border text-left transition-all active:scale-95 ${
+                className={`flex items-center gap-2.5 p-3 rounded-2xl border text-left transition-all active:scale-95 ${
                   activeTab === 'events'
-                    ? 'bg-purple-500/20 border-purple-500/40 text-purple-300'
-                    : 'bg-[#14192B] border-white/5 hover:border-purple-500/30 text-white'
+                    ? 'bg-purple-500/20 border-purple-400/50 text-purple-300'
+                    : 'bg-white/[0.03] border-white/5 hover:border-purple-400/30 text-white'
                 }`}
               >
-                <div className="w-8 h-8 rounded-xl bg-purple-500/20 text-purple-400 flex items-center justify-center shrink-0">
-                  <Calendar className="w-4 h-4" />
+                <div className="w-9 h-9 rounded-xl bg-purple-500/20 text-purple-400 flex items-center justify-center shrink-0">
+                  <Calendar className="w-5 h-5" />
                 </div>
                 <div className="min-w-0">
                   <p className="text-xs font-bold truncate">Events</p>
@@ -100,45 +103,24 @@ export const BottomNav: React.FC<BottomNavProps> = ({
                 </div>
               </button>
 
-              {/* 2. Jobs & Careers */}
+              {/* 3. Jobs & Careers */}
               <button
                 onClick={() => {
                   onSelectTab('jobs');
                   setServicesMenuOpen(false);
                 }}
-                className={`flex items-center gap-2.5 p-2.5 rounded-2xl border text-left transition-all active:scale-95 ${
+                className={`flex items-center gap-2.5 p-3 rounded-2xl border text-left transition-all active:scale-95 ${
                   activeTab === 'jobs'
-                    ? 'bg-amber-500/20 border-amber-500/40 text-amber-300'
-                    : 'bg-[#14192B] border-white/5 hover:border-amber-500/30 text-white'
+                    ? 'bg-amber-500/20 border-amber-400/50 text-amber-300'
+                    : 'bg-white/[0.03] border-white/5 hover:border-amber-400/30 text-white'
                 }`}
               >
-                <div className="w-8 h-8 rounded-xl bg-amber-500/20 text-amber-400 flex items-center justify-center shrink-0">
-                  <Briefcase className="w-4 h-4" />
+                <div className="w-9 h-9 rounded-xl bg-amber-500/20 text-amber-400 flex items-center justify-center shrink-0">
+                  <Briefcase className="w-5 h-5" />
                 </div>
                 <div className="min-w-0">
-                  <p className="text-xs font-bold truncate">Jobs</p>
+                  <p className="text-xs font-bold truncate">Kazi (Jobs)</p>
                   <p className="text-[10px] text-slate-400 truncate">Nafasi za kazi</p>
-                </div>
-              </button>
-
-              {/* 3. Rides & Transit */}
-              <button
-                onClick={() => {
-                  onSelectTab('transport');
-                  setServicesMenuOpen(false);
-                }}
-                className={`flex items-center gap-2.5 p-2.5 rounded-2xl border text-left transition-all active:scale-95 ${
-                  activeTab === 'transport'
-                    ? 'bg-blue-500/20 border-blue-500/40 text-blue-300'
-                    : 'bg-[#14192B] border-white/5 hover:border-blue-500/30 text-white'
-                }`}
-              >
-                <div className="w-8 h-8 rounded-xl bg-blue-500/20 text-blue-400 flex items-center justify-center shrink-0">
-                  <Car className="w-4 h-4" />
-                </div>
-                <div className="min-w-0">
-                  <p className="text-xs font-bold truncate">Rides</p>
-                  <p className="text-[10px] text-slate-400 truncate">Teksi & safari</p>
                 </div>
               </button>
 
@@ -148,50 +130,64 @@ export const BottomNav: React.FC<BottomNavProps> = ({
                   onSelectTab('community');
                   setServicesMenuOpen(false);
                 }}
-                className={`flex items-center gap-2.5 p-2.5 rounded-2xl border text-left transition-all active:scale-95 ${
+                className={`flex items-center gap-2.5 p-3 rounded-2xl border text-left transition-all active:scale-95 ${
                   activeTab === 'community'
-                    ? 'bg-cyan-500/20 border-cyan-500/40 text-cyan-300'
-                    : 'bg-[#14192B] border-white/5 hover:border-cyan-500/30 text-white'
+                    ? 'bg-cyan-500/20 border-cyan-400/50 text-cyan-300'
+                    : 'bg-white/[0.03] border-white/5 hover:border-cyan-400/30 text-white'
                 }`}
               >
-                <div className="w-8 h-8 rounded-xl bg-cyan-500/20 text-cyan-400 flex items-center justify-center shrink-0">
-                  <Users className="w-4 h-4" />
+                <div className="w-9 h-9 rounded-xl bg-cyan-500/20 text-cyan-400 flex items-center justify-center shrink-0">
+                  <Users className="w-5 h-5" />
                 </div>
                 <div className="min-w-0">
-                  <p className="text-xs font-bold truncate">Communities</p>
-                  <p className="text-[10px] text-slate-400 truncate">Vikundi</p>
+                  <p className="text-xs font-bold truncate">Vikundi</p>
+                  <p className="text-[10px] text-slate-400 truncate">Jamii & makundi</p>
                 </div>
               </button>
-            </div>
 
-            {/* Bottom Quick Create Action */}
-            <div className="mt-2.5 pt-2 border-t border-white/5 flex items-center justify-between">
+              {/* 5. Wallet */}
               <button
                 onClick={() => {
-                  onSelectTab('shop');
+                  onSelectTab('wallet');
                   setServicesMenuOpen(false);
                 }}
-                className="text-[11px] text-slate-400 hover:text-cyan-400 font-medium flex items-center gap-1.5"
+                className={`flex items-center gap-2.5 p-3 rounded-2xl border text-left transition-all active:scale-95 ${
+                  activeTab === 'wallet'
+                    ? 'bg-emerald-500/20 border-emerald-400/50 text-emerald-300'
+                    : 'bg-white/[0.03] border-white/5 hover:border-emerald-400/30 text-white'
+                }`}
               >
-                <Store className="w-3.5 h-3.5 text-cyan-400" />
-                <span>Soko (Marketplace)</span>
+                <div className="w-9 h-9 rounded-xl bg-emerald-500/20 text-emerald-400 flex items-center justify-center shrink-0">
+                  <Store className="w-5 h-5" />
+                </div>
+                <div className="min-w-0">
+                  <p className="text-xs font-bold truncate">Pochi (Wallet)</p>
+                  <p className="text-[10px] text-slate-400 truncate">Miamala & pesa</p>
+                </div>
               </button>
+
+              {/* 6. Post Ad */}
               <button
                 onClick={() => {
                   onOpenCreateMenu();
                   setServicesMenuOpen(false);
                 }}
-                className="text-[11px] text-cyan-400 hover:underline font-semibold flex items-center gap-1"
+                className="flex items-center gap-2.5 p-3 rounded-2xl border border-dashed border-cyan-500/40 bg-cyan-500/10 text-cyan-300 text-left transition-all active:scale-95 hover:bg-cyan-500/20"
               >
-                <Plus className="w-3.5 h-3.5" />
-                <span>Weka Tangazo</span>
+                <div className="w-9 h-9 rounded-xl bg-cyan-500 text-slate-950 flex items-center justify-center shrink-0 font-bold">
+                  <Plus className="w-5 h-5" />
+                </div>
+                <div className="min-w-0">
+                  <p className="text-xs font-bold truncate">+ Tangazo</p>
+                  <p className="text-[10px] text-cyan-300/80 truncate">Weka bidhaa au kazi</p>
+                </div>
               </button>
             </div>
           </div>
         </div>
       )}
 
-      {/* Main Bottom Nav Bar: 5 cleanly aligned tabs */}
+      {/* Main Bottom Nav Bar: 5 clearly aligned tabs */}
       <div className="max-w-md mx-auto w-full flex items-center justify-between">
         {/* 1. Chats Tab */}
         <button
@@ -246,61 +242,65 @@ export const BottomNav: React.FC<BottomNavProps> = ({
               activeTab === 'status' ? 'text-cyan-400 font-semibold' : 'text-slate-400'
             }`}
           >
-            Status
+            Hali
           </span>
         </button>
 
-        {/* 3. Center Huduma / Services Button (Sleek, integrated icon) */}
+        {/* 3. Marketplace (Soko) Tab */}
+        <button
+          onClick={() => {
+            onSelectTab('shop');
+            setServicesMenuOpen(false);
+          }}
+          className="flex-1 flex flex-col items-center justify-center gap-1 py-1 transition-all active:scale-95 group"
+          aria-label="Soko (Marketplace)"
+        >
+          <div className="relative">
+            <Store
+              className={`w-5 h-5 transition-transform duration-150 ${
+                activeTab === 'shop'
+                  ? 'text-cyan-400 scale-105 stroke-[2.2]'
+                  : 'text-slate-400 group-hover:text-slate-200 stroke-[1.8]'
+              }`}
+            />
+          </div>
+          <span
+            className={`text-[10px] font-medium transition-colors ${
+              activeTab === 'shop' ? 'text-cyan-400 font-semibold' : 'text-slate-400'
+            }`}
+          >
+            Soko
+          </span>
+        </button>
+
+        {/* 4. Huduma (Services Drawer) */}
         <button
           onClick={() => setServicesMenuOpen(!servicesMenuOpen)}
           className="flex-1 flex flex-col items-center justify-center gap-1 py-1 transition-all active:scale-95 group"
           aria-label="Huduma (Services)"
-          title="Huduma za Zenia: Events, Jobs, Rides, Communities"
+          title="Huduma: Teksi, Tiketi, Kazi, Jamii, Pochi"
         >
           <div
-            className={`w-9 h-9 rounded-xl flex items-center justify-center transition-all ${
-              servicesMenuOpen || isServicesActive
-                ? 'bg-cyan-500/20 text-cyan-300 border border-cyan-400/30 shadow-sm'
-                : 'bg-white/[0.05] hover:bg-white/[0.1] text-slate-300 border border-white/5'
+            className={`w-7 h-7 rounded-lg flex items-center justify-center transition-all ${
+              servicesMenuOpen || ['events', 'jobs', 'transport', 'wallet', 'community'].includes(activeTab)
+                ? 'bg-cyan-500/20 text-cyan-300 border border-cyan-400/40 shadow-sm'
+                : 'text-slate-400 group-hover:text-slate-200'
             }`}
           >
-            <Store className="w-4 h-4 stroke-[2]" />
+            <Layers className="w-5 h-5" />
           </div>
           <span
             className={`text-[10px] font-medium transition-colors ${
-              servicesMenuOpen || isServicesActive ? 'text-cyan-400 font-semibold' : 'text-slate-400'
+              servicesMenuOpen || ['events', 'jobs', 'transport', 'wallet', 'community'].includes(activeTab)
+                ? 'text-cyan-400 font-semibold'
+                : 'text-slate-400'
             }`}
           >
             Huduma
           </span>
         </button>
 
-        {/* 4. Communities Tab */}
-        <button
-          onClick={() => {
-            onSelectTab('community');
-            setServicesMenuOpen(false);
-          }}
-          className="flex-1 flex flex-col items-center justify-center gap-1 py-1 transition-all active:scale-95 group"
-          aria-label="Communities"
-        >
-          <Users
-            className={`w-5 h-5 transition-transform duration-150 ${
-              activeTab === 'community'
-                ? 'text-cyan-400 stroke-[2.2] scale-105'
-                : 'text-slate-400 group-hover:text-slate-200 stroke-[1.8]'
-            }`}
-          />
-          <span
-            className={`text-[10px] font-medium transition-colors ${
-              activeTab === 'community' ? 'text-cyan-400 font-semibold' : 'text-slate-400'
-            }`}
-          >
-            Vikundi
-          </span>
-        </button>
-
-        {/* 5. Profile Tab */}
+        {/* 5. Wasifu (Profile) Tab */}
         <button
           onClick={() => {
             onSelectTab('profile');

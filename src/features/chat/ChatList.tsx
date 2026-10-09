@@ -880,8 +880,8 @@ export const ChatList: React.FC<ChatListProps> = ({
         </div>
       )}
 
-      {/* Filter Tabs - Clean, subtle segmented design adhering to Zero-Pill discipline */}
-      <div className="px-3.5 pb-2 flex items-center gap-1 overflow-x-auto no-scrollbar">
+      {/* Filter Tabs - Clean segmented design */}
+      <div className="px-3.5 pb-2 flex items-center gap-1.5 overflow-x-auto no-scrollbar">
         {[
           { id: 'all', label: 'Zote' },
           { id: 'unread', label: 'Hazijasomwa' },
@@ -904,7 +904,7 @@ export const ChatList: React.FC<ChatListProps> = ({
               }}
               className={`px-3 py-1.5 rounded-xl text-xs font-medium transition-all shrink-0 active:scale-95 ${
                 isActive
-                  ? 'bg-white/10 text-white font-semibold shadow-sm'
+                  ? 'bg-cyan-500/20 text-cyan-300 font-semibold border border-cyan-400/30 shadow-sm'
                   : 'text-slate-400 hover:text-slate-200 hover:bg-white/[0.04]'
               }`}
             >
@@ -913,39 +913,19 @@ export const ChatList: React.FC<ChatListProps> = ({
           );
         })}
 
-        {/* Custom Lists (Quiet, clean text tags) */}
-        {customLists.map((list) => {
-          const isActive = activeListFilter === list;
-          return (
-            <div
-              key={list}
-              className={`flex items-center gap-1 rounded-xl text-xs font-medium transition-all shrink-0 pl-2.5 pr-1 py-1 ${
-                isActive
-                  ? 'bg-purple-500/20 text-purple-200 border border-purple-500/30'
-                  : 'bg-white/[0.03] text-slate-400 hover:text-white'
-              }`}
+        {/* If a custom list filter is active, show clear badge */}
+        {activeListFilter && (
+          <div className="flex items-center gap-1 rounded-xl text-xs font-semibold bg-purple-500/20 text-purple-200 border border-purple-500/30 px-2.5 py-1 shrink-0">
+            <span>#{activeListFilter}</span>
+            <button
+              onClick={() => setActiveListFilter(null)}
+              className="p-0.5 rounded-full hover:bg-white/10 text-purple-300"
+              title="Ondoa chujio"
             >
-              <button
-                onClick={() => {
-                  setActiveListFilter(activeListFilter === list ? null : list);
-                }}
-                className="hover:underline truncate max-w-[90px]"
-              >
-                #{list}
-              </button>
-              <button
-                onClick={(e) => {
-                  e.stopPropagation();
-                  handleDeleteCustomList(list);
-                }}
-                className="p-0.5 rounded-full hover:bg-white/10 text-slate-400 hover:text-rose-400"
-                title={`Futa #${list}`}
-              >
-                <X className="w-3 h-3" />
-              </button>
-            </div>
-          );
-        })}
+              <X className="w-3 h-3" />
+            </button>
+          </div>
+        )}
       </div>
 
       {/* Archived Banner (Quick access if not in archived tab) */}

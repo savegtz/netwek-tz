@@ -242,14 +242,14 @@ export const ZeniaMiniPlayer: React.FC = () => {
         /* ============================================================== */
         <aside
           aria-label="Kicheza Muziki cha Zenia"
-          className="fixed bottom-20 md:bottom-6 left-3 right-3 md:left-auto md:right-6 md:w-96 z-40 bg-[#0B0F20]/95 backdrop-blur-xl border border-cyan-500/30 rounded-2xl shadow-2xl p-2.5 flex items-center justify-between gap-3 animate-in slide-in-from-bottom-4 transition-all"
+          className="fixed bottom-[62px] md:bottom-6 left-2.5 right-2.5 md:left-auto md:right-6 md:w-96 z-40 bg-[#0B0F20]/95 backdrop-blur-xl border border-cyan-500/30 rounded-xl shadow-xl p-2 flex items-center justify-between gap-2.5 animate-in slide-in-from-bottom-2 transition-all"
         >
           {/* Track cover & title (clickable to expand) */}
           <div
             onClick={() => setIsExpanded(true)}
-            className="flex items-center gap-2.5 min-w-0 flex-1 cursor-pointer group"
+            className="flex items-center gap-2 min-w-0 flex-1 cursor-pointer group"
           >
-            <div className="relative w-11 h-11 rounded-xl overflow-hidden shrink-0 border border-white/10">
+            <div className="relative w-9 h-9 rounded-lg overflow-hidden shrink-0 border border-white/10">
               <SafeImage
                 src={currentTrack.coverUrl}
                 alt={currentTrack.title}
@@ -260,25 +260,25 @@ export const ZeniaMiniPlayer: React.FC = () => {
                   isPlaying ? 'opacity-100' : 'opacity-0 group-hover:opacity-100'
                 }`}
               >
-                <Disc className={`w-5 h-5 ${isPlaying ? 'animate-spin' : ''}`} style={{ animationDuration: '3s' }} />
+                <Disc className={`w-4 h-4 ${isPlaying ? 'animate-spin' : ''}`} style={{ animationDuration: '3s' }} />
               </div>
             </div>
 
             <div className="min-w-0 flex-1">
               <div className="flex items-center gap-1.5">
-                <h5 className="font-extrabold text-xs text-white truncate group-hover:text-cyan-300 transition-colors">
+                <h5 className="font-bold text-[11px] text-white truncate group-hover:text-cyan-300 transition-colors">
                   {currentTrack.title}
                 </h5>
-                <span className="px-1.5 py-0.2 rounded-full bg-cyan-500/20 text-cyan-300 text-[8px] font-bold uppercase shrink-0">
+                <span className="px-1 py-0.2 rounded bg-cyan-500/20 text-cyan-300 text-[7.5px] font-bold uppercase shrink-0">
                   {currentTrack.category}
                 </span>
               </div>
-              <p className="text-[10px] text-slate-400 truncate mt-0.5">
+              <p className="text-[9.5px] text-slate-400 truncate leading-tight mt-0.5">
                 {currentTrack.artist} • <span className="font-mono text-cyan-400">{formatSec(currentTime)}</span>
               </p>
 
               {/* Mini progress bar */}
-              <div className="w-full h-1 bg-white/10 rounded-full overflow-hidden mt-1">
+              <div className="w-full h-0.5 bg-white/10 rounded-full overflow-hidden mt-1">
                 <div
                   className="h-full bg-cyan-400 rounded-full transition-all duration-200"
                   style={{ width: `${progressPercent}%` }}
@@ -288,42 +288,42 @@ export const ZeniaMiniPlayer: React.FC = () => {
           </div>
 
           {/* Action buttons */}
-          <div className="flex items-center gap-1 shrink-0">
+          <div className="flex items-center gap-0.5 shrink-0">
             <button
               onClick={prevTrack}
-              className="p-1.5 rounded-full hover:bg-white/10 text-slate-300 transition-all"
+              className="p-1 rounded-full hover:bg-white/10 text-slate-300 transition-all"
               title="Iliyopita"
             >
-              <SkipBack className="w-4 h-4" />
+              <SkipBack className="w-3.5 h-3.5" />
             </button>
 
             <button
               onClick={togglePlay}
-              className="p-2.5 rounded-full bg-gradient-to-r from-cyan-400 to-blue-500 text-slate-950 font-bold shadow-md shadow-cyan-500/20 hover:scale-105 active:scale-95 transition-all"
+              className="p-2 rounded-full bg-gradient-to-r from-cyan-400 to-blue-500 text-slate-950 font-bold shadow-sm shadow-cyan-500/20 hover:scale-105 active:scale-95 transition-all"
               title={isPlaying ? 'Sitisha' : 'Cheza'}
             >
-              {isPlaying ? <Pause className="w-4 h-4 fill-current" /> : <Play className="w-4 h-4 fill-current ml-0.5" />}
+              {isPlaying ? <Pause className="w-3.5 h-3.5 fill-current" /> : <Play className="w-3.5 h-3.5 fill-current ml-0.5" />}
             </button>
 
             <button
               onClick={nextTrack}
-              className="p-1.5 rounded-full hover:bg-white/10 text-slate-300 transition-all"
+              className="p-1 rounded-full hover:bg-white/10 text-slate-300 transition-all"
               title="Inayofuata"
             >
-              <SkipForward className="w-4 h-4" />
+              <SkipForward className="w-3.5 h-3.5" />
             </button>
 
             <button
               onClick={() => setIsExpanded(true)}
-              className="p-1.5 rounded-full hover:bg-white/10 text-slate-400 hover:text-white transition-all ml-0.5"
+              className="p-1 rounded-full hover:bg-white/10 text-slate-400 hover:text-white transition-all"
               title="Panua (Expand)"
             >
-              <Maximize2 className="w-3.5 h-3.5" />
+              <Maximize2 className="w-3 h-3" />
             </button>
 
             <button
               onClick={closePlayer}
-              className="p-1.5 rounded-full hover:bg-white/10 text-slate-400 hover:text-rose-400 transition-all"
+              className="p-1 rounded-full hover:bg-white/10 text-slate-400 hover:text-rose-400 transition-all"
               title="Funga"
             >
               <X className="w-3.5 h-3.5" />

@@ -137,7 +137,7 @@ export const WalletView: React.FC<WalletViewProps> = ({ onBack }) => {
                 onClick={() => {
                   const add = 20000;
                   setBalance((b) => b + add);
-                  alert(`Top up simulated: +TZS ${add.toLocaleString()}`);
+                  setSuccessNotice(`Umepokea +TZS ${add.toLocaleString()} kwenye pochi yako! ✨`);
                 }}
                 className="flex flex-col items-center gap-1.5 group"
               >

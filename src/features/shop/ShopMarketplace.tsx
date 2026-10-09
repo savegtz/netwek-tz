@@ -21,6 +21,7 @@ import { ProductItem, CartItem, OrderItem } from '../../types';
 import { INITIAL_PRODUCTS } from '../../services/seed/initialData';
 import { PaymentService } from '../../services/payments/paymentService';
 import { SafeImage } from '../../components/SafeImage';
+import aminaAvatar from '../../assets/images/amina_avatar_1790280951312.jpg';
 
 interface ShopMarketplaceProps {
   onStartChatWithSeller: (sellerId: string, sellerName: string) => void;
@@ -209,7 +210,7 @@ export const ShopMarketplace: React.FC<ShopMarketplaceProps> = ({
           </div>
 
           <SafeImage
-            src="/assets/images/amina_avatar_1790280951312.jpg"
+            src={aminaAvatar}
             fallbackText="Sale"
             alt="Fashion model"
             className="w-20 h-24 sm:w-24 sm:h-28 object-cover rounded-2xl ring-2 ring-white/20 shadow-xl shrink-0"

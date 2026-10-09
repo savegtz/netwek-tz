@@ -237,99 +237,65 @@ export const ChatListStatusRow: React.FC<ChatListStatusRowProps> = ({
   };
 
   return (
-    <div className="pt-2.5 pb-3 px-3.5 border-b border-white/[0.06] select-none bg-gradient-to-b from-[#090D1A]/80 to-[#070A14]">
-      {/* Top Header Row: Title & Action */}
-      <div className="flex items-center justify-between mb-2.5 px-0.5">
-        <div className="flex items-center gap-2">
-          <div className="w-5 h-5 rounded-lg bg-cyan-500/15 flex items-center justify-center text-cyan-400">
-            <Sparkles className="w-3.5 h-3.5" />
-          </div>
-          <span className="text-xs font-bold text-slate-200 tracking-tight">
-            Stories
-          </span>
-          <span className="px-1.5 py-0.5 rounded-full bg-cyan-500/15 text-cyan-400 text-[10px] font-semibold font-mono">
-            {allStatuses.length} mpya
-          </span>
-        </div>
-
-        <button
-          onClick={onOpenCreateStatus}
-          className="flex items-center gap-1 text-[11px] font-semibold text-cyan-400 hover:text-cyan-300 transition-colors group"
-          title="Weka Hali Yako"
-        >
-          <Plus className="w-3.5 h-3.5 stroke-[2.5] group-hover:scale-110 transition-transform" />
-          <span>Weka Story</span>
-        </button>
-      </div>
-
-      {/* Stories Carousel with smooth touch scrolling and desktop navigation arrows */}
+    <div className="pt-2 pb-2.5 px-3 border-b border-white/[0.06] select-none bg-[#080B16]">
+      {/* Stories Carousel with smooth touch scrolling */}
       <div className="relative group/carousel">
-        {/* Left Scroll Arrow (Desktop) */}
+        {/* Left Scroll Arrow (Desktop only) */}
         <button
           onClick={() => handleScroll('left')}
-          className="hidden md:flex absolute -left-2 top-1/2 -translate-y-1/2 z-20 w-7 h-7 rounded-full bg-[#0A0F1E]/90 hover:bg-[#121B33] text-white items-center justify-center border border-white/10 shadow-lg opacity-0 group-hover/carousel:opacity-100 transition-all active:scale-95"
+          className="hidden md:flex absolute -left-1.5 top-1/2 -translate-y-1/2 z-20 w-6 h-6 rounded-full bg-[#0A0F1E]/90 hover:bg-[#121B33] text-white items-center justify-center border border-white/10 shadow-lg opacity-0 group-hover/carousel:opacity-100 transition-all active:scale-95"
           aria-label="Scroll left"
         >
-          <ChevronLeft className="w-4 h-4" />
+          <ChevronLeft className="w-3.5 h-3.5" />
         </button>
 
-        {/* Right Scroll Arrow (Desktop) */}
+        {/* Right Scroll Arrow (Desktop only) */}
         <button
           onClick={() => handleScroll('right')}
-          className="hidden md:flex absolute -right-2 top-1/2 -translate-y-1/2 z-20 w-7 h-7 rounded-full bg-[#0A0F1E]/90 hover:bg-[#121B33] text-white items-center justify-center border border-white/10 shadow-lg opacity-0 group-hover/carousel:opacity-100 transition-all active:scale-95"
+          className="hidden md:flex absolute -right-1.5 top-1/2 -translate-y-1/2 z-20 w-6 h-6 rounded-full bg-[#0A0F1E]/90 hover:bg-[#121B33] text-white items-center justify-center border border-white/10 shadow-lg opacity-0 group-hover/carousel:opacity-100 transition-all active:scale-95"
           aria-label="Scroll right"
         >
-          <ChevronRight className="w-4 h-4" />
+          <ChevronRight className="w-3.5 h-3.5" />
         </button>
 
-        {/* Story Cards List */}
+        {/* Circular Stories Row (Ultra-clean WhatsApp/Instagram Style) */}
         <div
           ref={scrollRef}
-          className="flex items-center gap-2.5 overflow-x-auto no-scrollbar scroll-smooth py-0.5 px-0.5 overscroll-x-contain"
+          className="flex items-center gap-3 overflow-x-auto no-scrollbar scroll-smooth py-0.5 px-0.5 overscroll-x-contain"
           style={{ WebkitOverflowScrolling: 'touch' }}
         >
           {/* ============================================================== */}
-          {/* 1. MY STORY CARD (Hali Yangu / Weka Mpya)                       */}
+          {/* 1. MY STORY CIRCLE (Hali Yangu / Weka Mpya)                     */}
           {/* ============================================================== */}
           <button
             onClick={onOpenCreateStatus}
-            className="group relative w-[100px] min-w-[100px] h-[100px] sm:w-[108px] sm:min-w-[108px] sm:h-[108px] aspect-square rounded-[30px] overflow-hidden border-2 border-cyan-400/80 shadow-[0_0_15px_rgba(6,182,212,0.25)] hover:border-cyan-300 hover:shadow-cyan-400/45 hover:-translate-y-0.5 active:scale-95 transition-all duration-300 flex flex-col justify-between text-left focus:outline-none shrink-0 bg-[#0E1428]"
+            className="flex flex-col items-center gap-1 shrink-0 group focus:outline-none"
             title="Weka Hali Yako (Post Status)"
           >
-            {/* Background User Avatar with smooth overlay */}
-            <div className="absolute inset-0 z-0 bg-slate-900">
-              <SafeImage
-                src={currentUser?.photoURL || aminaAvatar}
-                fallbackText="Me"
-                alt="My Status"
-                className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-500 opacity-80"
-              />
-              <div className="absolute inset-0 bg-gradient-to-t from-[#070A14] via-black/40 to-transparent" />
-            </div>
-
-            {/* Top-Right Badge: Plus icon inside glowing ring */}
-            <div className="relative z-10 pt-2.5 px-2.5 pb-1 flex items-center justify-between w-full">
-              <span className="inline-flex items-center px-1.5 py-0.5 rounded-full text-[8.5px] font-bold bg-cyan-500/25 text-cyan-300 border border-cyan-400/40 backdrop-blur-md">
-                + Story
-              </span>
-              <div className="w-6 h-6 rounded-full bg-gradient-to-tr from-cyan-400 via-blue-500 to-indigo-600 text-white flex items-center justify-center shadow-md shadow-cyan-500/40 ring-2 ring-black/40 group-hover:scale-110 group-hover:rotate-90 transition-all">
-                <Plus className="w-3.5 h-3.5 stroke-[3]" />
+            <div className="relative">
+              {/* Outer Ring */}
+              <div className="w-[52px] h-[52px] rounded-full p-[2px] bg-slate-800 ring-1 ring-white/10 group-hover:ring-cyan-400 transition-all">
+                <div className="w-full h-full rounded-full overflow-hidden bg-slate-900">
+                  <SafeImage
+                    src={currentUser?.photoURL || aminaAvatar}
+                    fallbackText="Me"
+                    alt="My Status"
+                    className="w-full h-full object-cover group-hover:scale-105 transition-transform"
+                  />
+                </div>
+              </div>
+              {/* Plus Badge at bottom-right */}
+              <div className="absolute -bottom-0.5 -right-0.5 w-4 h-4 rounded-full bg-gradient-to-tr from-cyan-400 to-blue-500 text-slate-950 flex items-center justify-center shadow-md ring-2 ring-[#080B16] group-hover:scale-110 transition-transform">
+                <Plus className="w-3 h-3 stroke-[3]" />
               </div>
             </div>
-
-            {/* Bottom Row: Text */}
-            <div className="relative z-10 pb-2.5 px-2.5 pt-0 w-full text-left">
-              <p className="text-[11px] font-extrabold text-white tracking-tight leading-tight drop-shadow-md truncate">
-                Hali Yangu
-              </p>
-              <p className="text-[9px] font-medium text-cyan-300/90 tracking-tight leading-none mt-0.5 drop-shadow">
-                Weka Mpya
-              </p>
-            </div>
+            <span className="text-[10px] font-semibold text-slate-300 group-hover:text-cyan-300 transition-colors truncate max-w-[58px] text-center leading-tight">
+              Hali Yangu
+            </span>
           </button>
 
           {/* ============================================================== */}
-          {/* 2. CONTACT / COMMUNITY STORY CARDS                             */}
+          {/* 2. CONTACT / COMMUNITY STORY CIRCLES                           */}
           {/* ============================================================== */}
           {allStatuses.map((item, idx) => {
             const firstName = item.authorName.split(' ')[0];
@@ -338,106 +304,56 @@ export const ChatListStatusRow: React.FC<ChatListStatusRowProps> = ({
             const isProduct = item.type === 'product';
             const isEvent = item.type === 'event';
 
-            // Distinct badge icon and label
-            let badgeIcon = null;
-            let badgeLabel = item.createdAt;
-            let badgeClass = 'bg-black/60 text-slate-200 border-white/10';
+            // Distinct gradient ring based on story category
+            let ringGradient = 'from-cyan-400 via-blue-500 to-indigo-500';
+            let microEmoji = '✨';
 
             if (isFood) {
-              badgeIcon = <Utensils className="w-2.5 h-2.5 mr-0.5 text-amber-300" />;
-              badgeLabel = item.metadata?.specialOfferLabel || 'Ofa';
-              badgeClass = 'bg-amber-500/90 text-slate-950 font-black border-amber-400';
+              ringGradient = 'from-amber-400 via-orange-500 to-rose-500';
+              microEmoji = '🍔';
             } else if (isPoll) {
-              badgeIcon = <BarChart2 className="w-2.5 h-2.5 mr-0.5 text-blue-200" />;
-              badgeLabel = 'Kura';
-              badgeClass = 'bg-blue-500/90 text-white font-bold border-blue-400';
+              ringGradient = 'from-blue-400 via-indigo-500 to-cyan-400';
+              microEmoji = '📊';
             } else if (isProduct) {
-              badgeIcon = <ShoppingBag className="w-2.5 h-2.5 mr-0.5 text-emerald-200" />;
-              badgeLabel = item.metadata?.discountBadge || 'Duka';
-              badgeClass = 'bg-emerald-500/90 text-slate-950 font-black border-emerald-400';
+              ringGradient = 'from-emerald-400 via-teal-500 to-cyan-400';
+              microEmoji = '🛍️';
             } else if (isEvent) {
-              badgeIcon = <Calendar className="w-2.5 h-2.5 mr-0.5 text-purple-200" />;
-              badgeLabel = 'Tukio';
-              badgeClass = 'bg-purple-500/90 text-white font-bold border-purple-400';
+              ringGradient = 'from-purple-400 via-fuchsia-500 to-pink-500';
+              microEmoji = '🎟️';
             }
 
             return (
               <button
                 key={item.id}
                 onClick={() => setViewerState({ isOpen: true, initialIndex: idx })}
-                className="group relative w-[100px] min-w-[100px] h-[100px] sm:w-[108px] sm:min-w-[108px] sm:h-[108px] aspect-square rounded-[30px] overflow-hidden border-2 border-cyan-400 shadow-[0_0_15px_rgba(6,182,212,0.28)] hover:border-cyan-300 hover:shadow-cyan-400/50 hover:-translate-y-0.5 active:scale-95 transition-all duration-300 flex flex-col justify-between text-left focus:outline-none shrink-0 bg-slate-950"
+                className="flex flex-col items-center gap-1 shrink-0 group focus:outline-none"
                 title={`Tazama story ya ${item.authorName}`}
               >
-                {/* Background Image Preview with Zoom effect */}
-                <div className="absolute inset-0 z-0 bg-slate-900">
-                  <SafeImage
-                    src={item.mediaUrl}
-                    fallbackGradient="from-cyan-950 via-slate-900 to-indigo-950"
-                    alt={item.text}
-                    className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-500"
-                  />
-                  {/* Top scrim for avatar and badge */}
-                  <div className="absolute inset-x-0 top-0 h-11 bg-gradient-to-b from-black/85 via-black/30 to-transparent" />
-                  {/* Bottom scrim for author name and snippet */}
-                  <div className="absolute inset-x-0 bottom-0 h-14 bg-gradient-to-t from-black/95 via-black/60 to-transparent" />
-                </div>
-
-                {/* Top Row: Creator Avatar & Story Badge */}
-                <div className="relative z-10 pt-2.5 px-2.5 pb-1 flex items-center justify-between w-full">
-                  {/* Creator Avatar with Glowing Gradient Ring */}
-                  <div className="w-6 h-6 rounded-full p-[1.5px] bg-gradient-to-tr from-cyan-400 via-fuchsia-500 to-amber-400 shadow-md ring-1 ring-black/60 group-hover:scale-105 transition-transform">
-                    <div className="w-full h-full rounded-full overflow-hidden bg-slate-950">
-                      <SafeImage
-                        src={item.authorPhoto}
-                        fallbackText={item.authorName}
-                        alt={item.authorName}
-                        className="w-full h-full object-cover"
-                      />
+                <div className="relative">
+                  {/* Glowing Story Gradient Ring */}
+                  <div className={`w-[52px] h-[52px] rounded-full p-[2px] bg-gradient-to-tr ${ringGradient} shadow-sm group-hover:scale-105 active:scale-95 transition-transform duration-200`}>
+                    <div className="w-full h-full rounded-full overflow-hidden bg-[#080B16] p-[1.5px]">
+                      <div className="w-full h-full rounded-full overflow-hidden">
+                        <SafeImage
+                          src={item.authorPhoto}
+                          fallbackText={item.authorName}
+                          alt={item.authorName}
+                          className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-300"
+                        />
+                      </div>
                     </div>
                   </div>
 
-                  {/* Story Badge */}
-                  <span
-                    className={`inline-flex items-center px-1.5 py-0.5 rounded-full text-[8.5px] backdrop-blur-md shadow-sm border ${badgeClass} truncate max-w-[48px]`}
-                  >
-                    {badgeIcon}
-                    <span className="truncate">{badgeLabel}</span>
+                  {/* Micro Category Tag */}
+                  <span className="absolute -bottom-0.5 -right-0.5 w-4 h-4 rounded-full bg-[#0D1224] border border-white/20 flex items-center justify-center text-[8px] shadow-sm">
+                    {microEmoji}
                   </span>
                 </div>
 
-                {/* Bottom Row: Creator Name & Story Snippet/Price */}
-                <div className="relative z-10 pb-2.5 px-2.5 pt-0 w-full">
-                  <h4 className="text-[10.5px] font-bold text-white tracking-tight leading-tight truncate drop-shadow-md">
-                    {firstName}
-                  </h4>
-                  <div className="text-[9px] font-medium leading-tight truncate mt-0.5 drop-shadow-sm">
-                    {isFood && (
-                      <span className="text-amber-300 font-bold">
-                        TSh {(item.metadata?.offerPrice || 12000).toLocaleString()}
-                      </span>
-                    )}
-                    {isProduct && (
-                      <span className="text-emerald-300 font-bold">
-                        TSh {(item.metadata?.salePrice || 175000).toLocaleString()}
-                      </span>
-                    )}
-                    {isPoll && (
-                      <span className="text-cyan-300 font-medium">
-                        {item.metadata?.pollQuestion?.split(' ')[0] || 'Kura'}?
-                      </span>
-                    )}
-                    {isEvent && (
-                      <span className="text-purple-300 font-medium">
-                        {item.metadata?.eventName?.split(' ')[0] || 'Tukio'}
-                      </span>
-                    )}
-                    {!isFood && !isProduct && !isPoll && !isEvent && (
-                      <span className="text-slate-300/90 font-normal">
-                        {item.location ? item.location.split(',')[0] : 'Vibes ☀️'}
-                      </span>
-                    )}
-                  </div>
-                </div>
+                {/* Author Name */}
+                <span className="text-[10px] font-medium text-slate-300 group-hover:text-cyan-300 transition-colors truncate max-w-[58px] text-center leading-tight">
+                  {firstName}
+                </span>
               </button>
             );
           })}
