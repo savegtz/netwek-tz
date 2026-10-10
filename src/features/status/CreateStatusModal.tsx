@@ -38,11 +38,16 @@ import {
   Trophy,
   Lightbulb,
   Zap,
+  ArrowLeft,
+  Palette,
+  Layers,
 } from 'lucide-react';
-import { StatusItem, StatusType, UserProfile } from '../../types';
+import { StatusItem, StatusType, UserProfile, AvatarShapeStyle } from '../../types';
 import { doc, setDoc } from 'firebase/firestore';
 import { db, auth } from '../../services/firebase/config';
 import { SafeImage } from '../../components/SafeImage';
+import { DynamicAvatar } from '../../components/DynamicAvatar';
+import { AVATAR_STYLES_LIST, getStoredAvatarStyle } from '../profile/avatarStyles';
 import freshKkAvatar from '../../assets/images/fresh_kk_avatar_1791078365294.jpg';
 
 interface CreateStatusModalProps {
@@ -101,6 +106,13 @@ export const CreateStatusModal: React.FC<CreateStatusModalProps> = ({
   const [submitting, setSubmitting] = useState(false);
   const [showLivePreview, setShowLivePreview] = useState(true);
 
+  // 2-Step Flow: 'details' (Hatua 1: Weka Taarifa) -> 'shape_preview' (Hatua 2: Hakiki & Chagua Umbo)
+  const [creationStep, setCreationStep] = useState<'details' | 'shape_preview'>('details');
+  const [selectedAvatarStyle, setSelectedAvatarStyle] = useState<AvatarShapeStyle>(
+    currentUser?.avatarStyle || getStoredAvatarStyle() || 'organic-blob'
+  );
+  const [previewStackMode, setPreviewStackMode] = useState<'single' | 'multi'>('single');
+
   // Scheduling & Audience
   const [publishMode, setPublishMode] = useState<'now' | 'schedule'>('now');
   const [scheduleDate, setScheduleDate] = useState('06 Oct 2026');
@@ -123,11 +135,13 @@ export const CreateStatusModal: React.FC<CreateStatusModalProps> = ({
   });
 
   const popularFoods = [
-    { name: 'Chicken Burger', reg: 15000, offer: 12000, img: 'https://images.unsplash.com/photo-1568901346375-23c9450c58cd?w=1200&auto=format&fit=crop&q=80', caption: '🔥 Our famous Chicken Burger is back!\nFresh • Juicy • Delicious 🤤\n#ZebraRestaurant #ChickenBurger #DarFood' },
-    { name: 'Beef Burger', reg: 18000, offer: 14000, img: 'https://images.unsplash.com/photo-1586190848861-99aa4a171e90?w=1200&auto=format&fit=crop&q=80', caption: '🍔 Double Beef Smash Burger na cheddar cheese iliyoyeyuka! Karibu Zebra Masaki.\n#ZebraRestaurant #BeefBurger' },
-    { name: 'Grilled Chicken', reg: 22000, offer: 18000, img: 'https://images.unsplash.com/photo-1598515214211-89d3c73ae83b?w=1200&auto=format&fit=crop&q=80', caption: '🍗 Peri-peri Flame Grilled Chicken nusu kuku na chips kukaanga. Agiza sasa!\n#GrilledChicken #DarFood' },
+    { name: 'Chicken Burger', reg: 15000, offer: 12000, img: 'https://images.unsplash.com/photo-1586190848861-99aa4a171e90?w=1200&auto=format&fit=crop&q=80', caption: '🔥 Chicken Burger Deluxe yetu maarufu imerejea!\nFresh grilled patty, cheddar cheese & crispy fries. 🤤✨ #ZebraRestaurant #ChickenBurger' },
+    { name: 'Beef Burger', reg: 18000, offer: 14000, img: 'https://images.unsplash.com/photo-1550547660-d9450f859349?w=1200&auto=format&fit=crop&q=80', caption: '🍔 Double Beef Smash Burger na cheddar cheese iliyoyeyuka vizuri! Karibu Zebra Masaki. #ZebraRestaurant #BeefBurger' },
+    { name: 'Grilled Chicken', reg: 22000, offer: 18000, img: 'https://images.unsplash.com/photo-1598515214211-89d3c73ae83b?w=1200&auto=format&fit=crop&q=80', caption: '🍗 Flame-grilled Peri-peri Chicken nusu kuku na chips za kukaanga. Ladha safi & moto! #GrilledChicken #DarFood' },
     { name: 'French Fries', reg: 6000, offer: 5000, img: 'https://images.unsplash.com/photo-1576107232684-1279f3908594?w=1200&auto=format&fit=crop&q=80', caption: '🍟 Crispy Masala French Fries na sosi ya mayonesi! #FrenchFries #Snacks' },
-    { name: 'Pizza', reg: 25000, offer: 20000, img: 'https://images.unsplash.com/photo-1513104890138-7c749659a591?w=1200&auto=format&fit=crop&q=80', caption: '🍕 Wood-fired BBQ Beef & Cheese Pizza kubwa! Ofa ya leo pekee.\n#PizzaDar #DarFood' },
+    { name: 'Pizza', reg: 25000, offer: 20000, img: 'https://images.unsplash.com/photo-1513104890138-7c749659a591?w=1200&auto=format&fit=crop&q=80', caption: '🍕 Wood-fired BBQ Beef & Mozzarella Pizza kubwa! Ofa ya leo pekee. #PizzaDar #DarFood' },
+    { name: 'Passion Mocktail', reg: 8000, offer: 5000, img: 'https://images.unsplash.com/photo-1551024709-8f23befc6f87?w=1200&auto=format&fit=crop&q=80', caption: '🍹 Tropical Passion Fruit Mocktail! Juisi baridi ya matunda asilia na barafu. #HappyHour #Mocktails' },
+    { name: 'Zanzibar Biryani', reg: 16000, offer: 13000, img: 'https://images.unsplash.com/photo-1563379091339-03b21ab4a4f8?w=1200&auto=format&fit=crop&q=80', caption: '🍛 Zanzibar Mutton Biryani ya viungo asilia na kachumbari safi! #BiryaniDar #Ladha' },
   ];
 
   // Auto-fill presets when food is chosen
@@ -642,8 +656,12 @@ export const CreateStatusModal: React.FC<CreateStatusModalProps> = ({
       ? Math.round(((productRegularPrice - productSalePrice) / productRegularPrice) * 100)
       : 0;
 
-  const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
+  const handleProceedToShapeSelection = (e?: React.FormEvent) => {
+    if (e) e.preventDefault();
+    setCreationStep('shape_preview');
+  };
+
+  const handleSubmitFinal = async () => {
     setSubmitting(true);
 
     const newStatus: StatusItem = {
@@ -667,6 +685,7 @@ export const CreateStatusModal: React.FC<CreateStatusModalProps> = ({
           : activeType === 'job'
           ? 'https://images.unsplash.com/photo-1517248135467-4c7edcad34c4?w=200&auto=format&fit=crop&q=80'
           : currentUser.photoURL || freshKkAvatar,
+      avatarStyle: selectedAvatarStyle,
       type: activeType,
       mediaUrl,
       text: caption,
@@ -823,60 +842,82 @@ export const CreateStatusModal: React.FC<CreateStatusModalProps> = ({
         {/* Top Header */}
         <div className="p-4 bg-[#0E1528] border-b border-white/10 flex items-center justify-between shrink-0">
           <div className="flex items-center gap-2.5">
-            <div className="w-9 h-9 rounded-xl bg-cyan-500/20 text-cyan-400 flex items-center justify-center font-bold">
-              {activeType === 'job' && <Briefcase className="w-5 h-5 text-amber-400" />}
-              {activeType === 'food' && <Utensils className="w-5 h-5 text-amber-400" />}
-              {activeType === 'poll' && <BarChart2 className="w-5 h-5 text-blue-400" />}
-              {activeType === 'product' && <ShoppingBag className="w-5 h-5 text-emerald-400" />}
-              {activeType === 'event' && <Calendar className="w-5 h-5 text-purple-400" />}
-              {activeType === 'giveaway' && <Gift className="w-5 h-5 text-amber-400" />}
-              {activeType === 'quiz' && <HelpCircle className="w-5 h-5 text-teal-400" />}
-              {activeType === 'property' && <Home className="w-5 h-5 text-cyan-400" />}
-              {activeType === 'live' && <Radio className="w-5 h-5 text-pink-400" />}
-              {activeType === 'advertisement' && <Megaphone className="w-5 h-5 text-yellow-400" />}
-              {!['food', 'poll', 'product', 'event', 'job', 'giveaway', 'quiz', 'property', 'live', 'advertisement'].includes(activeType) && <Camera className="w-5 h-5" />}
-            </div>
+            {creationStep === 'shape_preview' ? (
+              <button
+                type="button"
+                onClick={() => setCreationStep('details')}
+                className="w-9 h-9 rounded-xl bg-cyan-500/20 hover:bg-cyan-500/30 text-cyan-300 flex items-center justify-center transition-colors active:scale-95"
+                title="Rudi Kwenye Taarifa za Story"
+              >
+                <ArrowLeft className="w-5 h-5" />
+              </button>
+            ) : (
+              <div className="w-9 h-9 rounded-xl bg-cyan-500/20 text-cyan-400 flex items-center justify-center font-bold">
+                {activeType === 'job' && <Briefcase className="w-5 h-5 text-amber-400" />}
+                {activeType === 'food' && <Utensils className="w-5 h-5 text-amber-400" />}
+                {activeType === 'poll' && <BarChart2 className="w-5 h-5 text-blue-400" />}
+                {activeType === 'product' && <ShoppingBag className="w-5 h-5 text-emerald-400" />}
+                {activeType === 'event' && <Calendar className="w-5 h-5 text-purple-400" />}
+                {activeType === 'giveaway' && <Gift className="w-5 h-5 text-amber-400" />}
+                {activeType === 'quiz' && <HelpCircle className="w-5 h-5 text-teal-400" />}
+                {activeType === 'property' && <Home className="w-5 h-5 text-cyan-400" />}
+                {activeType === 'live' && <Radio className="w-5 h-5 text-pink-400" />}
+                {activeType === 'advertisement' && <Megaphone className="w-5 h-5 text-yellow-400" />}
+                {!['food', 'poll', 'product', 'event', 'job', 'giveaway', 'quiz', 'property', 'live', 'advertisement'].includes(activeType) && <Camera className="w-5 h-5" />}
+              </div>
+            )}
             <div>
               <h3 className="font-extrabold text-sm sm:text-base text-white capitalize">
-                Weka {
-                  activeType === 'job' ? '💼 Job Listing' :
-                  activeType === 'food' ? '🍕 Food Status' :
-                  activeType === 'poll' ? '📊 Poll Status' :
-                  activeType === 'product' ? '🛍️ Product Status' :
-                  activeType === 'event' ? '🎪 Event Status' :
-                  activeType === 'giveaway' ? '🎁 Giveaway Status' :
-                  activeType === 'quiz' ? '❓ Quiz Status' :
-                  activeType === 'property' ? '🏠 Property Status' :
-                  activeType === 'live' ? '🎙️ Live Space Status' :
-                  activeType === 'advertisement' ? '📢 Ad Campaign' : 'Status'
-                }
+                {creationStep === 'shape_preview' ? (
+                  <span className="flex items-center gap-1.5">
+                    <span>🎨 Hakiki & Chagua Umbo la Story</span>
+                    <span className="text-[10px] px-2 py-0.5 rounded-full bg-cyan-500/20 text-cyan-300 font-bold border border-cyan-400/30">
+                      Hatua 2 ya 2
+                    </span>
+                  </span>
+                ) : (
+                  `Weka ${
+                    activeType === 'job' ? '💼 Job Listing' :
+                    activeType === 'food' ? '🍕 Food Status' :
+                    activeType === 'poll' ? '📊 Poll Status' :
+                    activeType === 'product' ? '🛍️ Product Status' :
+                    activeType === 'event' ? '🎪 Event Status' :
+                    activeType === 'giveaway' ? '🎁 Giveaway Status' :
+                    activeType === 'quiz' ? '❓ Quiz Status' :
+                    activeType === 'property' ? '🏠 Property Status' :
+                    activeType === 'live' ? '🎙️ Live Space Status' :
+                    activeType === 'advertisement' ? '📢 Ad Campaign' : 'Status'
+                  }`
+                )}
               </h3>
               <p className="text-[11px] text-slate-400">
-                {
-                  activeType === 'job' ? 'Kampuni, Job Title, Mshahara, Masharti & Apply Now' :
-                  activeType === 'giveaway' ? 'Zawadi, Washindi, Masharti ya Kujiunga & Tiketi' :
-                  activeType === 'quiz' ? 'Maswali, Chaguzi A-D, Jibu Sahihi & Pointi' :
-                  activeType === 'property' ? 'Kupanga / Kuuza, Bei, Vyumba & Book Inspection' :
-                  activeType === 'live' ? 'Mada, Wasemaji, Muda & Jiunge Live Audio' :
-                  activeType === 'advertisement' ? 'Tangazo Rasmi, Lengo, Bajeti & Call To Action' :
-                  'Picha, Bei, Ofa, Countdown & Vitufe vya Action'
-                }
+                {creationStep === 'shape_preview'
+                  ? 'Chagua umbo 1 kati ya 10 — wewe na watu wote mtakaoona stori hii mtaiona na umbo hili!'
+                  : activeType === 'job' ? 'Kampuni, Job Title, Mshahara, Masharti & Apply Now' :
+                    activeType === 'giveaway' ? 'Zawadi, Washindi, Masharti ya Kujiunga & Tiketi' :
+                    activeType === 'quiz' ? 'Maswali, Chaguzi A-D, Jibu Sahihi & Pointi' :
+                    activeType === 'property' ? 'Kupanga / Kuuza, Bei, Vyumba & Book Inspection' :
+                    activeType === 'live' ? 'Mada, Wasemaji, Muda & Jiunge Live Audio' :
+                    activeType === 'advertisement' ? 'Tangazo Rasmi, Lengo, Bajeti & Call To Action' :
+                    'Picha, Bei, Ofa, Countdown & Vitufe vya Action'}
               </p>
             </div>
           </div>
 
           <div className="flex items-center gap-2">
-            <button
-              onClick={() => setShowLivePreview(!showLivePreview)}
-              className={`px-3 py-1.5 rounded-xl text-xs font-bold flex items-center gap-1.5 transition-all ${
-                showLivePreview
-                  ? 'bg-cyan-500 text-slate-950 font-bold'
-                  : 'bg-white/10 text-slate-300 hover:text-white'
-              }`}
-            >
-              <Eye className="w-3.5 h-3.5" />
-              <span>{showLivePreview ? 'Ficha Preview' : '👀 Preview'}</span>
-            </button>
+            {creationStep === 'details' && (
+              <button
+                onClick={() => setShowLivePreview(!showLivePreview)}
+                className={`px-3 py-1.5 rounded-xl text-xs font-bold flex items-center gap-1.5 transition-all ${
+                  showLivePreview
+                    ? 'bg-cyan-500 text-slate-950 font-bold'
+                    : 'bg-white/10 text-slate-300 hover:text-white'
+                }`}
+              >
+                <Eye className="w-3.5 h-3.5" />
+                <span>{showLivePreview ? 'Ficha Preview' : '👀 Preview'}</span>
+              </button>
+            )}
 
             <button
               onClick={onClose}
@@ -887,36 +928,39 @@ export const CreateStatusModal: React.FC<CreateStatusModalProps> = ({
           </div>
         </div>
 
-        {/* Tab Switcher */}
-        <div className="px-4 py-2 bg-[#0B1020] border-b border-white/5 flex items-center gap-1.5 overflow-x-auto scrollbar-none shrink-0">
-          {[
-            { id: 'job', label: '💼 Job Listing', color: 'text-amber-400' },
-            { id: 'food', label: '🍕 Food Status', color: 'text-amber-400' },
-            { id: 'poll', label: '📊 Poll', color: 'text-blue-400' },
-            { id: 'product', label: '🛍️ Product', color: 'text-emerald-400' },
-            { id: 'event', label: '🎪 Event', color: 'text-purple-400' },
-            { id: 'giveaway', label: '🎁 Giveaway', color: 'text-amber-400' },
-            { id: 'quiz', label: '❓ Quiz', color: 'text-teal-400' },
-            { id: 'property', label: '🏠 Property', color: 'text-cyan-400' },
-            { id: 'live', label: '🎙️ Live Space', color: 'text-pink-400' },
-            { id: 'advertisement', label: '📢 Ad Campaign', color: 'text-yellow-400' },
-          ].map((tab) => (
-            <button
-              key={tab.id}
-              onClick={() => setActiveType(tab.id as any)}
-              className={`px-3.5 py-1.5 rounded-xl text-xs font-bold transition-all shrink-0 ${
-                activeType === tab.id
-                  ? 'bg-white/15 text-white shadow-sm border border-white/20'
-                  : 'text-slate-400 hover:text-white'
-              }`}
-            >
-              {tab.label}
-            </button>
-          ))}
-        </div>
+        {/* Tab Switcher (Visible only in Step 1) */}
+        {creationStep === 'details' && (
+          <div className="px-4 py-2 bg-[#0B1020] border-b border-white/5 flex items-center gap-1.5 overflow-x-auto scrollbar-none shrink-0">
+            {[
+              { id: 'job', label: '💼 Job Listing', color: 'text-amber-400' },
+              { id: 'food', label: '🍕 Food Status', color: 'text-amber-400' },
+              { id: 'poll', label: '📊 Poll', color: 'text-blue-400' },
+              { id: 'product', label: '🛍️ Product', color: 'text-emerald-400' },
+              { id: 'event', label: '🎪 Event', color: 'text-purple-400' },
+              { id: 'giveaway', label: '🎁 Giveaway', color: 'text-amber-400' },
+              { id: 'quiz', label: '❓ Quiz', color: 'text-teal-400' },
+              { id: 'property', label: '🏠 Property', color: 'text-cyan-400' },
+              { id: 'live', label: '🎙️ Live Space', color: 'text-pink-400' },
+              { id: 'advertisement', label: '📢 Ad Campaign', color: 'text-yellow-400' },
+            ].map((tab) => (
+              <button
+                key={tab.id}
+                onClick={() => setActiveType(tab.id as any)}
+                className={`px-3.5 py-1.5 rounded-xl text-xs font-bold transition-all shrink-0 ${
+                  activeType === tab.id
+                    ? 'bg-white/15 text-white shadow-sm border border-white/20'
+                    : 'text-slate-400 hover:text-white'
+                }`}
+              >
+                {tab.label}
+              </button>
+            ))}
+          </div>
+        )}
 
-        {/* Form Body */}
-        <form onSubmit={handleSubmit} className="flex-1 overflow-y-auto p-4 sm:p-5 space-y-4">
+        {/* Form Body (Step 1) or Shape Selection Studio (Step 2) */}
+        {creationStep === 'details' ? (
+          <form onSubmit={handleProceedToShapeSelection} className="flex-1 overflow-y-auto p-4 sm:p-5 space-y-4">
           {/* SECTION 1: MEDIA UPLOAD BUTTONS */}
           <div className="p-4 rounded-2xl bg-[#12192F] border border-white/5 space-y-3">
             <div className="flex items-center justify-between">
@@ -3120,51 +3164,61 @@ export const CreateStatusModal: React.FC<CreateStatusModalProps> = ({
 
                 {/* Food Details */}
                 {activeType === 'food' && (
-                  <div className="space-y-2">
-                    <div className="flex items-center justify-between">
-                      <h4 className="font-black text-sm text-white flex items-center gap-1.5">
-                        <span>🍔 {selectedFoodCategory}</span>
-                      </h4>
-                      <span className="text-amber-400 text-xs font-bold">⭐ 4.8</span>
-                    </div>
-
-                    <div className="flex items-center gap-2 text-xs">
-                      <span className="px-1.5 py-0.5 rounded bg-amber-500/20 text-amber-400 text-[10px] font-black">
-                        🔥 TODAY ONLY
-                      </span>
-                      <span className="text-amber-300 font-black font-mono">
-                        TSh {foodOfferPrice.toLocaleString()}
-                      </span>
-                      <span className="line-through text-slate-500 font-mono text-[11px]">
-                        TSh {foodRegularPrice.toLocaleString()}
+                  <div className="space-y-2.5">
+                    <div className="flex items-center justify-between gap-2">
+                      <div className="min-w-0">
+                        <h4 className="font-black text-sm text-white flex items-center gap-1.5 truncate">
+                          <span>🍔 {selectedFoodCategory}</span>
+                        </h4>
+                        <p className="text-[11px] text-amber-300 font-bold truncate">
+                          Zebra Restaurant • {locationName || 'Masaki, Dar es Salaam'}
+                        </p>
+                      </div>
+                      <span className="px-2 py-0.5 rounded-lg bg-amber-500/20 text-amber-300 font-black text-xs border border-amber-500/30 shrink-0">
+                        ⭐ 4.8 / 5.0
                       </span>
                     </div>
 
-                    <p className="text-xs text-slate-200 italic whitespace-pre-line leading-relaxed">
-                      “{caption}”
-                    </p>
+                    <div className="p-2.5 rounded-xl bg-gradient-to-r from-amber-500/15 via-orange-500/10 to-amber-500/15 border border-amber-500/30 flex items-center justify-between text-xs">
+                      <div className="flex items-center gap-2">
+                        <span className="px-2 py-0.5 rounded bg-amber-500 text-slate-950 text-[9px] font-black uppercase">
+                          {isSpecialOffer ? '🔥 OFA MAALUMU' : 'SPECIAL'}
+                        </span>
+                        <span className="text-amber-300 font-black font-mono text-sm">
+                          TSh {foodOfferPrice.toLocaleString()}
+                        </span>
+                        <span className="line-through text-slate-500 font-mono text-[11px]">
+                          TSh {foodRegularPrice.toLocaleString()}
+                        </span>
+                      </div>
+                      <span className="text-amber-400 font-black text-[10px]">
+                        {calculatedDiscountPercent}% OFF
+                      </span>
+                    </div>
 
-                    <p className="text-[10px] text-slate-400 flex items-center gap-1">
-                      <MapPin className="w-3 h-3 text-amber-400" />
-                      <span>📍 {locationName}</span>
-                    </p>
+                    <div className="p-2.5 rounded-xl bg-[#0F1426] border border-white/5">
+                      <p className="text-xs text-slate-200 whitespace-pre-line leading-relaxed">
+                        {caption}
+                      </p>
+                    </div>
 
-                    <div className="flex items-center justify-between text-slate-400 text-xs pt-1 border-t border-white/5">
-                      <span className="flex items-center gap-1">❤️ 245</span>
-                      <span className="flex items-center gap-1">💬 32</span>
-                      <span className="flex items-center gap-1">📤 14</span>
-                      <span className="flex items-center gap-1">🔖</span>
+                    <div className="flex items-center justify-between text-slate-400 text-[11px] px-1">
+                      <span className="flex items-center gap-1 text-amber-400 font-medium">
+                        <MapPin className="w-3 h-3" />
+                        <span>{locationName || 'Dar es Salaam'}</span>
+                      </span>
+                      <span>Muda: {offerValidPeriod} mpaka {offerValidUntil}</span>
                     </div>
 
                     <div className="pt-1 flex items-center gap-2">
                       {foodActionButtons.order && (
-                        <div className="flex-1 py-2.5 rounded-xl bg-amber-500 text-slate-950 font-black text-xs text-center">
-                          🍽️ Order Now
+                        <div className="flex-1 py-2.5 rounded-xl bg-gradient-to-r from-amber-500 via-orange-500 to-amber-500 text-slate-950 font-black text-xs text-center shadow-lg shadow-amber-500/25">
+                          🍽️ Agiza Sasa
                         </div>
                       )}
                       {foodActionButtons.chat && (
-                        <div className="flex-1 py-2.5 rounded-xl bg-white/10 text-white font-bold text-xs text-center">
-                          💬 Chat Now
+                        <div className="flex-1 py-2.5 rounded-xl bg-white/10 text-white font-bold text-xs text-center border border-white/10">
+                          💬 Chat Mgahawa
                         </div>
                       )}
                     </div>
@@ -3449,16 +3503,282 @@ export const CreateStatusModal: React.FC<CreateStatusModalProps> = ({
             </div>
           )}
 
-          {/* SUBMIT BUTTON */}
+          {/* STEP 1: PROCEED TO PREVIEW & SHAPE SELECTION */}
           <button
             type="submit"
-            disabled={submitting}
-            className="w-full py-4 rounded-2xl bg-gradient-to-r from-cyan-500 via-blue-600 to-indigo-600 hover:from-cyan-400 hover:to-indigo-500 disabled:opacity-50 text-slate-950 font-black text-sm flex items-center justify-center gap-2 shadow-xl shadow-cyan-500/30 active:scale-95 transition-all"
+            className="w-full py-4 rounded-2xl bg-gradient-to-r from-cyan-400 via-blue-500 to-indigo-600 hover:from-cyan-300 hover:to-indigo-500 text-slate-950 font-black text-sm flex items-center justify-center gap-2.5 shadow-xl shadow-cyan-500/30 active:scale-95 transition-all"
           >
-            <span>{submitting ? 'Inachapisha...' : '🚀 POST STATUS'}</span>
+            <Sparkles className="w-4 h-4 text-slate-950 stroke-[2.5]" />
+            <span>Hakiki & Chagua Umbo la Story (Hatua 2/2) ➔</span>
           </button>
         </form>
-      </div>
+      ) : (
+        /* STEP 2: LIVE PREVIEW & 10 AVATAR SHAPES SELECTION STUDIO */
+        <div className="flex-1 overflow-y-auto p-4 sm:p-5 space-y-5 animate-in fade-in duration-200">
+          {/* 1. Step 2 Explanatory Banner */}
+          <div className="p-3.5 rounded-2xl bg-gradient-to-r from-cyan-950/60 via-blue-950/40 to-indigo-950/60 border border-cyan-500/30 flex items-center justify-between gap-3 flex-wrap sm:flex-nowrap">
+            <div className="flex items-center gap-2.5 min-w-0">
+              <div className="w-9 h-9 rounded-xl bg-cyan-400 text-slate-950 flex items-center justify-center font-black shadow-md shrink-0">
+                <Palette className="w-5 h-5" />
+              </div>
+              <div className="min-w-0">
+                <h4 className="font-extrabold text-xs sm:text-sm text-white flex items-center gap-1.5 flex-wrap">
+                  <span>Hatua 2 ya 2: Chagua Umbo la Story</span>
+                  <span className="text-[10px] px-2 py-0.2 rounded-full bg-cyan-400/20 text-cyan-300 font-bold border border-cyan-400/30">
+                    10 Maumbo
+                  </span>
+                </h4>
+                <p className="text-[11px] text-slate-300 line-clamp-1 sm:line-clamp-none">
+                  Wewe na kila mtu mtakaoangalia stori hii mtaiona na umbo ulilolichagua hapa chini!
+                </p>
+              </div>
+            </div>
+
+            {/* Multi-story stacking preview toggle */}
+            <div className="flex items-center p-0.5 rounded-xl bg-slate-900 border border-white/10 shrink-0 self-end sm:self-auto">
+              <button
+                type="button"
+                onClick={() => setPreviewStackMode('single')}
+                className={`px-2.5 py-1 rounded-lg text-[11px] font-bold transition-all ${
+                  previewStackMode === 'single'
+                    ? 'bg-slate-700 text-white shadow-xs'
+                    : 'text-slate-400 hover:text-white'
+                }`}
+              >
+                Stori 1 tu
+              </button>
+              <button
+                type="button"
+                onClick={() => setPreviewStackMode('multi')}
+                className={`px-2.5 py-1 rounded-lg text-[11px] font-bold transition-all ${
+                  previewStackMode === 'multi'
+                    ? 'bg-cyan-500 text-slate-950 shadow-xs'
+                    : 'text-slate-400 hover:text-white'
+                }`}
+                title="Ona mwonekano wa kadi zilizopishana (stacked depth) kama una stori zaidi ya 1"
+              >
+                Stacked (3)
+              </button>
+            </div>
+          </div>
+
+          {/* 2. Big Live Interactive Story Preview Hero Card */}
+          <div className="relative rounded-3xl overflow-hidden bg-slate-950 border border-cyan-500/30 shadow-2xl flex flex-col min-h-[350px]">
+            {/* Background Image / Media */}
+            <div className="absolute inset-0 z-0 bg-black">
+              <SafeImage
+                src={mediaUrl}
+                fallbackGradient="from-cyan-900 via-slate-900 to-indigo-950"
+                alt={caption}
+                className="w-full h-full object-cover"
+              />
+              <div className="absolute inset-0 bg-gradient-to-t from-slate-950 via-black/40 to-black/85" />
+            </div>
+
+            {/* Top Bar with Live Avatar in the Selected Shape */}
+            <div className="relative z-10 p-4 flex items-center justify-between">
+              <div className="flex items-center gap-3">
+                <DynamicAvatar
+                  src={currentUser.photoURL || freshKkAvatar}
+                  fallbackText={currentUser.displayName}
+                  alt={currentUser.displayName}
+                  size="story"
+                  styleVariant={selectedAvatarStyle}
+                  hasStory={true}
+                  storyCount={previewStackMode === 'multi' ? 3 : 1}
+                  showStoryBadge={previewStackMode === 'multi'}
+                  ringGradient="from-cyan-400 via-blue-500 to-indigo-500"
+                />
+                <div>
+                  <h4 className="font-black text-sm text-white drop-shadow flex items-center gap-1.5">
+                    <span>
+                      {activeType === 'food'
+                        ? 'Zebra Restaurant'
+                        : activeType === 'job'
+                        ? jobCompanyName
+                        : currentUser.displayName}
+                    </span>
+                    <span className="text-cyan-400 font-bold">✓</span>
+                  </h4>
+                  <p className="text-[11px] text-slate-200 drop-shadow flex items-center gap-1.5 mt-0.5">
+                    <span className="w-2 h-2 rounded-full bg-emerald-400 inline-block" />
+                    <span>Sasa hivi (Just now)</span>
+                    <span>•</span>
+                    <span className="text-amber-300 font-medium">
+                      📍 {activeType === 'job' ? jobLocation : locationName}
+                    </span>
+                  </p>
+                </div>
+              </div>
+
+              {/* Active Shape Badge */}
+              <div className="px-2.5 py-1 rounded-xl bg-black/60 backdrop-blur-md border border-white/15 text-[10px] text-cyan-300 font-bold flex items-center gap-1 shadow-md">
+                <Sparkles className="w-3 h-3 text-cyan-400" />
+                <span>
+                  {AVATAR_STYLES_LIST.find((s) => s.id === selectedAvatarStyle)?.name || selectedAvatarStyle}
+                </span>
+              </div>
+            </div>
+
+            {/* Center / Bottom Content Preview */}
+            <div className="relative z-10 mt-auto p-4 space-y-2">
+              <span className="px-2.5 py-0.5 rounded-full text-[10px] font-black uppercase tracking-wider bg-cyan-500 text-slate-950 inline-block shadow-sm">
+                {activeType === 'food'
+                  ? '🍕 Food Special'
+                  : activeType === 'job'
+                  ? '💼 Job Vacancy'
+                  : activeType === 'poll'
+                  ? '📊 Interactive Poll'
+                  : activeType === 'product'
+                  ? '🛍️ Featured Product'
+                  : activeType === 'event'
+                  ? '🎪 Event Ticket'
+                  : activeType === 'giveaway'
+                  ? '🎁 Giveaway'
+                  : activeType === 'quiz'
+                  ? '❓ Quiz Challenge'
+                  : activeType === 'property'
+                  ? '🏠 Real Estate'
+                  : activeType === 'live'
+                  ? '🎙️ Live Audio Space'
+                  : '📢 Tangazo'}
+              </span>
+
+              <p className="text-xs sm:text-sm text-white drop-shadow font-medium line-clamp-2 leading-relaxed whitespace-pre-line">
+                {caption}
+              </p>
+
+              {/* Micro meta preview */}
+              {activeType === 'food' && (
+                <div className="flex items-center gap-2 text-xs font-mono font-bold text-amber-300">
+                  <span>TSh {foodOfferPrice.toLocaleString()}</span>
+                  <span className="line-through text-slate-400 text-[11px]">
+                    TSh {foodRegularPrice.toLocaleString()}
+                  </span>
+                  <span className="text-[10px] px-1.5 py-0.2 rounded bg-amber-500 text-slate-950 font-black">
+                    {calculatedDiscountPercent}% OFF
+                  </span>
+                </div>
+              )}
+              {activeType === 'poll' && (
+                <div className="text-xs text-blue-300 font-bold">
+                  📊 Swali: {pollQuestion || 'Leo tukatoke wapi?'}
+                </div>
+              )}
+              {activeType === 'job' && (
+                <div className="text-xs text-amber-300 font-bold">
+                  💼 Nafasi: {jobTitle || 'Kazi'} • {jobCompanyName}
+                </div>
+              )}
+            </div>
+          </div>
+
+          {/* 3. The 10 Avatar & Story Shapes Selection Grid */}
+          <div className="space-y-2.5">
+            <div className="flex items-center justify-between px-1">
+              <span className="text-xs font-black uppercase tracking-wider text-slate-300 flex items-center gap-1.5">
+                <Palette className="w-3.5 h-3.5 text-cyan-400" />
+                <span>Chagua Umbo Moja Kati ya Haya 10:</span>
+              </span>
+              <span className="text-[11px] text-cyan-400 font-bold">
+                Gusa kuona mara moja
+              </span>
+            </div>
+
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5 max-h-[300px] overflow-y-auto pr-1">
+              {AVATAR_STYLES_LIST.map((styleItem) => {
+                const isSelected = selectedAvatarStyle === styleItem.id;
+                return (
+                  <button
+                    key={styleItem.id}
+                    type="button"
+                    onClick={() => setSelectedAvatarStyle(styleItem.id)}
+                    className={`p-3 rounded-2xl border text-left transition-all flex items-center gap-3 relative group focus:outline-none ${
+                      isSelected
+                        ? 'bg-gradient-to-r from-cyan-950/70 via-[#0F1735] to-[#0A0F24] border-cyan-400 shadow-lg shadow-cyan-950/40 ring-1 ring-cyan-400'
+                        : 'bg-[#0B0F20] hover:bg-[#111733] border-white/10 hover:border-white/20'
+                    }`}
+                  >
+                    <div className="relative shrink-0">
+                      <DynamicAvatar
+                        src={currentUser.photoURL || freshKkAvatar}
+                        fallbackText={currentUser.displayName}
+                        alt={styleItem.name}
+                        size="md"
+                        styleVariant={styleItem.id}
+                        hasStory={true}
+                        storyCount={previewStackMode === 'multi' ? 3 : 1}
+                        showStoryBadge={previewStackMode === 'multi'}
+                      />
+                      {isSelected && (
+                        <div className="absolute -bottom-1 -left-1 w-4 h-4 rounded-full bg-cyan-400 text-slate-950 flex items-center justify-center font-bold">
+                          <Check className="w-2.5 h-2.5 stroke-[3]" />
+                        </div>
+                      )}
+                    </div>
+
+                    <div className="flex-1 min-w-0">
+                      <div className="flex items-center gap-1.5 flex-wrap">
+                        <span className="font-black text-xs text-white truncate">
+                          {styleItem.name}
+                        </span>
+                        <span className={`text-[9px] px-1.5 py-0.2 rounded-full font-bold ${styleItem.badgeColor}`}>
+                          {styleItem.badge}
+                        </span>
+                      </div>
+                      <p className="text-[11px] font-bold text-cyan-300 truncate">
+                        {styleItem.swahiliTitle}
+                      </p>
+                      <p className="text-[10px] text-slate-400 line-clamp-1 leading-tight mt-0.5">
+                        {styleItem.description}
+                      </p>
+                    </div>
+
+                    <div
+                      className={`w-5 h-5 rounded-full border flex items-center justify-center shrink-0 transition-colors ${
+                        isSelected
+                          ? 'border-cyan-400 bg-cyan-500 text-slate-950'
+                          : 'border-slate-600 bg-black/40 group-hover:border-slate-400'
+                      }`}
+                    >
+                      {isSelected && <Check className="w-3 h-3 stroke-[3]" />}
+                    </div>
+                  </button>
+                );
+              })}
+            </div>
+          </div>
+
+          {/* 4. Action Buttons: [ ← Badili Taarifa ] & [ 🚀 Chapisha Story ] */}
+          <div className="pt-2 flex items-center gap-2.5">
+            <button
+              type="button"
+              onClick={() => setCreationStep('details')}
+              className="py-3.5 px-4 rounded-2xl bg-white/10 hover:bg-white/15 text-slate-200 font-bold text-xs flex items-center gap-1.5 transition-all shrink-0 active:scale-95"
+            >
+              <ArrowLeft className="w-4 h-4" />
+              <span>Rudi Kwenye Taarifa</span>
+            </button>
+
+            <button
+              type="button"
+              onClick={handleSubmitFinal}
+              disabled={submitting}
+              className="flex-1 py-3.5 rounded-2xl bg-gradient-to-r from-cyan-400 via-blue-500 to-indigo-600 hover:from-cyan-300 hover:to-indigo-500 disabled:opacity-50 text-slate-950 font-black text-xs sm:text-sm flex items-center justify-center gap-2 shadow-xl shadow-cyan-500/30 active:scale-95 transition-all"
+            >
+              <Sparkles className="w-4 h-4 text-slate-950 stroke-[2.5]" />
+              <span>
+                {submitting
+                  ? 'Inachapisha Story...'
+                  : `Chapisha Story na Umbo la ${
+                      AVATAR_STYLES_LIST.find((s) => s.id === selectedAvatarStyle)?.name || selectedAvatarStyle
+                    } 🚀`}
+              </span>
+            </button>
+          </div>
+        </div>
+      )}
     </div>
-  );
+  </div>
+);
 };

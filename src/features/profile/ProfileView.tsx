@@ -44,6 +44,10 @@ import { doc, setDoc, getDoc } from 'firebase/firestore';
 import { auth, db, googleProvider } from '../../services/firebase/config';
 import { UserProfile, AccountType, isUserAdmin } from '../../types';
 import { SafeImage } from '../../components/SafeImage';
+import { DynamicAvatar } from '../../components/DynamicAvatar';
+import { AvatarStyleSelectorModal } from '../../components/AvatarStyleSelectorModal';
+import { AvatarShapeShowcaseStudio } from '../../components/AvatarShapeShowcaseStudio';
+import { Palette, Shapes } from 'lucide-react';
 import { useTheme } from '../../context/ThemeContext';
 import { INITIAL_USER } from '../../services/seed/initialData';
 
@@ -111,6 +115,7 @@ export const ProfileView: React.FC<ProfileViewProps> = ({
   const [selectedPost, setSelectedPost] = useState<PostItem | null>(null);
   const [likedPosts, setLikedPosts] = useState<Record<string, boolean>>({});
   const [toastMessage, setToastMessage] = useState<string | null>(null);
+  const [isAvatarStyleModalOpen, setIsAvatarStyleModalOpen] = useState(false);
 
   const showToast = (msg: string) => {
     setToastMessage(msg);
@@ -931,29 +936,25 @@ export const ProfileView: React.FC<ProfileViewProps> = ({
       <div className="max-w-4xl mx-auto w-full px-4 sm:px-6 relative z-10">
         {/* ROW 1: AVATAR (LEFT) + 3 STATS METRICS (RIGHT) - INSTAGRAM/THREADS STANDARD */}
         <div className="flex items-center justify-between gap-4 -mt-10 sm:-mt-12 mb-3">
-          {/* Avatar with Glowing Gradient Ring */}
+          {/* Avatar with Dynamic Shape Style & Multi-Story effect */}
           <div className="relative shrink-0">
-            <div
-              className={`w-20 h-20 sm:w-24 sm:h-24 rounded-full p-1 bg-gradient-to-tr from-cyan-400 via-blue-500 to-indigo-600 shadow-xl ring-4 ${
-                isDark ? 'ring-[#070A14]' : 'ring-slate-50'
-              }`}
+            <button
+              type="button"
+              onClick={() => setIsAvatarStyleModalOpen(true)}
+              className="group relative focus:outline-none block"
+              title="Bonyeza kubadili mtindo wa Avatar (Organic Blob, Squircle, Shield n.k.)"
             >
-              <div className="w-full h-full rounded-full overflow-hidden bg-slate-900">
-                <SafeImage
-                  src={currentUser.photoURL || aminaAvatar}
-                  fallbackText={currentUser.displayName || 'User'}
-                  alt={currentUser.displayName}
-                  className="w-full h-full object-cover"
-                />
-              </div>
-            </div>
-            {/* Online Indicator */}
-            <span
-              className={`absolute bottom-1 right-1 w-3.5 h-3.5 rounded-full bg-emerald-500 ring-2 ${
-                isDark ? 'ring-[#070A14]' : 'ring-slate-50'
-              }`}
-              title="Yupo mtandaoni"
-            />
+              <DynamicAvatar
+                src={currentUser.photoURL || aminaAvatar}
+                fallbackText={currentUser.displayName || 'User'}
+                alt={currentUser.displayName}
+                size="lg"
+                hasStory={true}
+                storyCount={1}
+                showOnline={true}
+                ringGradient="from-cyan-400 via-blue-500 to-indigo-600"
+              />
+            </button>
           </div>
 
           {/* 3 STATS HORIZONTALLY ALIGNED RIGHT BESIDE AVATAR */}
@@ -1058,6 +1059,20 @@ export const ProfileView: React.FC<ProfileViewProps> = ({
           >
             <Edit className="w-3.5 h-3.5 text-cyan-500 shrink-0" />
             <span>Hariri Wasifu</span>
+          </button>
+
+          {/* Mtindo wa Avatar Selector Button */}
+          <button
+            onClick={() => setIsAvatarStyleModalOpen(true)}
+            className={`py-2 px-3 rounded-xl font-semibold text-xs flex items-center justify-center gap-1.5 active:scale-98 transition-all shadow-xs shrink-0 ${
+              isDark
+                ? 'bg-cyan-500/10 hover:bg-cyan-500/20 border border-cyan-400/30 text-cyan-300'
+                : 'bg-cyan-50 hover:bg-cyan-100 border border-cyan-300 text-cyan-700'
+            }`}
+            title="Badili mtindo wa Avatar (Organic Blob, Squircle, Shield n.k.)"
+          >
+            <Palette className="w-3.5 h-3.5 text-cyan-400 shrink-0" />
+            <span className="hidden xs:inline">Mtindo</span>
           </button>
 
           {/* Pochi ya Zenia */}
@@ -1425,6 +1440,15 @@ export const ProfileView: React.FC<ProfileViewProps> = ({
             </div>
           </div>
         </div>
+      )}
+
+      {/* Avatar Style Selector Modal */}
+      {isAvatarStyleModalOpen && (
+        <AvatarStyleSelectorModal
+          isOpen={isAvatarStyleModalOpen}
+          onClose={() => setIsAvatarStyleModalOpen(false)}
+          currentUser={currentUser}
+        />
       )}
     </div>
   );

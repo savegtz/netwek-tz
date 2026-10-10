@@ -16,6 +16,7 @@ import { doc, updateDoc } from 'firebase/firestore';
 import { db } from '../../services/firebase/config';
 import { UserProfile, AccountType } from '../../types';
 import { SafeImage } from '../../components/SafeImage';
+import { DynamicAvatar } from '../../components/DynamicAvatar';
 
 // Preset avatars users can choose from
 import aminaAvatar from '../../assets/images/amina_avatar_1790280951312.jpg';
@@ -155,13 +156,12 @@ export const EditProfileModal: React.FC<EditProfileModalProps> = ({
               Picha ya Wasifu (Profile Avatar)
             </label>
             <div className="flex items-center gap-4">
-              <div className="relative w-16 h-16 rounded-full p-1 bg-gradient-to-tr from-cyan-400 to-purple-500 shadow-md shrink-0">
-                <SafeImage
-                  src={photoURL || currentUser.photoURL}
-                  fallbackText={displayName || 'User'}
-                  className="w-full h-full rounded-full object-cover bg-slate-900"
-                />
-              </div>
+              <DynamicAvatar
+                src={photoURL || currentUser.photoURL}
+                fallbackText={displayName || 'User'}
+                size={60}
+                hasStory={false}
+              />
 
               <div className="flex-1">
                 <p className="text-[11px] text-slate-400 mb-2">

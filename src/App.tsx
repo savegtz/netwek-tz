@@ -43,23 +43,23 @@ import { ZeniaMiniPlayer } from './components/ZeniaMiniPlayer';
 import freshKkAvatar from './assets/images/fresh_kk_avatar_1791078365294.jpg';
 
 export default function App() {
-  // If user hasn't logged in or registered, currentUser is null (Guest mode)
+  // Default to INITIAL_USER (Amina Kaunga) so profile and story avatars are immediately accessible and active
   const [currentUser, setCurrentUser] = useState<UserProfile | null>(() => {
     const saved = localStorage.getItem('zenia_active_user');
     if (saved) {
       try {
         return JSON.parse(saved);
       } catch {
-        return null;
+        return INITIAL_USER;
       }
     }
-    return null;
+    return INITIAL_USER;
   });
 
   const [activeTab, setActiveTab] = useState<string>('chats');
   const [activeConversation, setActiveConversation] = useState<Conversation | null>(null);
 
-  // User-scoped conversations: Starts completely empty until user starts chatting
+  // User-scoped conversations: Defaults to INITIAL_CONVERSATIONS for initial demo experience
   const [conversations, setConversations] = useState<Conversation[]>(() => {
     const saved = localStorage.getItem('zenia_active_user');
     if (saved) {
@@ -71,10 +71,10 @@ export default function App() {
         }
       } catch {}
     }
-    return [];
+    return INITIAL_CONVERSATIONS;
   });
 
-  // Sync conversations with currentUser: if logged out or guest, no chats shown
+  // Sync conversations with currentUser
   useEffect(() => {
     if (!currentUser) {
       setConversations([]);
@@ -82,9 +82,15 @@ export default function App() {
     } else {
       try {
         const userConvs = localStorage.getItem(`zenia_user_conversations_${currentUser.id}`);
-        setConversations(userConvs ? JSON.parse(userConvs) : []);
+        setConversations(
+          userConvs
+            ? JSON.parse(userConvs)
+            : currentUser.id === INITIAL_USER.id
+            ? INITIAL_CONVERSATIONS
+            : []
+        );
       } catch {
-        setConversations([]);
+        setConversations(currentUser.id === INITIAL_USER.id ? INITIAL_CONVERSATIONS : []);
       }
     }
   }, [currentUser?.id]);

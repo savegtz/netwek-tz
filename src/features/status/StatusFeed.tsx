@@ -38,6 +38,15 @@ import { QuizAnswerModal } from './components/QuizAnswerModal';
 import { PropertyDetailsModal } from './components/PropertyDetailsModal';
 import { LiveSpaceModal } from './components/LiveSpaceModal';
 import { AdCampaignModal } from './components/AdCampaignModal';
+import { Shapes, Palette } from 'lucide-react';
+import { DynamicAvatar } from '../../components/DynamicAvatar';
+import { AvatarStyleSelectorModal } from '../../components/AvatarStyleSelectorModal';
+import {
+  AVATAR_STYLES_LIST,
+  getStoredAvatarStyle,
+  setStoredAvatarStyle,
+} from '../profile/avatarStyles';
+import { AvatarShapeStyle } from '../../types';
 
 interface StatusFeedProps {
   currentUser: UserProfile;
@@ -65,10 +74,11 @@ export const StatusFeed: React.FC<StatusFeedProps> = ({
       authorId: 'zebra_restaurant',
       authorName: 'ZEBRA RESTAURANT',
       authorUsername: 'zebra_restaurant',
-      authorPhoto: 'https://images.unsplash.com/photo-1555396273-367ea4eb4db5?w=500&auto=format&fit=crop&q=80',
+      authorPhoto: 'https://images.unsplash.com/photo-1517248135467-4c7edcad34c4?w=500&auto=format&fit=crop&q=80',
+      avatarStyle: 'squircle',
       type: 'food',
-      mediaUrl: 'https://images.unsplash.com/photo-1568901346375-23c9450c58cd?w=1200&auto=format&fit=crop&q=80',
-      text: '“Fresh, juicy & delicious 🤤”\n\n🔥 Our famous Chicken Burger is back! Fresh grilled patty, cheddar cheese, na crispy fries.\n#ZebraRestaurant #ChickenBurger #DarFood',
+      mediaUrl: 'https://images.unsplash.com/photo-1586190848861-99aa4a171e90?w=1200&auto=format&fit=crop&q=80',
+      text: '🔥 Chicken Burger Deluxe yetu maarufu imerejea!\n• Nyama ya kuku iliyochomwa kwenye moto mwororo (Flame-grilled patty)\n• Jibini ya Cheddar iliyoyeyuka vizuri na chipsi za dhahabu\nKaribu Zebra Restaurant Masaki ujionee ladha halisi! 🤤✨',
       location: 'Masaki, Dar es Salaam',
       visibility: 'public',
       likesCount: 245,
@@ -77,7 +87,7 @@ export const StatusFeed: React.FC<StatusFeedProps> = ({
       createdAt: '10m ago',
       expiresAt: new Date(Date.now() + 24 * 3600 * 1000).toISOString(),
       metadata: {
-        foodName: 'Chicken Burger',
+        foodName: 'Chicken Burger Deluxe',
         restaurantName: 'ZEBRA RESTAURANT',
         regularPrice: 15000,
         offerPrice: 12000,
@@ -102,6 +112,7 @@ export const StatusFeed: React.FC<StatusFeedProps> = ({
       authorName: 'Alex Kimani',
       authorUsername: 'alex_k',
       authorPhoto: 'https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?w=500&auto=format&fit=crop&q=80',
+      avatarStyle: 'rounded-rectangle',
       type: 'poll',
       mediaUrl: 'https://images.unsplash.com/photo-1507525428034-b723cf961d3e?w=1200&auto=format&fit=crop&q=80',
       text: 'Mpango wa weekend hii unakaaje wana-Dar? Piga kura yako sasa tujue wapi kuna fujo ya furaha! 🌊🌴',
@@ -392,6 +403,25 @@ export const StatusFeed: React.FC<StatusFeedProps> = ({
   const [commentText, setCommentText] = useState('');
   const [showCommentsFor, setShowCommentsFor] = useState<string | null>(null);
 
+  // Avatar Style State for Status Feed
+  const [isStyleModalOpen, setIsStyleModalOpen] = useState(false);
+  const [currentAvatarStyle, setCurrentAvatarStyle] = useState<AvatarShapeStyle>(() =>
+    getStoredAvatarStyle()
+  );
+
+  React.useEffect(() => {
+    const handleStyleChange = (e: Event) => {
+      const customEvent = e as CustomEvent<{ style: AvatarShapeStyle }>;
+      if (customEvent.detail?.style) {
+        setCurrentAvatarStyle(customEvent.detail.style);
+      }
+    };
+    window.addEventListener('zenia_avatar_style_changed', handleStyleChange);
+    return () => {
+      window.removeEventListener('zenia_avatar_style_changed', handleStyleChange);
+    };
+  }, []);
+
   // Poll voting state
   const [userVotedOption, setUserVotedOption] = useState<Record<string, string>>({});
 
@@ -423,29 +453,29 @@ export const StatusFeed: React.FC<StatusFeedProps> = ({
   const freshFoodsNearYou = [
     {
       id: 'food_1',
-      name: 'Chicken Burger',
+      name: 'Chicken Burger Deluxe',
       restaurant: 'Zebra Restaurant',
       price: 12000,
       regPrice: 15000,
-      image: 'https://images.unsplash.com/photo-1568901346375-23c9450c58cd?w=400&auto=format&fit=crop&q=80',
+      image: 'https://images.unsplash.com/photo-1586190848861-99aa4a171e90?w=600&auto=format&fit=crop&q=80',
       tag: '🔥 20% OFF',
     },
     {
       id: 'food_2',
-      name: 'Grilled Chicken',
-      restaurant: 'Kookoos Grill',
+      name: 'Flame Grilled Chicken',
+      restaurant: 'Kookoos Grill Masaki',
       price: 15000,
       regPrice: 18000,
-      image: 'https://images.unsplash.com/photo-1598515214211-89d3c73ae83b?w=400&auto=format&fit=crop&q=80',
+      image: 'https://images.unsplash.com/photo-1598515214211-89d3c73ae83b?w=600&auto=format&fit=crop&q=80',
       tag: '🍗 Popular',
     },
     {
       id: 'food_3',
-      name: 'BBQ Pizza',
-      restaurant: 'XYZ Restaurant',
+      name: 'Wood-fired BBQ Pizza',
+      restaurant: 'Zebra Italian Oven',
       price: 20000,
       regPrice: 24000,
-      image: 'https://images.unsplash.com/photo-1513104890138-7c749659a591?w=400&auto=format&fit=crop&q=80',
+      image: 'https://images.unsplash.com/photo-1513104890138-7c749659a591?w=600&auto=format&fit=crop&q=80',
       tag: '🍕 Cheesy',
     },
   ];
@@ -529,168 +559,133 @@ export const StatusFeed: React.FC<StatusFeedProps> = ({
   return (
     <div className="w-full flex flex-col bg-[#070A12] text-white flex-1 pb-24 md:pb-10 select-none overflow-y-auto">
       <div className="max-w-4xl mx-auto w-full flex flex-col flex-1">
-        {/* Top Status Story Bubbles / Carousel */}
+        {/* Top Status Story Avatars Carousel (Clean, Orderly & World-Class) */}
         <div className="px-3.5 pt-3 pb-3 border-b border-white/[0.06] bg-[#0A0D18]">
           <div className="flex items-center justify-between mb-2.5 px-0.5">
             <div className="flex items-center gap-2">
-              <h3 className="text-xs font-bold uppercase tracking-wider text-slate-400">
-                Hali (Status Updates)
+              <h3 className="text-xs font-bold uppercase tracking-wider text-slate-300">
+                Hali (Story Status)
               </h3>
-              <span className="text-[10px] px-2 py-0.5 rounded-full bg-cyan-500/15 text-cyan-300 font-semibold border border-cyan-500/20">
+              <span className="text-[10px] px-2 py-0.5 rounded-full bg-cyan-500/15 text-cyan-300 font-bold border border-cyan-500/25">
                 {statusCards.length} Mpya
               </span>
             </div>
-            <button
-              onClick={onOpenCreateMenu}
-              className="text-xs font-semibold text-cyan-400 hover:text-cyan-300 flex items-center gap-1 active:scale-95 transition-all"
-            >
-              <Plus className="w-3.5 h-3.5 stroke-[2.5]" />
-              <span>Weka Status</span>
-            </button>
+            <div className="flex items-center gap-2">
+              <button
+                type="button"
+                onClick={() => setIsStyleModalOpen(true)}
+                className="px-2.5 py-1 rounded-xl text-[11px] font-bold text-cyan-300 hover:text-white bg-cyan-950/60 hover:bg-cyan-900/60 border border-cyan-500/30 whitespace-nowrap shadow-xs flex items-center gap-1.5 active:scale-95 transition-all"
+                title="Chagua mtindo wa Avatar & Story (Organic Blob, Squircle, Rounded Rectangle n.k.)"
+              >
+                <Palette className="w-3.5 h-3.5 text-cyan-400" />
+                <span>Mtindo wa Avatar (10)</span>
+              </button>
+              <button
+                onClick={onOpenCreateMenu}
+                className="px-2.5 py-1 rounded-xl bg-gradient-to-r from-cyan-400 to-blue-500 text-slate-950 font-black text-xs flex items-center gap-1 active:scale-95 transition-all shadow-sm"
+              >
+                <Plus className="w-3.5 h-3.5 stroke-[2.5]" />
+                <span>Weka Status</span>
+              </button>
+            </div>
           </div>
 
-          <div className="flex items-center gap-2.5 overflow-x-auto no-scrollbar py-1">
-            {/* My Status Card */}
-            <div
-              onClick={onOpenCreateMenu}
-              className="relative w-[100px] min-w-[100px] h-[100px] sm:w-[108px] sm:min-w-[108px] sm:h-[108px] aspect-square rounded-[30px] overflow-hidden bg-[#0E1428] border-2 border-cyan-400/80 shrink-0 cursor-pointer group active:scale-95 transition-all shadow-[0_0_15px_rgba(6,182,212,0.25)] hover:border-cyan-300 hover:shadow-cyan-400/45 flex flex-col justify-between"
-            >
-              {/* Background User Avatar with smooth overlay */}
-              <div className="absolute inset-0 z-0 bg-slate-900">
-                <SafeImage
-                  src={currentUser.photoURL || 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=200&auto=format&fit=crop&q=80'}
-                  fallbackText="Me"
-                  alt="My Status"
-                  className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-500 opacity-80"
-                />
-                <div className="absolute inset-0 bg-gradient-to-t from-[#070A14] via-black/40 to-transparent" />
+          {/* Clean Horizontal Stories Avatar Carousel */}
+          <div className="flex items-center gap-4 sm:gap-5 overflow-x-auto no-scrollbar py-2 px-1 scroll-smooth">
+            {/* 1. Hali Yangu (My Status) */}
+            <div className="flex flex-col items-center gap-2 shrink-0 group">
+              <div className="relative">
+                <button
+                  onClick={onOpenCreateMenu}
+                  className="focus:outline-none block active:scale-95 transition-transform"
+                  title="Weka Hali Yako Mpya"
+                >
+                  <DynamicAvatar
+                    src={currentUser.photoURL || 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=200&auto=format&fit=crop&q=80'}
+                    fallbackText="Me"
+                    alt="My Status"
+                    size="story"
+                    hasStory={true}
+                    storyCount={1}
+                    ringGradient="from-cyan-400 via-blue-500 to-indigo-600"
+                  />
+                </button>
+                <button
+                  onClick={onOpenCreateMenu}
+                  className="absolute -bottom-1 -right-1 w-6 h-6 rounded-[8px] bg-gradient-to-tr from-cyan-400 to-blue-500 text-slate-950 flex items-center justify-center shadow-lg ring-2 ring-[#080B16] hover:scale-110 active:scale-95 transition-transform z-30"
+                  title="Weka Story Mpya"
+                >
+                  <Plus className="w-4 h-4 stroke-[3]" />
+                </button>
               </div>
-
-              {/* Top-Right Badge: Plus icon inside glowing ring */}
-              <div className="relative z-10 pt-2.5 px-2.5 pb-1 flex items-center justify-between w-full">
-                <span className="inline-flex items-center px-1.5 py-0.5 rounded-full text-[8.5px] font-bold bg-cyan-500/25 text-cyan-300 border border-cyan-400/40 backdrop-blur-md">
-                  + Story
-                </span>
-                <div className="w-6 h-6 rounded-full bg-gradient-to-tr from-cyan-400 via-blue-500 to-indigo-600 text-white flex items-center justify-center shadow-md shadow-cyan-500/40 ring-2 ring-black/40 group-hover:scale-110 group-hover:rotate-90 transition-all">
-                  <Plus className="w-3.5 h-3.5 stroke-[3]" />
-                </div>
-              </div>
-
-              {/* Bottom Info */}
-              <div className="relative z-10 pb-2.5 px-2.5 pt-0 w-full text-left">
-                <p className="text-[11px] font-extrabold text-white tracking-tight leading-tight drop-shadow-md truncate">
-                  Hali Yangu
-                </p>
-                <p className="text-[9px] font-medium text-cyan-300/90 tracking-tight leading-none mt-0.5 drop-shadow">
-                  Weka Mpya
-                </p>
-              </div>
+              <span className="text-[11px] sm:text-xs font-semibold text-slate-200 group-hover:text-cyan-300 transition-colors truncate max-w-[78px] sm:max-w-[88px] text-center leading-tight">
+                Hali Yangu
+              </span>
             </div>
 
-            {/* Other Status Story Cards */}
+            {/* 2. Friends & Community Story Avatars */}
             {statusCards.map((item, idx) => {
               const isSelected = activeStoryIndex === idx;
+              const isFood = item.type === 'food';
+              const isMulti = isFood || item.authorId === 'zebra_restaurant' || idx === 1;
+              const count = isMulti ? 3 : 1;
+
+              let ringGradient = 'from-cyan-400 via-blue-500 to-indigo-500';
+              let microEmoji = '✨';
+              if (item.type === 'food') {
+                ringGradient = 'from-amber-400 via-orange-500 to-rose-500';
+                microEmoji = '🍕';
+              } else if (item.type === 'poll') {
+                ringGradient = 'from-blue-400 via-indigo-500 to-cyan-400';
+                microEmoji = '📊';
+              } else if (item.type === 'product') {
+                ringGradient = 'from-emerald-400 via-teal-500 to-cyan-400';
+                microEmoji = '🛍️';
+              } else if (item.type === 'job') {
+                ringGradient = 'from-amber-500 via-yellow-500 to-orange-500';
+                microEmoji = '💼';
+              } else if (item.type === 'event') {
+                ringGradient = 'from-purple-400 via-fuchsia-500 to-pink-500';
+                microEmoji = '🎪';
+              }
+
               return (
-                <div
+                <button
                   key={item.id}
                   onClick={() => setActiveStoryIndex(idx)}
-                  className={`relative w-[100px] min-w-[100px] h-[100px] sm:w-[108px] sm:min-w-[108px] sm:h-[108px] aspect-square rounded-[30px] overflow-hidden shrink-0 cursor-pointer group active:scale-95 transition-all border-2 ${
-                    isSelected
-                      ? 'border-cyan-300 ring-2 ring-cyan-400/60 shadow-[0_0_18px_rgba(6,182,212,0.45)] scale-[1.03]'
-                      : 'border-cyan-400 shadow-[0_0_15px_rgba(6,182,212,0.28)] hover:border-cyan-300 hover:shadow-cyan-400/50'
-                  }`}
+                  className="flex flex-col items-center gap-2 shrink-0 group focus:outline-none"
+                  title={`Tazama hali ya ${item.authorName}`}
                 >
-                  <SafeImage
-                    src={item.mediaUrl}
-                    fallbackGradient="from-purple-900 via-indigo-900 to-cyan-900"
-                    alt={item.authorName}
-                    className="absolute inset-0 w-full h-full object-cover group-hover:scale-110 transition-transform duration-500"
-                  />
-                  {/* Scrims */}
-                  <div className="absolute inset-x-0 top-0 h-11 bg-gradient-to-b from-black/85 via-black/30 to-transparent" />
-                  <div className="absolute inset-x-0 bottom-0 h-14 bg-gradient-to-t from-black/95 via-black/60 to-transparent" />
-
-                  {/* Top-Left Avatar with Glowing Gradient Ring */}
-                  <div className="absolute top-2.5 left-2.5 z-10">
-                    <div className="w-7 h-7 rounded-full p-[1.5px] bg-gradient-to-tr from-cyan-400 via-fuchsia-500 to-amber-400 shadow-md ring-1 ring-black/60">
-                      <div className="w-full h-full rounded-full overflow-hidden bg-slate-950">
-                        <SafeImage
-                          src={item.authorPhoto}
-                          fallbackText={item.authorName}
-                          alt={item.authorName}
-                          className="w-full h-full object-cover"
-                        />
-                      </div>
-                    </div>
+                  <div className={`relative ${isSelected ? 'scale-105' : ''} transition-transform`}>
+                    <DynamicAvatar
+                      src={item.authorPhoto}
+                      fallbackText={item.authorName}
+                      alt={item.authorName}
+                      size="story"
+                      styleVariant={item.avatarStyle}
+                      hasStory={true}
+                      storyCount={count}
+                      showStoryBadge={isMulti}
+                      ringGradient={ringGradient}
+                    />
+                    <span className="absolute -bottom-1 -right-1 w-5 h-5 rounded-[8px] bg-[#0D1224] border border-white/25 flex items-center justify-center text-[10px] shadow-sm ring-2 ring-[#080B16] z-20">
+                      {microEmoji}
+                    </span>
                   </div>
 
-                  {/* Badge in Top-Right */}
-                  {item.type === 'job' && (
-                    <span className="absolute top-2.5 right-2.5 px-1.5 py-0.5 rounded-full bg-amber-500 text-slate-950 font-black text-[9px] shadow-sm">
-                      💼 Kazi
-                    </span>
-                  )}
-                  {item.type === 'food' && (
-                    <span className="absolute top-2.5 right-2.5 px-1.5 py-0.5 rounded-full bg-amber-500 text-slate-950 font-black text-[9px] shadow-sm">
-                      🍕 Ofa
-                    </span>
-                  )}
-                  {item.type === 'poll' && (
-                    <span className="absolute top-2.5 right-2.5 px-1.5 py-0.5 rounded-full bg-blue-500 text-white font-bold text-[9px] shadow-sm">
-                      📊 Kura
-                    </span>
-                  )}
-                  {item.type === 'product' && (
-                    <span className="absolute top-2.5 right-2.5 px-1.5 py-0.5 rounded-full bg-emerald-500 text-slate-950 font-bold text-[9px] shadow-sm">
-                      🛍️ Duka
-                    </span>
-                  )}
-                  {item.type === 'event' && (
-                    <span className="absolute top-2.5 right-2.5 px-1.5 py-0.5 rounded-full bg-purple-500 text-white font-bold text-[9px] shadow-sm">
-                      🎪 Tukio
-                    </span>
-                  )}
-                  {item.type === 'giveaway' && (
-                    <span className="absolute top-2.5 right-2.5 px-1.5 py-0.5 rounded-full bg-amber-500 text-slate-950 font-black text-[9px] shadow-sm">
-                      🎁 Zawadi
-                    </span>
-                  )}
-                  {item.type === 'quiz' && (
-                    <span className="absolute top-2.5 right-2.5 px-1.5 py-0.5 rounded-full bg-teal-500 text-slate-950 font-black text-[9px] shadow-sm">
-                      ❓ Maswali
-                    </span>
-                  )}
-                  {item.type === 'property' && (
-                    <span className="absolute top-2.5 right-2.5 px-1.5 py-0.5 rounded-full bg-cyan-500 text-slate-950 font-black text-[9px] shadow-sm">
-                      🏠 Nyumba
-                    </span>
-                  )}
-                  {item.type === 'live' && (
-                    <span className="absolute top-2.5 right-2.5 px-1.5 py-0.5 rounded-full bg-rose-500 text-white font-black text-[9px] shadow-sm animate-pulse">
-                      🔴 Live
-                    </span>
-                  )}
-                  {item.type === 'advertisement' && (
-                    <span className="absolute top-2.5 right-2.5 px-1.5 py-0.5 rounded-full bg-yellow-400 text-slate-950 font-black text-[9px] shadow-sm">
-                      📢 Tangazo
-                    </span>
-                  )}
-                  {!['job', 'food', 'poll', 'product', 'event', 'giveaway', 'quiz', 'property', 'live', 'advertisement'].includes(item.type) && (
-                    <span className="absolute top-2.5 right-2.5 px-1.5 py-0.5 rounded-full bg-black/60 text-slate-200 text-[9px] font-medium backdrop-blur-md">
-                      {item.createdAt}
-                    </span>
-                  )}
-
-                  {/* Bottom Info */}
-                  <div className="absolute bottom-2.5 left-2.5 right-2.5 z-10">
-                    <p className="text-[11px] font-bold text-white truncate drop-shadow-md leading-tight">
-                      {item.authorName.split(' ')[0]}
-                    </p>
-                    <p className="text-[9.5px] text-cyan-300 font-medium truncate drop-shadow-sm mt-0.5">
-                      {item.createdAt}
-                    </p>
-                  </div>
-                </div>
+                  <span
+                    className={`text-[11px] sm:text-xs font-semibold truncate max-w-[78px] sm:max-w-[88px] text-center leading-tight transition-colors ${
+                      isSelected ? 'text-cyan-300 font-bold' : 'text-slate-200 group-hover:text-white'
+                    }`}
+                  >
+                    {item.authorName.split(' ')[0]}
+                    {isMulti && (
+                      <span className="ml-1 text-[10px] text-cyan-400 font-black">
+                        ({count})
+                      </span>
+                    )}
+                  </span>
+                </button>
               );
             })}
           </div>
@@ -704,11 +699,13 @@ export const StatusFeed: React.FC<StatusFeedProps> = ({
             {/* Top Author Metadata */}
             <div className="relative z-10 p-4 bg-gradient-to-b from-black/85 via-black/60 to-transparent flex items-center justify-between">
               <div className="flex items-center gap-2.5">
-                <SafeImage
+                <DynamicAvatar
                   src={currentStatus.authorPhoto}
                   fallbackText={currentStatus.authorName}
                   alt={currentStatus.authorName}
-                  className="w-10 h-10 rounded-full object-cover border-2 border-white shadow-md bg-black"
+                  size="md"
+                  styleVariant={currentStatus.avatarStyle}
+                  hasStory={false}
                 />
                 <div>
                   <h4 className="font-extrabold text-sm text-white flex items-center gap-1 leading-tight">
@@ -744,7 +741,6 @@ export const StatusFeed: React.FC<StatusFeedProps> = ({
                 <button
                   onClick={() => {
                     navigator.clipboard?.writeText(window.location.href);
-                    alert('Kiungo cha status kimenakiliwa!');
                   }}
                   className="p-2 rounded-full bg-black/40 backdrop-blur-md text-white hover:bg-black/60 transition-all"
                   title="Share"
@@ -758,84 +754,127 @@ export const StatusFeed: React.FC<StatusFeedProps> = ({
             <div className="relative aspect-video sm:aspect-[16/10] w-full overflow-hidden bg-black">
               <SafeImage
                 src={currentStatus.mediaUrl}
-                fallbackGradient="from-cyan-900 to-indigo-950"
+                fallbackGradient="from-amber-950 via-slate-900 to-indigo-950"
                 alt={currentStatus.text}
-                className="w-full h-full object-cover"
+                className="w-full h-full object-cover transition-transform duration-500 hover:scale-105"
               />
-              <div className="absolute inset-0 bg-gradient-to-t from-slate-950 via-transparent to-transparent" />
+              <div className="absolute inset-0 bg-gradient-to-t from-slate-950 via-transparent to-black/20" />
+
+              {/* Floating Culinary Pill Badges */}
+              {currentStatus.type === 'food' && (
+                <div className="absolute top-3 left-3 flex items-center gap-2">
+                  <span className="px-3 py-1 rounded-full bg-slate-950/80 backdrop-blur-md text-amber-300 font-black text-[11px] border border-amber-500/30 shadow-lg flex items-center gap-1.5">
+                    <span>🔥 {currentStatus.metadata?.specialOfferLabel || 'TODAY ONLY'}</span>
+                    <span className="w-1 h-1 rounded-full bg-amber-400" />
+                    <span>{currentStatus.metadata?.discount || '20% OFF'}</span>
+                  </span>
+                </div>
+              )}
             </div>
 
             {/* Content Specific to Status Type */}
             <div className="p-4 sm:p-5 space-y-3.5 bg-slate-950">
               {/* ==================== 1. FOOD STORY CONTENT ==================== */}
               {currentStatus.type === 'food' && currentStatus.metadata && (
-                <div className="space-y-3">
-                  <div className="flex items-center justify-between">
-                    <div>
-                      <h3 className="text-base sm:text-lg font-black text-white flex items-center gap-2">
+                <div className="space-y-3.5">
+                  <div className="flex items-center justify-between gap-2">
+                    <div className="min-w-0">
+                      <h3 className="text-base sm:text-lg font-black text-white flex items-center gap-2 truncate">
                         <span>🍔 {currentStatus.metadata.foodName || 'Chicken Burger'}</span>
                       </h3>
-                      <p className="text-[11px] text-slate-400">
-                        {currentStatus.metadata.restaurantName || 'Zebra Restaurant'} • Masaki, Dar es Salaam
+                      <p className="text-xs text-amber-300 font-bold truncate flex items-center gap-1 mt-0.5">
+                        <span>{currentStatus.metadata.restaurantName || 'ZEBRA RESTAURANT'}</span>
+                        <span className="text-cyan-400 text-xs">✓</span>
+                        <span className="text-slate-400 font-normal">• Masaki, Dar es Salaam</span>
                       </p>
                     </div>
 
-                    <div className="flex items-center gap-1 px-2.5 py-1 rounded-xl bg-amber-500/20 border border-amber-500/30 text-amber-400 font-bold text-xs">
+                    <div className="flex items-center gap-1 px-3 py-1.5 rounded-2xl bg-amber-500/20 border border-amber-500/30 text-amber-300 font-black text-xs shrink-0 shadow-sm">
                       <span>⭐ {currentStatus.metadata.rating || 4.8}</span>
+                      <span className="text-[10px] text-amber-400/80 font-normal">/ 5.0</span>
                     </div>
                   </div>
 
                   {/* Price Banner */}
-                  <div className="p-3 rounded-2xl bg-gradient-to-r from-amber-500/15 via-orange-500/15 to-amber-500/15 border border-amber-500/30 flex items-center justify-between">
+                  <div className="p-3 sm:p-3.5 rounded-2xl bg-gradient-to-r from-amber-500/15 via-orange-500/10 to-amber-500/15 border border-amber-500/30 flex items-center justify-between">
                     <div className="flex items-center gap-2.5">
-                      <span className="px-2 py-0.5 rounded-lg bg-amber-500 text-slate-950 text-[10px] font-black tracking-wider">
-                        {currentStatus.metadata.specialOfferLabel || '🔥 TODAY ONLY'}
+                      <span className="px-2 py-0.5 rounded-lg bg-amber-500 text-slate-950 text-[10px] font-black tracking-wider uppercase">
+                        {currentStatus.metadata.specialOfferLabel || '🔥 OFA MAALUMU'}
                       </span>
-                      <span className="text-amber-300 font-black text-base font-mono">
+                      <span className="text-amber-300 font-black text-base sm:text-lg font-mono">
                         TSh {(currentStatus.metadata.offerPrice || 12000).toLocaleString()}
                       </span>
                       <span className="text-slate-500 line-through text-xs font-mono">
                         TSh {(currentStatus.metadata.regularPrice || 15000).toLocaleString()}
                       </span>
                     </div>
-                    <span className="text-[11px] text-amber-400 font-extrabold">
+                    <span className="text-xs text-amber-400 font-black">
                       {currentStatus.metadata.discount || '20% OFF — Today Only'}
                     </span>
                   </div>
 
-                  {/* Caption */}
-                  <p className="text-xs sm:text-sm text-slate-200 leading-relaxed italic whitespace-pre-line">
-                    {currentStatus.text}
-                  </p>
+                  {/* Caption / Culinary Description */}
+                  <div className="p-3 rounded-2xl bg-[#0E1426] border border-white/5">
+                    <p className="text-xs sm:text-sm text-slate-200 leading-relaxed whitespace-pre-line">
+                      {currentStatus.text}
+                    </p>
+                  </div>
 
-                  {/* Food Rating Breakdown */}
+                  {/* Food Rating & Culinary Quality Breakdown */}
                   {currentStatus.metadata.ratingBreakdown && (
-                    <div className="p-3 rounded-2xl bg-[#10162B] border border-white/5 space-y-2">
-                      <span className="text-[11px] font-bold text-amber-300 block uppercase tracking-wider">
-                        ⭐ Food Rating (Mapitio ya Chakula):
-                      </span>
-                      <div className="grid grid-cols-2 gap-2 text-xs text-slate-300">
-                        <div className="flex items-center justify-between">
-                          <span>⭐⭐⭐⭐⭐ Taste</span>
-                          <span className="font-bold text-amber-400 font-mono">5.0</span>
+                    <div className="p-3.5 rounded-2xl bg-[#0E1426] border border-amber-500/20 space-y-2.5">
+                      <div className="flex items-center justify-between">
+                        <span className="text-xs font-bold text-amber-300 flex items-center gap-1.5 tracking-wide">
+                          <span>⭐ Mapitio ya Chakula & Ubora (Culinary Score)</span>
+                        </span>
+                        <span className="text-[11px] text-slate-400">Mapitio 142 ya Wateja</span>
+                      </div>
+
+                      <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 text-xs">
+                        <div className="space-y-1">
+                          <div className="flex justify-between text-slate-300 text-[11px]">
+                            <span>Ladha (Taste & Freshness)</span>
+                            <span className="font-bold text-amber-400 font-mono">5.0 / 5.0</span>
+                          </div>
+                          <div className="h-1.5 rounded-full bg-white/10 overflow-hidden">
+                            <div className="h-full bg-gradient-to-r from-amber-500 to-orange-400 rounded-full w-full" />
+                          </div>
                         </div>
-                        <div className="flex items-center justify-between">
-                          <span>⭐⭐⭐⭐⭐ Presentation</span>
-                          <span className="font-bold text-amber-400 font-mono">4.8</span>
+
+                        <div className="space-y-1">
+                          <div className="flex justify-between text-slate-300 text-[11px]">
+                            <span>Mwonekano & Usafi (Presentation)</span>
+                            <span className="font-bold text-amber-400 font-mono">4.8 / 5.0</span>
+                          </div>
+                          <div className="h-1.5 rounded-full bg-white/10 overflow-hidden">
+                            <div className="h-full bg-gradient-to-r from-amber-500 to-orange-400 rounded-full w-[96%]" />
+                          </div>
                         </div>
-                        <div className="flex items-center justify-between">
-                          <span>⭐⭐⭐⭐ Service</span>
-                          <span className="font-bold text-amber-400 font-mono">4.7</span>
+
+                        <div className="space-y-1">
+                          <div className="flex justify-between text-slate-300 text-[11px]">
+                            <span>Huduma ya Haraka (Service Speed)</span>
+                            <span className="font-bold text-amber-400 font-mono">4.7 / 5.0</span>
+                          </div>
+                          <div className="h-1.5 rounded-full bg-white/10 overflow-hidden">
+                            <div className="h-full bg-gradient-to-r from-amber-500 to-orange-400 rounded-full w-[94%]" />
+                          </div>
                         </div>
-                        <div className="flex items-center justify-between">
-                          <span>⭐⭐⭐⭐⭐ Value for money</span>
-                          <span className="font-bold text-amber-400 font-mono">4.9</span>
+
+                        <div className="space-y-1">
+                          <div className="flex justify-between text-slate-300 text-[11px]">
+                            <span>Thamani ya Pesa (Value for Money)</span>
+                            <span className="font-bold text-amber-400 font-mono">4.9 / 5.0</span>
+                          </div>
+                          <div className="h-1.5 rounded-full bg-white/10 overflow-hidden">
+                            <div className="h-full bg-gradient-to-r from-amber-500 to-orange-400 rounded-full w-[98%]" />
+                          </div>
                         </div>
                       </div>
                     </div>
                   )}
 
-                  {/* ACTION BUTTONS: [🍽️ Order Now] and [💬 Chat Now] */}
+                  {/* ACTION BUTTONS: [🍽️ Agiza Sasa] and [💬 Wasiliana Mgahawa] */}
                   <div className="grid grid-cols-2 gap-2.5 pt-1">
                     <button
                       onClick={() =>
@@ -848,15 +887,15 @@ export const StatusFeed: React.FC<StatusFeedProps> = ({
                       className="py-3 px-4 rounded-2xl bg-gradient-to-r from-amber-500 via-orange-500 to-amber-500 hover:from-amber-400 hover:to-orange-400 text-slate-950 font-black text-xs sm:text-sm flex items-center justify-center gap-1.5 shadow-xl shadow-amber-500/25 active:scale-95 transition-all"
                     >
                       <Utensils className="w-4 h-4 stroke-[2.5]" />
-                      <span>🍽️ Order Now</span>
+                      <span>🍽️ Agiza Sasa</span>
                     </button>
 
                     <button
                       onClick={handleStartChatWithStatusAuthor}
-                      className="py-3 px-4 rounded-2xl bg-cyan-500/15 hover:bg-cyan-500/25 border border-cyan-500/40 text-cyan-300 font-bold text-xs sm:text-sm flex items-center justify-center gap-1.5 active:scale-95 transition-all"
+                      className="py-3 px-4 rounded-2xl bg-white/10 hover:bg-white/15 text-white font-bold text-xs sm:text-sm flex items-center justify-center gap-1.5 active:scale-95 transition-all border border-white/10"
                     >
-                      <MessageCircle className="w-4 h-4 stroke-[2.5]" />
-                      <span>💬 Chat Now</span>
+                      <MessageCircle className="w-4 h-4" />
+                      <span>💬 Chat Mgahawa</span>
                     </button>
                   </div>
                 </div>
@@ -1856,6 +1895,15 @@ export const StatusFeed: React.FC<StatusFeedProps> = ({
         initialHeadline={currentStatus.metadata?.adHeadline || 'BOOST YOUR BUSINESS'}
         onAdCreated={() => setIsAdCampaignOpen(false)}
       />
+
+      {/* Avatar Style Chooser Studio Modal */}
+      {isStyleModalOpen && (
+        <AvatarStyleSelectorModal
+          isOpen={isStyleModalOpen}
+          onClose={() => setIsStyleModalOpen(false)}
+          currentUser={currentUser}
+        />
+      )}
     </div>
   );
 };

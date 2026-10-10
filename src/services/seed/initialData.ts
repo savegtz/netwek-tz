@@ -11,13 +11,14 @@ import {
   NotificationItem,
 } from '../../types';
 import freshKkAvatar from '../../assets/images/fresh_kk_avatar_1791078365294.jpg';
+import aminaAvatar from '../../assets/images/amina_avatar_1790280951312.jpg';
 
 export const INITIAL_USER: UserProfile = {
   id: 'current_user_id',
   email: 'savegamour@gmail.com',
   displayName: 'Amina Kaunga',
   username: 'amina_kaunga',
-  photoURL: '/assets/images/amina_avatar_1790280951312.jpg',
+  photoURL: aminaAvatar,
   bio: 'Content Creator | Fashion | Lifestyle\nDream • Create • Inspire',
   accountType: 'creator',
   verified: true,

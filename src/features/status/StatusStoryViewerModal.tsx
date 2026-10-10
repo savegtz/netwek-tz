@@ -23,6 +23,7 @@ import {
 } from 'lucide-react';
 import { StatusItem, UserProfile } from '../../types';
 import { SafeImage } from '../../components/SafeImage';
+import { DynamicAvatar } from '../../components/DynamicAvatar';
 import { FoodOrderModal } from './components/FoodOrderModal';
 import { ProductPurchaseModal } from './components/ProductPurchaseModal';
 import { EventTicketModal } from './components/EventTicketModal';
@@ -96,8 +97,11 @@ export const StatusStoryViewerModal: React.FC<StatusStoryViewerModalProps> = ({
       setShowComments(false);
       setVotedOption(null);
       setFloatingEmojis([]);
+      setShowFoodReviewDetails(false);
     }
   }, [isOpen, initialIndex]);
+
+  const [showFoodReviewDetails, setShowFoodReviewDetails] = useState(false);
 
   const handleVotePoll = (optId: string) => {
     if (votedOption) return; // already voted
@@ -231,7 +235,7 @@ export const StatusStoryViewerModal: React.FC<StatusStoryViewerModalProps> = ({
             alt={current.text}
             className="w-full h-full object-cover"
           />
-          <div className="absolute inset-0 bg-gradient-to-b from-black/85 via-black/25 to-black/95" />
+          <div className="absolute inset-0 bg-gradient-to-b from-black/60 via-transparent to-black/85 pointer-events-none" />
         </div>
 
         {/* Top Progress Bars & Header */}
@@ -261,20 +265,31 @@ export const StatusStoryViewerModal: React.FC<StatusStoryViewerModalProps> = ({
           {/* Author Details and Close */}
           <div className="flex items-center justify-between">
             <div className="flex items-center gap-2.5">
-              <SafeImage
+              <DynamicAvatar
                 src={current.authorPhoto}
                 fallbackText={current.authorName}
                 alt={current.authorName}
-                className="w-10 h-10 rounded-[14px] object-cover border-2 border-white shadow-md bg-black"
+                size={42}
+                styleVariant={current.avatarStyle}
+                hasStory={false}
               />
               <div>
                 <h4 className="font-extrabold text-sm text-white drop-shadow leading-tight flex items-center gap-1">
                   <span>{current.authorName}</span>
                   <span className="text-cyan-400 text-xs">✓</span>
                 </h4>
-                <p className="text-[11px] text-slate-300 drop-shadow flex items-center gap-1.5 mt-0.5">
+                <p className="text-[11px] text-slate-300 drop-shadow flex items-center gap-1.5 mt-0.5 flex-wrap">
                   <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 inline-block" />
                   <span>{current.createdAt}</span>
+                  {current.location && (
+                    <>
+                      <span>•</span>
+                      <span className="text-amber-300 flex items-center gap-0.5">
+                        <MapPin className="w-3 h-3 text-amber-400 inline" />
+                        <span>{current.location}</span>
+                      </span>
+                    </>
+                  )}
                   {current.type === 'job' && (
                     <span className="px-1.5 py-0.2 rounded bg-amber-500 text-slate-950 text-[9px] font-black">
                       💼 Job
@@ -282,7 +297,7 @@ export const StatusStoryViewerModal: React.FC<StatusStoryViewerModalProps> = ({
                   )}
                   {current.type === 'food' && (
                     <span className="px-1.5 py-0.2 rounded bg-amber-500 text-slate-950 text-[9px] font-black">
-                      🍕 Food
+                      🍽️ Food & Drinks
                     </span>
                   )}
                   {current.type === 'poll' && (
@@ -348,102 +363,123 @@ export const StatusStoryViewerModal: React.FC<StatusStoryViewerModalProps> = ({
         {/* ============================================================== */}
         {/* BOTTOM RICH STORY DETAILS (FOOD, POLL, PRODUCT, EVENT) */}
         {/* ============================================================== */}
-        <div className="relative z-20 p-4 pt-2 space-y-3 bg-gradient-to-t from-slate-950 via-slate-950/95 to-transparent">
-          {/* Badges: Location, 24h Expiry & Music Sticker */}
-          <div className="flex items-center gap-2 flex-wrap">
-            {current.location && (
-              <div className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-black/60 backdrop-blur-md border border-white/10 text-xs text-white">
-                <MapPin className="w-3.5 h-3.5 text-amber-400" />
-                <span>{current.location}</span>
-              </div>
-            )}
-
-            {/* 24-Hour Expiration Indicator */}
-            <div className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-cyan-500/15 backdrop-blur-md border border-cyan-400/30 text-xs text-cyan-300 font-bold shadow-sm">
-              <Clock className="w-3.5 h-3.5 text-cyan-400" />
-              <span>⏳ Masaa 24 • Imebaki saa 18</span>
-            </div>
-
-            {/* Music Sticker with spinning disc */}
-            <div className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-purple-500/20 backdrop-blur-md border border-purple-400/30 text-xs text-purple-200 font-bold">
-              <Disc className="w-3.5 h-3.5 text-purple-400 animate-spin" style={{ animationDuration: '3s' }} />
-              <span>🎵 Diamond Platnumz - Komasava</span>
-            </div>
-          </div>
+        <div className="relative z-20 p-4 pt-2 space-y-2.5 bg-gradient-to-t from-black/95 via-black/70 to-transparent">
 
           {/* ==================== 1. FOOD STORY CONTENT ==================== */}
           {current.type === 'food' && (
-            <div className="p-3.5 rounded-2xl bg-[#0F1426]/90 backdrop-blur-md border border-amber-500/30 space-y-2.5 shadow-2xl">
-              <div className="flex items-center justify-between">
-                <div>
-                  <h4 className="font-black text-sm sm:text-base text-white flex items-center gap-1.5">
+            <div className="p-3.5 rounded-3xl bg-slate-950/85 backdrop-blur-xl border border-amber-500/25 space-y-2.5 shadow-2xl">
+              <div className="flex items-center justify-between gap-2">
+                <div className="min-w-0">
+                  <h4 className="font-black text-sm sm:text-base text-white flex items-center gap-1.5 truncate">
                     <span>🍔 {current.metadata?.foodName || 'Chicken Burger'}</span>
                   </h4>
-                  <span className="text-[11px] text-amber-300 font-bold">
-                    {current.metadata?.restaurantName || 'ZEBRA RESTAURANT'}
-                  </span>
+                  <p className="text-[11px] text-amber-300 font-bold truncate flex items-center gap-1 mt-0.5">
+                    <span>{current.metadata?.restaurantName || 'ZEBRA RESTAURANT'}</span>
+                    <span className="text-cyan-400 text-xs">✓</span>
+                    <span className="text-slate-400 font-normal">• Masaki, Dar es Salaam</span>
+                  </p>
                 </div>
-                <span className="px-2 py-0.5 rounded-xl bg-amber-500/20 text-amber-400 font-black text-xs border border-amber-500/30">
-                  ⭐ {current.metadata?.rating || 4.8}
-                </span>
+
+                <div className="flex items-center gap-1 px-2.5 py-1 rounded-xl bg-amber-500/20 text-amber-300 font-black text-xs border border-amber-500/30 shrink-0">
+                  <span>⭐ {current.metadata?.rating || 4.8}</span>
+                </div>
               </div>
 
-              {/* Price Banner */}
-              <div className="flex items-center justify-between text-xs p-2 rounded-xl bg-black/40 border border-white/5">
+              {/* Price & Offer Banner */}
+              <div className="flex items-center justify-between text-xs p-2 rounded-xl bg-white/5 border border-white/10">
                 <div className="flex items-center gap-2">
-                  <span className="px-1.5 py-0.5 rounded bg-amber-500 text-slate-950 text-[9px] font-black">
+                  <span className="px-2 py-0.5 rounded-md bg-gradient-to-r from-amber-500 to-orange-500 text-slate-950 text-[10px] font-black tracking-wide shadow-sm">
                     {current.metadata?.specialOfferLabel || '🔥 TODAY ONLY'}
                   </span>
                   <span className="text-amber-300 font-black font-mono text-sm">
                     TSh {(current.metadata?.offerPrice || 12000).toLocaleString()}
                   </span>
-                  <span className="line-through text-slate-500 font-mono text-[11px]">
+                  <span className="line-through text-slate-400 font-mono text-[11px]">
                     TSh {(current.metadata?.regularPrice || 15000).toLocaleString()}
                   </span>
                 </div>
-                <span className="text-amber-400 text-[10px] font-bold">
+                <span className="text-amber-400 text-[10px] font-extrabold">
                   {current.metadata?.discount || '20% OFF — Today Only'}
                 </span>
               </div>
 
-              {/* Food Rating Breakdown */}
-              <div className="grid grid-cols-2 gap-1.5 text-[10px] text-slate-300 pt-1 border-t border-white/10">
-                <div className="flex justify-between">
-                  <span>⭐⭐⭐⭐⭐ Taste</span>
-                  <strong className="text-amber-400">5.0</strong>
-                </div>
-                <div className="flex justify-between">
-                  <span>⭐⭐⭐⭐⭐ Presentation</span>
-                  <strong className="text-amber-400">4.8</strong>
-                </div>
-                <div className="flex justify-between">
-                  <span>⭐⭐⭐⭐ Service</span>
-                  <strong className="text-amber-400">4.7</strong>
-                </div>
-                <div className="flex justify-between">
-                  <span>⭐⭐⭐⭐⭐ Value</span>
-                  <strong className="text-amber-400">4.9</strong>
-                </div>
+              {/* Optional Culinary Breakdown Accordion */}
+              <div className="pt-0.5">
+                <button
+                  type="button"
+                  onClick={() => setShowFoodReviewDetails(!showFoodReviewDetails)}
+                  className="w-full flex items-center justify-between text-[11px] text-slate-300 hover:text-amber-300 transition-colors py-0.5 px-1 font-medium"
+                >
+                  <span className="flex items-center gap-1.5">
+                    <span>⭐ Mapitio ya Chakula (Taste & Presentation)</span>
+                  </span>
+                  <span className="text-[10px] text-amber-400 font-bold">
+                    {showFoodReviewDetails ? 'Ficha ▲' : 'Tazama 5.0/5.0 ▼'}
+                  </span>
+                </button>
+
+                {showFoodReviewDetails && (
+                  <div className="mt-1.5 p-2.5 rounded-2xl bg-black/60 border border-white/10 space-y-2 animate-in fade-in duration-150">
+                    <div className="grid grid-cols-2 gap-2 text-[10px]">
+                      <div>
+                        <div className="flex justify-between text-slate-300 mb-0.5 font-medium">
+                          <span>Ladha (Taste)</span>
+                          <span className="font-bold text-amber-400 font-mono">5.0</span>
+                        </div>
+                        <div className="h-1 rounded-full bg-white/10 overflow-hidden">
+                          <div className="h-full bg-gradient-to-r from-amber-500 to-orange-400 rounded-full w-full" />
+                        </div>
+                      </div>
+                      <div>
+                        <div className="flex justify-between text-slate-300 mb-0.5 font-medium">
+                          <span>Mwonekano</span>
+                          <span className="font-bold text-amber-400 font-mono">4.8</span>
+                        </div>
+                        <div className="h-1 rounded-full bg-white/10 overflow-hidden">
+                          <div className="h-full bg-gradient-to-r from-amber-500 to-orange-400 rounded-full w-[96%]" />
+                        </div>
+                      </div>
+                      <div>
+                        <div className="flex justify-between text-slate-300 mb-0.5 font-medium">
+                          <span>Huduma (Service)</span>
+                          <span className="font-bold text-amber-400 font-mono">4.7</span>
+                        </div>
+                        <div className="h-1 rounded-full bg-white/10 overflow-hidden">
+                          <div className="h-full bg-gradient-to-r from-amber-500 to-orange-400 rounded-full w-[94%]" />
+                        </div>
+                      </div>
+                      <div>
+                        <div className="flex justify-between text-slate-300 mb-0.5 font-medium">
+                          <span>Thamani (Value)</span>
+                          <span className="font-bold text-amber-400 font-mono">4.9</span>
+                        </div>
+                        <div className="h-1 rounded-full bg-white/10 overflow-hidden">
+                          <div className="h-full bg-gradient-to-r from-amber-500 to-orange-400 rounded-full w-[98%]" />
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                )}
               </div>
 
-              {/* Action Buttons: [🍽️ Order Now] and [💬 Chat Now] */}
+              {/* Action Buttons: [🍽️ Agiza Sasa] and [💬 Wasiliana Mgahawa] */}
               <div className="grid grid-cols-2 gap-2 pt-1">
                 <button
                   type="button"
                   onClick={() => setIsFoodOrderOpen(true)}
-                  className="py-2.5 px-3 rounded-xl bg-gradient-to-r from-amber-500 to-orange-500 hover:from-amber-400 hover:to-orange-400 text-slate-950 font-black text-xs flex items-center justify-center gap-1.5 shadow-md shadow-amber-500/30 active:scale-95 transition-all"
+                  className="py-2.5 px-3 rounded-2xl bg-gradient-to-r from-amber-500 via-orange-500 to-amber-500 hover:from-amber-400 hover:to-orange-400 text-slate-950 font-black text-xs flex items-center justify-center gap-1.5 shadow-lg shadow-amber-500/25 active:scale-95 transition-all"
                 >
                   <Utensils className="w-3.5 h-3.5 stroke-[2.5]" />
-                  <span>🍽️ Order Now</span>
+                  <span>🍽️ Agiza Sasa</span>
                 </button>
 
                 <button
                   type="button"
                   onClick={handleChatNow}
-                  className="py-2.5 px-3 rounded-xl bg-cyan-500/20 hover:bg-cyan-500/30 border border-cyan-500/40 text-cyan-300 font-bold text-xs flex items-center justify-center gap-1.5 active:scale-95 transition-all"
+                  className="py-2.5 px-3 rounded-2xl bg-white/10 hover:bg-white/15 text-white font-bold text-xs flex items-center justify-center gap-1.5 active:scale-95 transition-all border border-white/10"
                 >
                   <MessageCircle className="w-3.5 h-3.5" />
-                  <span>💬 Chat Now</span>
+                  <span>💬 Chat Mgahawa</span>
                 </button>
               </div>
             </div>

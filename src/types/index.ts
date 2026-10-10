@@ -1,5 +1,17 @@
 export type AccountType = 'personal' | 'creator' | 'business' | 'organization';
 
+export type AvatarShapeStyle =
+  | 'organic-blob'
+  | 'squircle'
+  | 'rounded-rectangle'
+  | 'rounded-square'
+  | 'circle'
+  | 'shield'
+  | 'gradient-ring'
+  | 'double-ring'
+  | '3d-glass'
+  | 'polaroid';
+
 export interface UserProfile {
   id: string;
   email: string;
@@ -21,6 +33,7 @@ export interface UserProfile {
   isBanned?: boolean;
   walletBalance?: number;
   role?: 'user' | 'admin' | 'superadmin';
+  avatarStyle?: AvatarShapeStyle;
 }
 
 export const PRIMARY_ADMIN_EMAIL = 'savegamour@gmail.com';
@@ -221,6 +234,7 @@ export interface StatusItem {
   authorName: string;
   authorUsername?: string;
   authorPhoto?: string;
+  avatarStyle?: AvatarShapeStyle;
   type: StatusType;
   mediaUrl?: string;
   text?: string;

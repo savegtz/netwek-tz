@@ -9,10 +9,19 @@ import {
   BarChart2,
   Calendar,
   Utensils,
+  Shapes,
 } from 'lucide-react';
-import { StatusItem, UserProfile } from '../../types';
+import { StatusItem, UserProfile, AvatarShapeStyle } from '../../types';
 import { StatusStoryViewerModal } from './StatusStoryViewerModal';
 import { SafeImage } from '../../components/SafeImage';
+import { DynamicAvatar } from '../../components/DynamicAvatar';
+import { AvatarStyleSelectorModal } from '../../components/AvatarStyleSelectorModal';
+import { Palette, Layers } from 'lucide-react';
+import {
+  AVATAR_STYLES_LIST,
+  getStoredAvatarStyle,
+  setStoredAvatarStyle,
+} from '../profile/avatarStyles';
 
 // Bundled local image assets matching the app's visual identity
 import freshKkStatus from '../../assets/images/fresh_kk_status_1791078352206.jpg';
@@ -45,11 +54,12 @@ export const INITIAL_CHAT_STATUSES: StatusItem[] = [
     authorName: 'Zebra Rest.',
     authorUsername: 'zebra_restaurant',
     authorPhoto:
-      'https://images.unsplash.com/photo-1555396273-367ea4eb4db5?w=500&auto=format&fit=crop&q=80',
+      'https://images.unsplash.com/photo-1517248135467-4c7edcad34c4?w=500&auto=format&fit=crop&q=80',
+    avatarStyle: 'squircle',
     type: 'food',
     mediaUrl:
-      'https://images.unsplash.com/photo-1568901346375-23c9450c58cd?w=1200&auto=format&fit=crop&q=80',
-    text: '“Fresh, juicy & delicious 🤤”\n\n🔥 Our famous Chicken Burger is back! Fresh grilled patty, cheddar cheese, na crispy fries.\n#ZebraRestaurant #ChickenBurger #DarFood',
+      'https://images.unsplash.com/photo-1586190848861-99aa4a171e90?w=1200&auto=format&fit=crop&q=80',
+    text: '🔥 Chicken Burger Deluxe yetu maarufu imerejea!\n• Nyama ya kuku iliyochomwa kwenye moto mwororo (Flame-grilled)\n• Jibini ya Cheddar iliyoyeyuka vizuri na chipsi za dhahabu\nKaribu Zebra Restaurant Masaki ujionee ladha halisi! 🤤✨',
     location: 'Masaki, Dar es Salaam',
     visibility: 'public',
     likesCount: 245,
@@ -58,7 +68,7 @@ export const INITIAL_CHAT_STATUSES: StatusItem[] = [
     createdAt: '10m',
     expiresAt: new Date(Date.now() + 24 * 3600 * 1000).toISOString(),
     metadata: {
-      foodName: 'Chicken Burger',
+      foodName: 'Chicken Burger Deluxe',
       restaurantName: 'ZEBRA RESTAURANT',
       regularPrice: 15000,
       offerPrice: 12000,
@@ -76,13 +86,47 @@ export const INITIAL_CHAT_STATUSES: StatusItem[] = [
     },
   },
 
-  // 2. Fresh kk (Outdoor Vibes)
+  // 1b. Zebra Restaurant (Story 2 - Tropical Passion Mocktail)
+  {
+    id: 'status_card_zebra_mocktail',
+    authorId: 'zebra_restaurant',
+    authorName: 'Zebra Rest.',
+    authorUsername: 'zebra_restaurant',
+    authorPhoto:
+      'https://images.unsplash.com/photo-1517248135467-4c7edcad34c4?w=500&auto=format&fit=crop&q=80',
+    avatarStyle: 'squircle',
+    type: 'food',
+    mediaUrl:
+      'https://images.unsplash.com/photo-1551024709-8f23befc6f87?w=1200&auto=format&fit=crop&q=80',
+    text: '🍹 Tropical Passion Fruit Mocktail! Karibu ujipatie vinywaji baridi vya matunda asilia leo Masaki. Happy Hour kuanzia saa 11 jioni.',
+    location: 'Masaki, Dar es Salaam',
+    visibility: 'public',
+    likesCount: 310,
+    commentsCount: 42,
+    sharesCount: 19,
+    createdAt: '8m',
+    expiresAt: new Date(Date.now() + 24 * 3600 * 1000).toISOString(),
+    metadata: {
+      foodName: 'Passion Mocktail',
+      restaurantName: 'ZEBRA RESTAURANT',
+      regularPrice: 8000,
+      offerPrice: 5000,
+      discount: '37% OFF — Happy Hour',
+      specialOfferLabel: '🍹 HAPPY HOUR',
+      validUntil: '8:00 PM',
+      rating: 4.9,
+      actionButtons: ['order_now', 'chat_now'],
+    },
+  },
+
+  // 2. Fresh kk (Outdoor Vibes - Story 1)
   {
     id: 'status_card_fresh_kk',
     authorId: 'user_fresh_kk',
     authorName: 'Fresh kk',
     authorUsername: 'fresh_kk',
     authorPhoto: freshKkAvatar,
+    avatarStyle: 'organic-blob',
     type: 'photo',
     mediaUrl: freshKkStatus,
     text: 'Fresh vibes outdoor! ☀️✌️ Dar es Salaam living.',
@@ -95,6 +139,27 @@ export const INITIAL_CHAT_STATUSES: StatusItem[] = [
     expiresAt: new Date(Date.now() + 24 * 3600 * 1000).toISOString(),
   },
 
+  // 2b. Fresh kk (Story 2 - Masaki Beach Sunset)
+  {
+    id: 'status_card_fresh_kk_sunset',
+    authorId: 'user_fresh_kk',
+    authorName: 'Fresh kk',
+    authorUsername: 'fresh_kk',
+    authorPhoto: freshKkAvatar,
+    avatarStyle: 'organic-blob',
+    type: 'photo',
+    mediaUrl:
+      'https://images.unsplash.com/photo-1507525428034-b723cf961d3e?w=1200&auto=format&fit=crop&q=80',
+    text: 'Sunset chill Masaki beach baada ya ratiba za mchana 🌅✨ Dar es Salaam is full of good vibes!',
+    location: 'Masaki, Dar es Salaam',
+    visibility: 'public',
+    likesCount: 1420,
+    commentsCount: 88,
+    sharesCount: 32,
+    createdAt: '5m',
+    expiresAt: new Date(Date.now() + 24 * 3600 * 1000).toISOString(),
+  },
+
   // 3. POLL STORY (Alex Kimani - Leo tukatoke wapi? 😎)
   {
     id: 'status_card_poll_dar',
@@ -102,6 +167,7 @@ export const INITIAL_CHAT_STATUSES: StatusItem[] = [
     authorName: 'Alex Kimani',
     authorUsername: 'alex_k',
     authorPhoto: alexAvatar,
+    avatarStyle: 'rounded-rectangle',
     type: 'poll',
     mediaUrl: alexPortrait,
     text: 'Mpango wa weekend hii unakaaje wana-Dar? Piga kura yako sasa tujue wapi kuna fujo ya furaha! 🌊🌴',
@@ -136,6 +202,7 @@ export const INITIAL_CHAT_STATUSES: StatusItem[] = [
     authorUsername: 'fresh_store',
     authorPhoto:
       'https://images.unsplash.com/photo-1542291026-7eec264c27ff?w=500&auto=format&fit=crop&q=80',
+    avatarStyle: 'rounded-square',
     type: 'product',
     mediaUrl:
       'https://images.unsplash.com/photo-1542291026-7eec264c27ff?w=1200&auto=format&fit=crop&q=80',
@@ -164,6 +231,7 @@ export const INITIAL_CHAT_STATUSES: StatusItem[] = [
     authorName: 'Sarah M.',
     authorUsername: 'sarah_m',
     authorPhoto: sarahAvatar,
+    avatarStyle: 'shield',
     type: 'photo',
     mediaUrl: sarahPortrait,
     text: 'Mapumziko ya jioni Masaki beach 🍹🌅 Furaha ya upepo wa bahari.',
@@ -184,6 +252,7 @@ export const INITIAL_CHAT_STATUSES: StatusItem[] = [
     authorUsername: 'dar_events',
     authorPhoto:
       'https://images.unsplash.com/photo-1514525253161-7a46d19cd819?w=500&auto=format&fit=crop&q=80',
+    avatarStyle: 'gradient-ring',
     type: 'event',
     mediaUrl: concertFestival,
     text: 'Usiku wa Burudani Mlimani City Hall! Wasanii wote wakali jukwaa moja Jumamosi hii. Tiketi za VIP zinapatikana sasa.',
@@ -216,6 +285,63 @@ export const ChatListStatusRow: React.FC<ChatListStatusRowProps> = ({
 }) => {
   const allStatuses = [...customStatuses, ...INITIAL_CHAT_STATUSES];
   const scrollRef = useRef<HTMLDivElement>(null);
+  const [isStyleModalOpen, setIsStyleModalOpen] = useState(false);
+  const [currentAvatarStyle, setCurrentAvatarStyle] = useState<AvatarShapeStyle>(() =>
+    getStoredAvatarStyle()
+  );
+
+  React.useEffect(() => {
+    const handleStyleChange = (e: Event) => {
+      const customEvent = e as CustomEvent<{ style: AvatarShapeStyle }>;
+      if (customEvent.detail?.style) {
+        setCurrentAvatarStyle(customEvent.detail.style);
+      }
+    };
+    window.addEventListener('zenia_avatar_style_changed', handleStyleChange);
+    return () => {
+      window.removeEventListener('zenia_avatar_style_changed', handleStyleChange);
+    };
+  }, []);
+
+  // Group stories by author to support multi-story status accounts
+  const groupedAuthors = React.useMemo(() => {
+    const map = new Map<
+      string,
+      {
+        authorId: string;
+        authorName: string;
+        authorUsername: string;
+        authorPhoto: string;
+        type: string;
+        stories: StatusItem[];
+        firstIndex: number;
+      }
+    >();
+
+    allStatuses.forEach((st, idx) => {
+      const key = st.authorId || st.authorUsername || st.authorName;
+      if (!map.has(key)) {
+        map.set(key, {
+          authorId: st.authorId,
+          authorName: st.authorName,
+          authorUsername: st.authorUsername || '',
+          authorPhoto: st.authorPhoto || '',
+          type: st.type,
+          stories: [st],
+          firstIndex: idx,
+        });
+      } else {
+        map.get(key)!.stories.push(st);
+      }
+    });
+
+    return Array.from(map.values());
+  }, [allStatuses]);
+
+  // Check if current user has any status posted
+  const myStories = customStatuses.filter(
+    (s) => s.authorId === currentUser?.id || s.authorUsername === currentUser?.username
+  );
 
   const [viewerState, setViewerState] = useState<{
     isOpen: boolean;
@@ -238,6 +364,28 @@ export const ChatListStatusRow: React.FC<ChatListStatusRowProps> = ({
 
   return (
     <div className="pt-2 pb-2.5 px-3 border-b border-white/[0.06] select-none bg-[#080B16]">
+      {/* Clean & Orderly Header with Studio Button */}
+      <div className="flex items-center justify-between mb-2 px-1">
+        <div className="flex items-center gap-1.5">
+          <span className="text-[11px] font-black uppercase tracking-wider text-slate-300">
+            Hali (Story Status)
+          </span>
+          <span className="text-[9.5px] px-1.5 py-0.2 rounded-full font-bold bg-cyan-500/15 text-cyan-300 border border-cyan-400/25">
+            {allStatuses.length}
+          </span>
+        </div>
+
+        <button
+          type="button"
+          onClick={() => setIsStyleModalOpen(true)}
+          className="px-2.5 py-1 rounded-xl text-[10.5px] font-bold text-cyan-300 hover:text-white bg-cyan-950/60 hover:bg-cyan-900/60 border border-cyan-500/30 whitespace-nowrap shadow-xs flex items-center gap-1.5 active:scale-95 transition-all"
+          title="Badili mtindo wa Avatar & Story (Organic Blob, Squircle, Rounded Rectangle n.k.)"
+        >
+          <Palette className="w-3.5 h-3.5 text-cyan-400" />
+          <span>Mtindo wa Avatar (10)</span>
+        </button>
+      </div>
+
       {/* Stories Carousel with smooth touch scrolling */}
       <div className="relative group/carousel">
         {/* Left Scroll Arrow (Desktop only) */}
@@ -258,51 +406,74 @@ export const ChatListStatusRow: React.FC<ChatListStatusRowProps> = ({
           <ChevronRight className="w-3.5 h-3.5" />
         </button>
 
-        {/* Circular Stories Row (Ultra-clean WhatsApp/Instagram Style) */}
+        {/* Stories Row */}
         <div
           ref={scrollRef}
-          className="flex items-center gap-3 overflow-x-auto no-scrollbar scroll-smooth py-0.5 px-0.5 overscroll-x-contain"
+          className="flex items-center gap-4 sm:gap-5 overflow-x-auto no-scrollbar scroll-smooth py-2 px-1 overscroll-x-contain"
           style={{ WebkitOverflowScrolling: 'touch' }}
         >
           {/* ============================================================== */}
-          {/* 1. MY STORY SQUIRCLE (Hali Yangu / Weka Mpya)                   */}
+          {/* 1. MY STORY AVATAR (Hali Yangu / Weka Mpya)                     */}
+          {/* Supports dynamic active style & multi-story stacked effect!   */}
           {/* ============================================================== */}
-          <button
-            onClick={onOpenCreateStatus}
-            className="flex flex-col items-center gap-1.5 shrink-0 group focus:outline-none"
-            title="Weka Hali Yako (Post Status)"
-          >
+          <div className="flex flex-col items-center gap-2 shrink-0 group">
             <div className="relative">
-              {/* Outer Ring: 1:1 Square with Large Rounded Corners (Squircle) */}
-              <div className="w-[56px] h-[56px] aspect-square rounded-[20px] p-[2.5px] bg-slate-800 ring-2 ring-white/10 group-hover:ring-cyan-400 group-hover:scale-105 transition-all shadow-md">
-                <div className="w-full h-full rounded-[17.5px] overflow-hidden bg-slate-900">
-                  <SafeImage
-                    src={currentUser?.photoURL || aminaAvatar}
-                    fallbackText="Me"
-                    alt="My Status"
-                    className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-300"
-                  />
-                </div>
-              </div>
-              {/* Plus Badge at bottom-right */}
-              <div className="absolute -bottom-1 -right-1 w-5 h-5 rounded-[8px] bg-gradient-to-tr from-cyan-400 to-blue-500 text-slate-950 flex items-center justify-center shadow-md ring-2 ring-[#080B16] group-hover:scale-110 transition-transform">
-                <Plus className="w-3.5 h-3.5 stroke-[3]" />
-              </div>
+              <button
+                onClick={
+                  myStories.length > 0
+                    ? () => setViewerState({ isOpen: true, initialIndex: 0 })
+                    : onOpenCreateStatus
+                }
+                className="focus:outline-none block active:scale-95 transition-transform"
+                title={myStories.length > 0 ? 'Tazama Hali Yangu' : 'Weka Hali Yako Mpya'}
+              >
+                <DynamicAvatar
+                  src={currentUser?.photoURL || aminaAvatar}
+                  fallbackText="Me"
+                  alt="My Status"
+                  size="story"
+                  styleVariant={myStories[0]?.avatarStyle || currentUser?.avatarStyle}
+                  hasStory={myStories.length > 0}
+                  storyCount={myStories.length > 0 ? myStories.length : 1}
+                  showStoryBadge={myStories.length > 1}
+                  ringGradient="from-cyan-400 via-blue-500 to-indigo-600"
+                />
+              </button>
+
+              {/* Plus Badge at bottom-right for adding new story */}
+              <button
+                onClick={onOpenCreateStatus}
+                className="absolute -bottom-1 -right-1 w-6 h-6 rounded-[8px] bg-gradient-to-tr from-cyan-400 to-blue-500 text-slate-950 flex items-center justify-center shadow-lg ring-2 ring-[#080B16] hover:scale-110 active:scale-95 transition-transform z-30"
+                title="Weka Story Mpya"
+              >
+                <Plus className="w-4 h-4 stroke-[3]" />
+              </button>
             </div>
-            <span className="text-[10px] font-semibold text-slate-300 group-hover:text-cyan-300 transition-colors truncate max-w-[62px] text-center leading-tight">
+
+            <button
+              onClick={
+                myStories.length > 0
+                  ? () => setViewerState({ isOpen: true, initialIndex: 0 })
+                  : onOpenCreateStatus
+              }
+              className="text-[11px] sm:text-xs font-semibold text-slate-200 group-hover:text-cyan-300 transition-colors truncate max-w-[78px] sm:max-w-[88px] text-center leading-tight focus:outline-none"
+            >
               Hali Yangu
-            </span>
-          </button>
+            </button>
+          </div>
 
           {/* ============================================================== */}
-          {/* 2. CONTACT / COMMUNITY STORY SQUIRCLES (1:1 Rounded Rect)       */}
+          {/* 2. CONTACT / COMMUNITY STORY AVATARS                           */}
+          {/* Grouped by Author: Uses exact chosen avatarStyle shape!        */}
           {/* ============================================================== */}
-          {allStatuses.map((item, idx) => {
-            const firstName = item.authorName.split(' ')[0];
-            const isFood = item.type === 'food';
-            const isPoll = item.type === 'poll';
-            const isProduct = item.type === 'product';
-            const isEvent = item.type === 'event';
+          {groupedAuthors.map((group) => {
+            const firstName = group.authorName.split(' ')[0];
+            const isFood = group.type === 'food';
+            const isPoll = group.type === 'poll';
+            const isProduct = group.type === 'product';
+            const isEvent = group.type === 'event';
+            const isMulti = group.stories.length > 1;
+            const groupShape = group.stories[0]?.avatarStyle;
 
             // Distinct gradient ring based on story category
             let ringGradient = 'from-cyan-400 via-blue-500 to-indigo-500';
@@ -324,41 +495,56 @@ export const ChatListStatusRow: React.FC<ChatListStatusRowProps> = ({
 
             return (
               <button
-                key={item.id}
-                onClick={() => setViewerState({ isOpen: true, initialIndex: idx })}
-                className="flex flex-col items-center gap-1.5 shrink-0 group focus:outline-none"
-                title={`Tazama story ya ${item.authorName}`}
+                key={group.authorId}
+                onClick={() => setViewerState({ isOpen: true, initialIndex: group.firstIndex })}
+                className="flex flex-col items-center gap-2 shrink-0 group focus:outline-none"
+                title={`Tazama ${group.stories.length} ${
+                  group.stories.length > 1 ? 'stori za' : 'story ya'
+                } ${group.authorName}`}
               >
                 <div className="relative">
-                  {/* Glowing Story Gradient Ring: 1:1 Square with Large Rounded Corners */}
-                  <div className={`w-[56px] h-[56px] aspect-square rounded-[20px] p-[2.5px] bg-gradient-to-tr ${ringGradient} shadow-md group-hover:scale-105 active:scale-95 transition-transform duration-200`}>
-                    <div className="w-full h-full rounded-[17.5px] overflow-hidden bg-[#080B16] p-[1.5px]">
-                      <div className="w-full h-full rounded-[16px] overflow-hidden">
-                        <SafeImage
-                          src={item.authorPhoto}
-                          fallbackText={item.authorName}
-                          alt={item.authorName}
-                          className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-300"
-                        />
-                      </div>
-                    </div>
-                  </div>
+                  {/* Dynamic Avatar with exact shape chosen for this story */}
+                  <DynamicAvatar
+                    src={group.authorPhoto}
+                    fallbackText={group.authorName}
+                    alt={group.authorName}
+                    size="story"
+                    styleVariant={groupShape}
+                    hasStory={true}
+                    storyCount={group.stories.length}
+                    showStoryBadge={isMulti}
+                    ringGradient={ringGradient}
+                  />
 
                   {/* Micro Category Tag at bottom-right */}
-                  <span className="absolute -bottom-1 -right-1 w-4.5 h-4.5 rounded-[7px] bg-[#0D1224] border border-white/25 flex items-center justify-center text-[9px] shadow-sm ring-2 ring-[#080B16]">
+                  <span className="absolute -bottom-1 -right-1 w-5 h-5 rounded-[8px] bg-[#0D1224] border border-white/25 flex items-center justify-center text-[10px] shadow-sm ring-2 ring-[#080B16] z-20">
                     {microEmoji}
                   </span>
                 </div>
 
-                {/* Author Name */}
-                <span className="text-[10px] font-medium text-slate-300 group-hover:text-cyan-300 transition-colors truncate max-w-[62px] text-center leading-tight">
+                {/* Author Name & Story Count indication */}
+                <span className="text-[11px] sm:text-xs font-semibold text-slate-200 group-hover:text-cyan-300 transition-colors truncate max-w-[78px] sm:max-w-[88px] text-center leading-tight">
                   {firstName}
+                  {isMulti && (
+                    <span className="ml-1 text-[10px] text-cyan-400 font-black">
+                      ({group.stories.length})
+                    </span>
+                  )}
                 </span>
               </button>
             );
           })}
         </div>
       </div>
+
+      {/* Avatar Style Chooser Modal */}
+      {isStyleModalOpen && (
+        <AvatarStyleSelectorModal
+          isOpen={isStyleModalOpen}
+          onClose={() => setIsStyleModalOpen(false)}
+          currentUser={currentUser}
+        />
+      )}
 
       {/* Full-Screen Story Viewer Modal */}
       {viewerState.isOpen && (
