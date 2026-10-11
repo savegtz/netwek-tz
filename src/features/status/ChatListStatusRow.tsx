@@ -224,7 +224,7 @@ export const INITIAL_CHAT_STATUSES: StatusItem[] = [
     },
   },
 
-  // 5. Sarah M. (Sunset & Lifestyle)
+  // 5. Sarah M. (Sunset & Lifestyle - Fresh: 0 likes, 0 comments)
   {
     id: 'status_card_sarah_sunset',
     authorId: 'user_sarah_m',
@@ -237,10 +237,10 @@ export const INITIAL_CHAT_STATUSES: StatusItem[] = [
     text: 'Mapumziko ya jioni Masaki beach 🍹🌅 Furaha ya upepo wa bahari.',
     location: 'Masaki, Dar es Salaam',
     visibility: 'public',
-    likesCount: 940,
-    commentsCount: 68,
-    sharesCount: 28,
-    createdAt: '2h',
+    likesCount: 0,
+    commentsCount: 0,
+    sharesCount: 0,
+    createdAt: '2m',
     expiresAt: new Date(Date.now() + 20 * 3600 * 1000).toISOString(),
   },
 

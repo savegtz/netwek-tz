@@ -1769,7 +1769,16 @@ export const ChatRoom: React.FC<ChatRoomProps> = ({
           onForward={() => {}}
           onPin={() => {}}
           onAskAI={() => {}}
-          onStar={() => {}}
+          onStar={(msg) => {
+            const isNowStarred = !msg.isStarred;
+            setMessages((prev) =>
+              prev.map((m) => (m.id === msg.id ? { ...m, isStarred: isNowStarred } : m))
+            );
+            ChatSyncService.updateMessage(conversation.id, msg.id, {
+              isStarred: isNowStarred,
+            });
+            showToast(isNowStarred ? 'Ujumbe umetiwa Nyota! ⭐' : 'Nyota imeondolewa kutoka ujumbe');
+          }}
           onReport={() => {}}
           onDelete={(msg) => {
             setMessages((prev) => prev.filter((m) => m.id !== msg.id));

@@ -691,9 +691,9 @@ export const CreateStatusModal: React.FC<CreateStatusModalProps> = ({
       text: caption,
       location: activeType === 'job' ? jobLocation : locationName,
       visibility: 'public',
-      likesCount: 245,
-      commentsCount: 32,
-      sharesCount: 14,
+      likesCount: 0,
+      commentsCount: 0,
+      sharesCount: 0,
       createdAt: 'Just now',
       expiresAt: new Date(Date.now() + 24 * 3600 * 1000).toISOString(),
       metadata: {

@@ -55,11 +55,16 @@ export const StatusStoryViewerModal: React.FC<StatusStoryViewerModalProps> = ({
 }) => {
   const [currentIndex, setCurrentIndex] = useState(initialIndex);
   const [progress, setProgress] = useState(0);
-  const [isLiked, setIsLiked] = useState(false);
+  const [likedStatusIds, setLikedStatusIds] = useState<Record<string, boolean>>({});
+  const [userCommentsMap, setUserCommentsMap] = useState<
+    Record<string, Array<{ id: string; author: string; text: string; time: string }>>
+  >({});
+  const [drawerCommentText, setDrawerCommentText] = useState('');
   const [isSaved, setIsSaved] = useState(false);
   const [replyText, setReplyText] = useState('');
   const [isPaused, setIsPaused] = useState(false);
   const [showComments, setShowComments] = useState(false);
+  const [showFoodReviewDetails, setShowFoodReviewDetails] = useState(false);
 
   // Poll voting inside story
   const [votedOption, setVotedOption] = useState<string | null>(null);
@@ -90,9 +95,9 @@ export const StatusStoryViewerModal: React.FC<StatusStoryViewerModalProps> = ({
     if (isOpen) {
       setCurrentIndex(initialIndex);
       setProgress(0);
-      setIsLiked(false);
       setIsSaved(false);
       setReplyText('');
+      setDrawerCommentText('');
       setIsPaused(false);
       setShowComments(false);
       setVotedOption(null);
@@ -101,7 +106,84 @@ export const StatusStoryViewerModal: React.FC<StatusStoryViewerModalProps> = ({
     }
   }, [isOpen, initialIndex]);
 
-  const [showFoodReviewDetails, setShowFoodReviewDetails] = useState(false);
+  // Group all statuses into author groups to calculate individual progress bars
+  const authorGroups = React.useMemo(() => {
+    const list: Array<{ authorKey: string; authorName: string; stories: StatusItem[] }> = [];
+    const indexMap = new Map<string, number>();
+
+    statuses.forEach((st) => {
+      const key = st.authorId || st.authorUsername || st.authorName || 'unknown';
+      if (!indexMap.has(key)) {
+        indexMap.set(key, list.length);
+        list.push({ authorKey: key, authorName: st.authorName, stories: [st] });
+      } else {
+        const idx = indexMap.get(key)!;
+        list[idx].stories.push(st);
+      }
+    });
+
+    return list;
+  }, [statuses]);
+
+  const current = statuses[currentIndex] || statuses[0];
+  const currentAuthorKey = current?.authorId || current?.authorUsername || current?.authorName || 'unknown';
+
+  // Find all stories for the currently displayed author
+  const currentAuthorGroup = authorGroups.find((g) => g.authorKey === currentAuthorKey) || {
+    authorKey: currentAuthorKey,
+    authorName: current?.authorName || '',
+    stories: [current],
+  };
+
+  const currentAuthorStories = currentAuthorGroup.stories;
+  // Position of current story within this author's story collection
+  const currentPosInAuthor = Math.max(
+    0,
+    currentAuthorStories.findIndex((s) => s.id === current?.id)
+  );
+
+  // Likes & comments calculations (ensures 0 is explicitly shown if count is 0)
+  const baseLikes = typeof current?.likesCount === 'number' ? current.likesCount : 0;
+  const isCurrentLiked = current ? !!likedStatusIds[current.id] : false;
+  const currentLikesCount = baseLikes + (isCurrentLiked ? 1 : 0);
+
+  const baseComments = typeof current?.commentsCount === 'number' ? current.commentsCount : 0;
+  const currentStoryComments = current ? userCommentsMap[current.id] || [] : [];
+  const currentCommentsCount = baseComments + currentStoryComments.length;
+
+  const handleToggleLike = (e?: React.MouseEvent) => {
+    if (e) e.stopPropagation();
+    if (!current) return;
+    const willLike = !isCurrentLiked;
+    setLikedStatusIds((prev) => ({
+      ...prev,
+      [current.id]: willLike,
+    }));
+    if (willLike) {
+      triggerFloatingEmoji('❤️');
+      setReactionToast('Ume-like status hii! ❤️');
+      setTimeout(() => setReactionToast(null), 1800);
+    }
+  };
+
+  const handleAddComment = (commentStr: string) => {
+    if (!commentStr.trim() || !current) return;
+    const newComment = {
+      id: `comm_${Date.now()}_${Math.random()}`,
+      author: currentUser?.displayName || 'Mimi',
+      text: commentStr.trim(),
+      time: 'Sasa hivi',
+    };
+    setUserCommentsMap((prev) => ({
+      ...prev,
+      [current.id]: [...(prev[current.id] || []), newComment],
+    }));
+    if (onReplyRef.current) {
+      onReplyRef.current(current, commentStr.trim());
+    }
+    setReactionToast('Maoni yametumwa! ✓');
+    setTimeout(() => setReactionToast(null), 1800);
+  };
 
   const handleVotePoll = (optId: string) => {
     if (votedOption) return; // already voted
@@ -152,7 +234,6 @@ export const StatusStoryViewerModal: React.FC<StatusStoryViewerModalProps> = ({
       if (currentIndex < statuses.length - 1) {
         setCurrentIndex((prev) => prev + 1);
         setProgress(0);
-        setIsLiked(false);
         setVotedOption(null);
       } else {
         onCloseRef.current?.();
@@ -162,14 +243,11 @@ export const StatusStoryViewerModal: React.FC<StatusStoryViewerModalProps> = ({
 
   if (!isOpen || statuses.length === 0) return null;
 
-  const current = statuses[currentIndex] || statuses[0];
-
   const handlePrev = (e: React.MouseEvent) => {
     e.stopPropagation();
     if (currentIndex > 0) {
       setCurrentIndex(currentIndex - 1);
       setProgress(0);
-      setIsLiked(false);
       setVotedOption(null);
     }
   };
@@ -179,7 +257,6 @@ export const StatusStoryViewerModal: React.FC<StatusStoryViewerModalProps> = ({
     if (currentIndex < statuses.length - 1) {
       setCurrentIndex(currentIndex + 1);
       setProgress(0);
-      setIsLiked(false);
       setVotedOption(null);
     } else {
       onCloseRef.current?.();
@@ -189,11 +266,15 @@ export const StatusStoryViewerModal: React.FC<StatusStoryViewerModalProps> = ({
   const handleSendReply = (e: React.FormEvent) => {
     e.preventDefault();
     if (!replyText.trim()) return;
-    if (onReplyRef.current) {
-      onReplyRef.current(current, replyText);
-    }
+    handleAddComment(replyText);
     setReplyText('');
-    onCloseRef.current?.();
+  };
+
+  const handleAddCommentFromDrawer = (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!drawerCommentText.trim()) return;
+    handleAddComment(drawerCommentText);
+    setDrawerCommentText('');
   };
 
   const handleChatNow = () => {
@@ -240,26 +321,35 @@ export const StatusStoryViewerModal: React.FC<StatusStoryViewerModalProps> = ({
 
         {/* Top Progress Bars & Header */}
         <div className="relative z-20 p-4 pt-3 space-y-3">
-          {/* Progress Indicators */}
+          {/* Progress Indicators - Individual author progress bars (matches Instagram/WhatsApp standards) */}
           <div className="flex items-center gap-1.5 w-full">
-            {statuses.map((_, idx) => (
-              <div
-                key={idx}
-                className="h-1 flex-1 rounded-full bg-white/25 overflow-hidden"
-              >
+            {currentAuthorStories.map((st, idx) => {
+              const isPast = idx < currentPosInAuthor;
+              const isCurrent = idx === currentPosInAuthor;
+              return (
                 <div
-                  className="h-full bg-cyan-400 transition-all duration-100 rounded-full"
-                  style={{
-                    width:
-                      idx === currentIndex
-                        ? `${progress}%`
-                        : idx < currentIndex
-                        ? '100%'
-                        : '0%',
+                  key={st.id || idx}
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    const targetGlobalIndex = statuses.findIndex((s) => s.id === st.id);
+                    if (targetGlobalIndex >= 0) {
+                      setCurrentIndex(targetGlobalIndex);
+                      setProgress(0);
+                      setVotedOption(null);
+                    }
                   }}
-                />
-              </div>
-            ))}
+                  className="h-1 flex-1 rounded-full bg-white/25 overflow-hidden cursor-pointer"
+                  title={`${current.authorName} - Story ${idx + 1} ya ${currentAuthorStories.length}`}
+                >
+                  <div
+                    className="h-full bg-cyan-400 transition-all duration-100 rounded-full"
+                    style={{
+                      width: isCurrent ? `${progress}%` : isPast ? '100%' : '0%',
+                    }}
+                  />
+                </div>
+              );
+            })}
           </div>
 
           {/* Author Details and Close */}
@@ -691,24 +781,29 @@ export const StatusStoryViewerModal: React.FC<StatusStoryViewerModalProps> = ({
             <div className="flex items-center gap-4">
               <button
                 type="button"
-                onClick={() => setIsLiked(!isLiked)}
+                onClick={handleToggleLike}
                 className="flex items-center gap-1.5 hover:text-white active:scale-95 transition-all"
+                title={isCurrentLiked ? 'Ondoa Like' : 'Penda (Like)'}
               >
                 <Heart
                   className={`w-4 h-4 transition-transform ${
-                    isLiked ? 'text-rose-500 fill-rose-500 scale-110' : 'text-slate-300'
+                    isCurrentLiked ? 'text-rose-500 fill-rose-500 scale-110' : 'text-slate-300'
                   }`}
                 />
-                <span>{(current.likesCount || 0) + (isLiked ? 1 : 0)}</span>
+                <span className="font-mono text-xs font-bold text-white">{currentLikesCount}</span>
               </button>
 
               <button
                 type="button"
-                onClick={() => setShowComments(!showComments)}
+                onClick={(e) => {
+                  e.stopPropagation();
+                  setShowComments(!showComments);
+                }}
                 className="flex items-center gap-1.5 hover:text-white active:scale-95 transition-all"
+                title="Fungua Maoni"
               >
-                <MessageCircle className="w-4 h-4" />
-                <span>{current.commentsCount || 0}</span>
+                <MessageCircle className="w-4 h-4 text-slate-300" />
+                <span className="font-mono text-xs font-bold text-white">{currentCommentsCount}</span>
               </button>
             </div>
 
@@ -765,6 +860,79 @@ export const StatusStoryViewerModal: React.FC<StatusStoryViewerModalProps> = ({
             </button>
           </form>
         </div>
+
+        {/* Interactive Comments Drawer */}
+        {showComments && (
+          <div
+            className="absolute inset-x-0 bottom-0 z-40 bg-[#0A0E1A]/95 backdrop-blur-xl border-t border-white/15 rounded-t-[28px] p-4 max-h-[65%] flex flex-col shadow-2xl animate-in slide-in-from-bottom duration-200"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <div className="flex items-center justify-between pb-3 border-b border-white/10 shrink-0">
+              <div className="flex items-center gap-2">
+                <MessageCircle className="w-4 h-4 text-cyan-400" />
+                <h4 className="font-black text-sm text-white">
+                  Maoni ya Status ({currentCommentsCount})
+                </h4>
+              </div>
+              <button
+                type="button"
+                onClick={() => setShowComments(false)}
+                className="p-1 rounded-full bg-white/10 text-slate-400 hover:text-white"
+              >
+                <X className="w-4 h-4" />
+              </button>
+            </div>
+
+            {/* Comments List */}
+            <div className="flex-1 overflow-y-auto py-3 space-y-2.5">
+              {currentCommentsCount === 0 ? (
+                <div className="text-center py-6 text-slate-400 text-xs space-y-1">
+                  <p className="text-2xl">💬</p>
+                  <p className="font-bold text-slate-300">Hakuna maoni bado (0)</p>
+                  <p className="text-[11px] text-slate-500">
+                    Kuwa wa kwanza kutoa maoni au kumuuliza {current.authorName}!
+                  </p>
+                </div>
+              ) : (
+                <>
+                  {baseComments > 0 && (
+                    <div className="p-2.5 rounded-xl bg-white/5 border border-white/5 text-xs">
+                      <span className="font-bold text-cyan-300 block mb-0.5">Wafuasi & Wateja</span>
+                      <p className="text-slate-300 text-[11px]">Kuna jumla ya maoni {baseComments} kwenye chapisho hili.</p>
+                    </div>
+                  )}
+                  {currentStoryComments.map((cm) => (
+                    <div key={cm.id} className="p-2.5 rounded-xl bg-white/5 border border-white/10 text-xs space-y-1 animate-in fade-in">
+                      <div className="flex items-center justify-between">
+                        <span className="font-bold text-cyan-300 text-[11px]">{cm.author}</span>
+                        <span className="text-[10px] text-slate-500">{cm.time}</span>
+                      </div>
+                      <p className="text-slate-200 text-xs">{cm.text}</p>
+                    </div>
+                  ))}
+                </>
+              )}
+            </div>
+
+            {/* Add Comment Input inside Drawer */}
+            <form onSubmit={handleAddCommentFromDrawer} className="pt-2 border-t border-white/10 flex items-center gap-2 shrink-0">
+              <input
+                type="text"
+                value={drawerCommentText}
+                onChange={(e) => setDrawerCommentText(e.target.value)}
+                placeholder="Andika maoni yako hapa..."
+                className="flex-1 bg-white/10 border border-white/15 focus:border-cyan-400 rounded-xl px-3 py-2 text-xs text-white placeholder-slate-400 focus:outline-none"
+              />
+              <button
+                type="submit"
+                disabled={!drawerCommentText.trim()}
+                className="p-2 rounded-xl bg-cyan-500 text-slate-950 font-bold disabled:opacity-40 hover:bg-cyan-400 transition-all shrink-0"
+              >
+                <Send className="w-3.5 h-3.5" />
+              </button>
+            </form>
+          </div>
+        )}
 
         {/* Floating Emojis Animation Layer */}
         <div className="absolute inset-0 pointer-events-none z-30 overflow-hidden">

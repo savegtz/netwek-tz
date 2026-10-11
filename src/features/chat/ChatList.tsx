@@ -22,6 +22,8 @@ import {
   Trash2,
   CheckSquare,
   AlertTriangle,
+  Star,
+  LogOut,
 } from 'lucide-react';
 import {
   collection,
@@ -39,6 +41,9 @@ import { ChatListStatusRow } from '../status/ChatListStatusRow';
 import { ProfilePicturePreviewModal } from './components/ProfilePicturePreviewModal';
 import { StatusIcon } from '../../components/StatusIcon';
 import { AVAILABLE_CONTACTS } from './components/StartNewChatModal';
+import { CreateGroupModal } from './components/CreateGroupModal';
+import { StarredMessagesModal } from './components/StarredMessagesModal';
+import { AppLockModal } from './components/AppLockModal';
 import freshKkAvatar from '../../assets/images/fresh_kk_avatar_1791078365294.jpg';
 
 interface ChatListProps {
