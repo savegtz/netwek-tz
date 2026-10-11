@@ -44,10 +44,11 @@ import { AVAILABLE_CONTACTS } from './components/StartNewChatModal';
 import { CreateGroupModal } from './components/CreateGroupModal';
 import { StarredMessagesModal } from './components/StarredMessagesModal';
 import { AppLockModal } from './components/AppLockModal';
+import { GuestChatPromptModal } from './components/GuestChatPromptModal';
 import freshKkAvatar from '../../assets/images/fresh_kk_avatar_1791078365294.jpg';
 
 interface ChatListProps {
-  currentUser: UserProfile;
+  currentUser: UserProfile | null;
   conversations?: Conversation[];
   onSetConversations?: (convs: Conversation[]) => void;
   activeConversationId?: string;
@@ -73,6 +74,7 @@ interface ChatListProps {
   ) => void;
   onSignOut?: () => void;
   onLockApp?: () => void;
+  onOpenAuth?: (initialMode?: 'signin' | 'signup', promptReason?: string) => void;
 }
 
 export const ChatList: React.FC<ChatListProps> = ({
@@ -92,7 +94,21 @@ export const ChatList: React.FC<ChatListProps> = ({
   onStartChatWithBusiness,
   onSignOut,
   onLockApp,
+  onOpenAuth,
 }) => {
+  const effectiveUser: UserProfile = currentUser || {
+    id: 'guest',
+    displayName: 'Mgeni (Guest)',
+    username: 'guest',
+    email: '',
+    accountType: 'personal',
+    verified: false,
+    followersCount: 0,
+    followingCount: 0,
+    postsCount: 0,
+    isOnline: false,
+  };
+
   const [internalConversations, setInternalConversations] = useState<Conversation[]>(() => {
     if (!currentUser || currentUser.id === 'guest_user') return [];
     try {
@@ -112,7 +128,7 @@ export const ChatList: React.FC<ChatListProps> = ({
         setInternalConversations(updated);
       }
       try {
-        localStorage.setItem(`zenia_user_conversations_${currentUser.id}`, JSON.stringify(updated));
+        localStorage.setItem(`zenia_user_conversations_${currentUser ? currentUser.id : 'guest'}`, JSON.stringify(updated));
       } catch (_) {}
     } else {
       if (onSetConversations) {
@@ -121,7 +137,7 @@ export const ChatList: React.FC<ChatListProps> = ({
         setInternalConversations(action);
       }
       try {
-        localStorage.setItem(`zenia_user_conversations_${currentUser.id}`, JSON.stringify(action));
+        localStorage.setItem(`zenia_user_conversations_${currentUser ? currentUser.id : 'guest'}`, JSON.stringify(action));
       } catch (_) {}
     }
   };
@@ -210,6 +226,16 @@ export const ChatList: React.FC<ChatListProps> = ({
   const [isAppLockOpen, setIsAppLockOpen] = useState(false);
   const [showLogoutConfirm, setShowLogoutConfirm] = useState(false);
 
+  // Guest Chat Prompt Modal State
+  const [guestPromptState, setGuestPromptState] = useState<{
+    isOpen: boolean;
+    targetName: string;
+    targetAvatar?: string;
+    targetSubtitle?: string;
+    conversation?: Conversation;
+    contact?: any;
+  } | null>(null);
+
   const handleMarkAllAsRead = () => {
     setConversations((prev) =>
       prev.map((c) => ({
@@ -227,13 +253,14 @@ export const ChatList: React.FC<ChatListProps> = ({
   };
 
   const handleUpdateAvatar = (convId: string, newAvatarUrl: string) => {
+    const currentUserId = currentUser?.id || 'guest';
     setConversations((prev) =>
       prev.map((c) => {
         if (c.id !== convId) return c;
         if (c.isGroup) {
           return { ...c, groupAvatar: newAvatarUrl };
         } else {
-          const otherUserId = c.participants.find((p) => p !== currentUser.id);
+          const otherUserId = c.participants.find((p) => p !== currentUserId);
           const currentDetails = c.participantDetails || {};
           const otherDetails = otherUserId ? currentDetails[otherUserId] : null;
           return {
@@ -253,7 +280,7 @@ export const ChatList: React.FC<ChatListProps> = ({
       if (updatedConv.isGroup) {
         onUpdateConversation({ ...updatedConv, groupAvatar: newAvatarUrl });
       } else {
-        const otherUserId = updatedConv.participants.find((p) => p !== currentUser.id);
+        const otherUserId = updatedConv.participants.find((p) => p !== currentUserId);
         const currentDetails = updatedConv.participantDetails || {};
         const otherDetails = otherUserId ? currentDetails[otherUserId] : null;
         onUpdateConversation({
@@ -580,7 +607,9 @@ export const ChatList: React.FC<ChatListProps> = ({
       onDeleteAllConversations();
     } else {
       try {
-        localStorage.removeItem(`zenia_user_conversations_${currentUser.id}`);
+        if (currentUser) {
+          localStorage.removeItem(`zenia_user_conversations_${currentUser.id}`);
+        }
       } catch (_) {}
     }
     conversations.forEach((c) => {
@@ -693,7 +722,8 @@ export const ChatList: React.FC<ChatListProps> = ({
       // Exclude demo conversations as requested by user
       if (DEMO_IDS.includes(c.id)) return false;
 
-      const otherId = c.participants.find((p) => p !== currentUser.id) || '';
+      const effectiveUserId = currentUser ? currentUser.id : 'guest';
+      const otherId = c.participants.find((p) => p !== effectiveUserId) || '';
       const other = c.participantDetails?.[otherId];
       const name = c.isGroup ? c.groupName || '' : other?.displayName || 'Chat';
       const matchesSearch =
@@ -726,7 +756,7 @@ export const ChatList: React.FC<ChatListProps> = ({
   const matchingContacts = searchQuery.trim()
     ? AVAILABLE_CONTACTS.filter(
         (c) =>
-          c.id !== currentUser.id &&
+          c.id !== (currentUser ? currentUser.id : 'guest') &&
           (c.displayName.toLowerCase().includes(searchQuery.toLowerCase()) ||
             c.username.toLowerCase().includes(searchQuery.toLowerCase()) ||
             c.bio.toLowerCase().includes(searchQuery.toLowerCase()))
@@ -757,6 +787,11 @@ export const ChatList: React.FC<ChatListProps> = ({
         customStatuses={customStatuses}
         onStartChatWithBusiness={onStartChatWithBusiness}
         onOpenCreateStatus={() => {
+          if (!currentUser) {
+            onOpenAuth?.('signup');
+            showToast('Ili kuweka status, tafadhali jisajili au ingia kwanza!');
+            return;
+          }
           if (onOpenCreateStatus) {
             onOpenCreateStatus();
           } else {
@@ -764,9 +799,43 @@ export const ChatList: React.FC<ChatListProps> = ({
           }
         }}
         onSendStatusReply={(status, reply) => {
+          if (!currentUser) {
+            onOpenAuth?.('signup');
+            showToast('Ili kujibu stori au kuchati, tafadhali jisajili au ingia kwanza!');
+            return;
+          }
           showToast(`Ujumbe umetumwa kwa ${status.authorName}: "${reply}"`);
         }}
       />
+
+      {/* Guest Mode Banner */}
+      {!currentUser && (
+        <div className="mx-3.5 mt-2 mb-1 p-2.5 rounded-2xl bg-gradient-to-r from-cyan-950/70 via-[#0E1528] to-indigo-950/70 border border-cyan-500/25 flex items-center justify-between gap-2 shadow-sm animate-in fade-in">
+          <div className="flex items-center gap-2 min-w-0">
+            <div className="w-7 h-7 rounded-xl bg-cyan-500/20 text-cyan-400 flex items-center justify-center shrink-0">
+              <Sparkles className="w-3.5 h-3.5" />
+            </div>
+            <div className="min-w-0">
+              <p className="text-[11px] font-bold text-white truncate">Unavinjari kama Mgeni</p>
+              <p className="text-[10px] text-cyan-200 truncate">Kuchat na mtu jisajili au ingia</p>
+            </div>
+          </div>
+          <div className="flex items-center gap-1.5 shrink-0">
+            <button
+              onClick={() => onOpenAuth?.('signin')}
+              className="px-2.5 py-1 rounded-xl bg-white/10 hover:bg-white/15 text-white text-[11px] font-semibold active:scale-95 transition-all"
+            >
+              Ingia
+            </button>
+            <button
+              onClick={() => onOpenAuth?.('signup')}
+              className="px-2.5 py-1 rounded-xl bg-cyan-500 hover:bg-cyan-400 text-slate-950 text-[11px] font-bold shadow-xs active:scale-95 transition-all"
+            >
+              Jisajili
+            </button>
+          </div>
+        </div>
+      )}
 
       {/* Search Input Bar or Selection Mode Header */}
       {isSelectionMode ? (
@@ -857,6 +926,11 @@ export const ChatList: React.FC<ChatListProps> = ({
                 <button
                   onClick={() => {
                     setIsListMenuOpen(false);
+                    if (!currentUser) {
+                      onOpenAuth?.('signup');
+                      showToast('Ili kutengeneza kikundi, tafadhali jisajili au ingia kwanza!');
+                      return;
+                    }
                     setIsCreateGroupOpen(true);
                   }}
                   className="w-full flex items-center gap-2.5 px-3 py-2 rounded-xl text-xs text-slate-200 hover:text-white hover:bg-white/5 transition-colors text-left"
@@ -1019,6 +1093,16 @@ export const ChatList: React.FC<ChatListProps> = ({
                 <div
                   key={contact.id}
                   onClick={() => {
+                    if (!currentUser) {
+                      setGuestPromptState({
+                        isOpen: true,
+                        targetName: contact.displayName,
+                        targetAvatar: contact.photoURL,
+                        targetSubtitle: `@${contact.username} • ${contact.bio}`,
+                        contact,
+                      });
+                      return;
+                    }
                     if (onStartNewChatWithUser) {
                       onStartNewChatWithUser(contact);
                     } else {
@@ -1073,7 +1157,18 @@ export const ChatList: React.FC<ChatListProps> = ({
                 : 'Bado hujaanza kuchati na mtu yeyote. Mazungumzo yako yataonekana hapa pindi utakapoanza kuchati.'}
             </p>
             <button
-              onClick={onStartNewChat}
+              onClick={() => {
+                if (!currentUser) {
+                  setGuestPromptState({
+                    isOpen: true,
+                    targetName: 'Marafiki wa Zenia',
+                    targetAvatar: freshKkAvatar,
+                    targetSubtitle: 'Anza mazungumzo mapya ya faragha',
+                  });
+                  return;
+                }
+                onStartNewChat();
+              }}
               className="px-5 py-2.5 rounded-2xl bg-gradient-to-r from-cyan-400 to-blue-500 text-slate-950 font-bold text-xs shadow-lg shadow-cyan-500/20 hover:scale-105 active:scale-95 transition-all flex items-center gap-2 mb-5"
             >
               <UserPlus className="w-4 h-4 stroke-[2.5]" />
@@ -1088,7 +1183,7 @@ export const ChatList: React.FC<ChatListProps> = ({
                   <span>Marafiki Waliopo Mtandaoni:</span>
                 </p>
                 <div className="space-y-2">
-                  {AVAILABLE_CONTACTS.filter((c) => c.id !== currentUser.id).slice(0, 3).map((contact) => (
+                  {AVAILABLE_CONTACTS.filter((c) => c.id !== (currentUser ? currentUser.id : 'guest')).slice(0, 3).map((contact) => (
                     <div
                       key={contact.id}
                       className="flex items-center justify-between gap-2 p-1.5 rounded-xl hover:bg-white/5 transition-colors"
@@ -1108,6 +1203,16 @@ export const ChatList: React.FC<ChatListProps> = ({
                       </div>
                       <button
                         onClick={() => {
+                          if (!currentUser) {
+                            setGuestPromptState({
+                              isOpen: true,
+                              targetName: contact.displayName,
+                              targetAvatar: contact.photoURL,
+                              targetSubtitle: `@${contact.username} • ${contact.bio}`,
+                              contact,
+                            });
+                            return;
+                          }
                           if (onStartNewChatWithUser) {
                             onStartNewChatWithUser(contact);
                           } else {
@@ -1126,7 +1231,8 @@ export const ChatList: React.FC<ChatListProps> = ({
           </div>
         ) : (
           filteredConversations.map((conv) => {
-            const otherUserId = conv.participants.find((p) => p !== currentUser.id);
+            const currentUserId = currentUser ? currentUser.id : 'guest';
+            const otherUserId = conv.participants.find((p) => p !== currentUserId) || conv.participants[0];
             const otherUser = otherUserId && conv.participantDetails ? conv.participantDetails[otherUserId] : null;
             const title: string = (conv.isGroup ? conv.groupName : otherUser?.displayName) || 'Direct Chat';
             const avatar = conv.isGroup
@@ -1172,6 +1278,16 @@ export const ChatList: React.FC<ChatListProps> = ({
                     e.preventDefault();
                     e.stopPropagation();
                     isLongPressTriggeredRef.current = false;
+                    return;
+                  }
+                  if (!currentUser) {
+                    setGuestPromptState({
+                      isOpen: true,
+                      targetName: title,
+                      targetAvatar: avatar,
+                      targetSubtitle: conv.isGroup ? 'Kikundi cha Zenia' : (otherUser as any)?.bio || 'Mtumiaji wa Zenia Network',
+                      conversation: conv,
+                    });
                     return;
                   }
                   // Require PIN verification if conversation is locked
@@ -1298,7 +1414,7 @@ export const ChatList: React.FC<ChatListProps> = ({
                       </p>
                     ) : (
                       <p className="text-xs text-slate-400 truncate flex items-center gap-1">
-                        {conv.lastMessageSenderId === currentUser.id && (
+                        {currentUser && conv.lastMessageSenderId === currentUser.id && (
                           <CheckCheck className="w-3.5 h-3.5 text-cyan-400 shrink-0" />
                         )}
                         {conv.lastMessage === 'Typing...' ? (
@@ -1373,7 +1489,18 @@ export const ChatList: React.FC<ChatListProps> = ({
       {/* Floating Action Button (FAB) at bottom right: Anza Chat Mpya */}
       {!isSelectionMode && (
         <button
-          onClick={onStartNewChat}
+          onClick={() => {
+            if (!currentUser) {
+              setGuestPromptState({
+                isOpen: true,
+                targetName: 'Mtu Yeyote',
+                targetAvatar: freshKkAvatar,
+                targetSubtitle: 'Anza mazungumzo mapya ya faragha',
+              });
+              return;
+            }
+            onStartNewChat();
+          }}
           className="fixed sm:absolute bottom-20 md:bottom-6 right-4 w-12 h-12 rounded-full bg-cyan-500 hover:bg-cyan-400 text-slate-950 shadow-lg shadow-cyan-500/25 active:scale-95 transition-all z-30 flex items-center justify-center group"
           title="Anza Mazungumzo Mapya (New Chat)"
           aria-label="New Chat"
@@ -1558,7 +1685,7 @@ export const ChatList: React.FC<ChatListProps> = ({
         <CreateGroupModal
           isOpen={isCreateGroupOpen}
           onClose={() => setIsCreateGroupOpen(false)}
-          currentUser={currentUser}
+          currentUser={effectiveUser}
           onCreateGroup={handleGroupCreated}
         />
       )}
@@ -1568,7 +1695,7 @@ export const ChatList: React.FC<ChatListProps> = ({
         <StarredMessagesModal
           isOpen={isStarredMessagesOpen}
           onClose={() => setIsStarredMessagesOpen(false)}
-          currentUser={currentUser}
+          currentUser={effectiveUser}
           conversations={conversations}
           onOpenConversation={(convId) => {
             const found = conversations.find((c) => c.id === convId);
@@ -1632,6 +1759,27 @@ export const ChatList: React.FC<ChatListProps> = ({
             </div>
           </div>
         </div>
+      )}
+
+      {/* Guest Chat Prompt Modal */}
+      {guestPromptState && (
+        <GuestChatPromptModal
+          isOpen={guestPromptState.isOpen}
+          onClose={() => setGuestPromptState(null)}
+          targetName={guestPromptState.targetName}
+          targetAvatar={guestPromptState.targetAvatar}
+          targetSubtitle={guestPromptState.targetSubtitle}
+          onRegister={() => {
+            const tName = guestPromptState.targetName;
+            setGuestPromptState(null);
+            onOpenAuth?.('signup', `Jisajili ili uweze kuchati na ${tName}`);
+          }}
+          onSignIn={() => {
+            const tName = guestPromptState.targetName;
+            setGuestPromptState(null);
+            onOpenAuth?.('signin', `Ingia kwenye akaunti yako ili uweze kuchati na ${tName}`);
+          }}
+        />
       )}
     </div>
   );

@@ -33,6 +33,7 @@ interface AuthModalProps {
   currentUser: UserProfile | null;
   onUserUpdate: (user: UserProfile | null) => void;
   initialMode?: 'signin' | 'signup';
+  promptReason?: string | null;
 }
 
 export const AuthModal: React.FC<AuthModalProps> = ({
@@ -41,6 +42,7 @@ export const AuthModal: React.FC<AuthModalProps> = ({
   currentUser,
   onUserUpdate,
   initialMode = 'signin',
+  promptReason,
 }) => {
   const [mode, setMode] = useState<'signin' | 'signup' | 'forgot'>(initialMode);
   const [email, setEmail] = useState('');
@@ -51,6 +53,14 @@ export const AuthModal: React.FC<AuthModalProps> = ({
   const [loading, setLoading] = useState(false);
   const [errorMsg, setErrorMsg] = useState<string | null>(null);
   const [successMsg, setSuccessMsg] = useState<string | null>(null);
+
+  React.useEffect(() => {
+    if (isOpen) {
+      setMode(initialMode);
+      setErrorMsg(null);
+      setSuccessMsg(null);
+    }
+  }, [isOpen, initialMode]);
 
   if (!isOpen) return null;
 
@@ -296,6 +306,19 @@ export const AuthModal: React.FC<AuthModalProps> = ({
             <X className="w-5 h-5" />
           </button>
         </div>
+
+        {/* Prompt reason notice if user attempted to chat as guest */}
+        {promptReason && (
+          <div className="mb-3.5 p-3 rounded-2xl bg-gradient-to-r from-cyan-500/15 to-purple-500/15 border border-cyan-500/30 text-cyan-200 text-xs flex items-start gap-2.5 animate-in fade-in">
+            <Sparkles className="w-4 h-4 text-cyan-400 shrink-0 mt-0.5" />
+            <div className="space-y-0.5">
+              <p className="font-bold text-white text-[12px]">{promptReason}</p>
+              <p className="text-[10.5px] text-slate-300">
+                Kama bado hujajisajili, gusa <strong className="text-cyan-300">Jisajili</strong> hapa chini. Kama tayari una akaunti, gusa <strong className="text-white">Ingia</strong>.
+              </p>
+            </div>
+          </div>
+        )}
 
         {/* Tab switch between Sign In and Register */}
         <div className="flex rounded-xl bg-white/5 p-1 mb-4 border border-white/5">

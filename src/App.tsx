@@ -22,7 +22,6 @@ import { EditProfileModal } from './features/profile/EditProfileModal';
 import { ChatList } from './features/chat/ChatList';
 import { ChatRoom } from './features/chat/ChatRoom';
 import { GroupChatRoom } from './features/chat/GroupChatRoom';
-import { ChatGuestGateway } from './features/chat/ChatGuestGateway';
 import { StartNewChatModal } from './features/chat/components/StartNewChatModal';
 import { AppLockScreen } from './features/chat/components/AppLockScreen';
 import { CreateStatusModal } from './features/status/CreateStatusModal';
@@ -75,11 +74,10 @@ export default function App() {
     return INITIAL_CONVERSATIONS;
   });
 
-  // Sync conversations with currentUser
+  // Sync conversations with currentUser (falls back to INITIAL_CONVERSATIONS for guest browsing)
   useEffect(() => {
     if (!currentUser) {
-      setConversations([]);
-      setActiveConversation(null);
+      setConversations(INITIAL_CONVERSATIONS);
     } else {
       try {
         const userConvs = localStorage.getItem(`zenia_user_conversations_${currentUser.id}`);
@@ -127,6 +125,20 @@ export default function App() {
   const [customStatuses, setCustomStatuses] = useState<StatusItem[]>([]);
   const [isFrameMode, setIsFrameMode] = useState<boolean>(false); // Full-width responsive web view by default
   const [isAppLocked, setIsAppLocked] = useState<boolean>(false);
+  const [authPromptReason, setAuthPromptReason] = useState<string | null>(null);
+  const [authInitialMode, setAuthInitialMode] = useState<'signin' | 'signup'>('signup');
+
+  const requireAuthToChat = (
+    actionDescription?: string,
+    preferMode: 'signin' | 'signup' = 'signup'
+  ) => {
+    setAuthPromptReason(
+      actionDescription ||
+        'Ili uweze kuchati na kutuma ujumbe, tafadhali jisajili kama huna akaunti au ingia kama tayari unayo akaunti.'
+    );
+    setAuthInitialMode(preferMode);
+    setIsAuthOpen(true);
+  };
 
   const handleStartCallFromConversation = (type: 'video' | 'voice') => {
     if (!activeConversation) return;
@@ -203,7 +215,7 @@ export default function App() {
     }
     localStorage.removeItem('zenia_active_user');
     setCurrentUser(null);
-    setConversations([]);
+    setConversations(INITIAL_CONVERSATIONS);
     setActiveConversation(null);
   };
 
@@ -214,7 +226,7 @@ export default function App() {
     photoURL?: string;
   }) => {
     if (!currentUser) {
-      setIsAuthOpen(true);
+      requireAuthToChat(`Ili uweze kuanza kuchati na ${targetUser.displayName}, tafadhali jisajili kama huna akaunti au ingia.`);
       return;
     }
     const convId = `conv_${[currentUser.id, targetUser.id].sort().join('_')}`;
@@ -436,16 +448,7 @@ export default function App() {
           <div className="relative flex-1 flex flex-col min-h-0 h-full overflow-hidden">
             {/* View: Chats (Responsive dual-pane on Web View, single-pane on mobile) */}
             {activeTab === 'chats' && (
-              !currentUser ? (
-                <ChatGuestGateway
-                  onOpenAuth={() => setIsAuthOpen(true)}
-                  onLoginDemoAmina={() => {
-                    setCurrentUser(INITIAL_USER);
-                    localStorage.setItem('zenia_active_user', JSON.stringify(INITIAL_USER));
-                  }}
-                />
-              ) : (
-                <div className="w-full h-full flex flex-1 min-h-0 overflow-hidden">
+              <div className="w-full h-full flex flex-1 min-h-0 overflow-hidden">
                   {/* Left Pane: Chat List */}
                   <div
                     className={`${
@@ -462,7 +465,13 @@ export default function App() {
                       onSetConversations={setConversations}
                       activeConversationId={activeConversation?.id}
                       onSelectConversation={(conv) => setActiveConversation(conv)}
-                      onStartNewChat={() => setIsNewChatModalOpen(true)}
+                      onStartNewChat={() => {
+                        if (!currentUser) {
+                          requireAuthToChat('Ili kuanzisha mazungumzo mapya, tafadhali jisajili au ingia kwanza.');
+                          return;
+                        }
+                        setIsNewChatModalOpen(true);
+                      }}
                       onStartNewChatWithUser={handleSelectUserToChat}
                       onOpenProfile={() => setActiveTab('profile')}
                       onOpenCreateStatus={() => setIsCreateMenuOpen(true)}
@@ -470,6 +479,7 @@ export default function App() {
                       onStartChatWithBusiness={handleStartChatWithBusiness}
                       onSignOut={handleSignOut}
                       onLockApp={() => setIsAppLocked(true)}
+                      onOpenAuth={(mode, reason) => requireAuthToChat(reason, mode)}
                       onUpdateConversation={(updated) => {
                         setConversations((prev) =>
                           prev.map((c) => (c.id === updated.id ? updated : c))
@@ -509,9 +519,10 @@ export default function App() {
                         activeConversation.isGroup ? (
                           <GroupChatRoom
                             conversation={activeConversation}
-                            currentUser={currentUser}
+                            currentUser={currentUser || activeUser}
                             onBack={() => setActiveConversation(null)}
                             onStartCall={handleStartCallFromConversation}
+                            onOpenAuth={(mode, reason) => requireAuthToChat(reason, mode)}
                             onUpdateConversation={(updated) => {
                               setConversations((prev) =>
                                 prev.map((c) => (c.id === updated.id ? updated : c))
@@ -530,10 +541,11 @@ export default function App() {
                         ) : (
                           <ChatRoom
                             conversation={activeConversation}
-                            currentUser={currentUser}
+                            currentUser={currentUser || activeUser}
                             onBack={() => setActiveConversation(null)}
                             onStartCall={handleStartCallFromConversation}
                             onSwitchUser={(u) => setCurrentUser(u)}
+                            onOpenAuth={(mode, reason) => requireAuthToChat(reason, mode)}
                             onUpdateConversation={(updated) => {
                               setConversations((prev) =>
                                 prev.map((c) => (c.id === updated.id ? updated : c))
@@ -569,7 +581,13 @@ export default function App() {
                         </p>
                         <div className="flex flex-wrap items-center justify-center gap-3">
                           <button
-                            onClick={() => setIsCreateMenuOpen(true)}
+                            onClick={() => {
+                              if (!currentUser) {
+                                requireAuthToChat('Ili kuanzisha mazungumzo mapya, tafadhali jisajili au ingia kwanza.');
+                                return;
+                              }
+                              setIsCreateMenuOpen(true);
+                            }}
                             className="px-4 py-2.5 rounded-xl bg-gradient-to-r from-cyan-400 to-blue-500 text-slate-950 font-bold text-xs shadow-lg shadow-cyan-500/20 hover:scale-105 active:scale-95 transition-all flex items-center gap-2"
                           >
                             <Plus className="w-4 h-4 stroke-[3]" />
@@ -592,8 +610,7 @@ export default function App() {
                   </div>
                 )}
               </div>
-            )
-          )}
+            )}
 
             {/* View: Status Stories (Updates) */}
             {activeTab === 'status' && (

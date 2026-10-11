@@ -46,6 +46,8 @@ import {
   Camera,
   Coins,
   Share2,
+  LogIn,
+  UserPlus,
 } from 'lucide-react';
 import {
   Conversation,
@@ -85,6 +87,7 @@ interface ChatRoomProps {
   onUpdateConversation?: (conv: Conversation) => void;
   onDeleteConversation?: (convId: string) => void;
   onSwitchUser?: (user: UserProfile) => void;
+  onOpenAuth?: (preferMode?: 'signin' | 'signup', reason?: string) => void;
 }
 
 export const ChatRoom: React.FC<ChatRoomProps> = ({
@@ -95,8 +98,13 @@ export const ChatRoom: React.FC<ChatRoomProps> = ({
   onUpdateConversation,
   onDeleteConversation,
   onSwitchUser,
+  onOpenAuth,
 }) => {
-  const otherUserId = conversation.participants.find((p) => p !== currentUser.id);
+  const currentUserId = currentUser?.id || 'guest';
+  const otherUserId =
+    conversation.participants.find((p) => p !== currentUserId) ||
+    conversation.participants.find((p) => p !== 'guest') ||
+    conversation.participants[0];
   const otherUser = otherUserId && conversation.participantDetails ? conversation.participantDetails[otherUserId] : null;
   const name = otherUser?.displayName || (conversation.isGroup ? conversation.groupName || 'Chat' : 'Fresh kk');
   const avatar = otherUser?.photoURL || freshKkAvatar;
@@ -1522,128 +1530,165 @@ export const ChatRoom: React.FC<ChatRoomProps> = ({
           }}
         />
 
-        <form
-          onSubmit={handleSend}
-          className="p-2 sm:p-2.5 bg-[#0D1222] border-t border-white/[0.08] flex items-center gap-1.5 sm:gap-2"
-        >
-          {/* Plus / Attach Button (Expands all 8 features) */}
-          <button
-            type="button"
-            onClick={() => setIsAttachMenuOpen(!isAttachMenuOpen)}
-            className={`p-2 rounded-xl border transition-all shrink-0 active:scale-95 ${
-              isAttachMenuOpen
-                ? 'bg-cyan-500 text-slate-950 font-bold border-cyan-400'
-                : 'bg-white/5 hover:bg-white/10 text-slate-300 border-white/5'
-            }`}
-            title="Vipengele vya Ziada (Zawadi, Kura, Panga, Siri)"
-          >
-            <Paperclip className="w-4 h-4" />
-          </button>
-
-          {/* Feature 6: Silent Message Toggle Button */}
-          <button
-            type="button"
-            onClick={() => {
-              setIsSilentMode(!isSilentMode);
-              showToast(!isSilentMode ? 'Ujumbe wa Kimya umewashwa 🤫' : 'Ujumbe wa kawaida umewashwa 🔔');
-            }}
-            className={`p-2 rounded-xl border transition-all shrink-0 active:scale-95 ${
-              isSilentMode
-                ? 'bg-purple-500/20 border-purple-400 text-purple-300'
-                : 'bg-white/5 border-white/5 text-slate-400 hover:text-white'
-            }`}
-            title={isSilentMode ? 'Ujumbe wa Kimya (Silent)' : 'Washa Ujumbe wa Kimya'}
-          >
-            {isSilentMode ? <BellOff className="w-4 h-4" /> : <Bell className="w-4 h-4" />}
-          </button>
-
-          {/* Text Input */}
-          <div className="relative flex-1">
-            <input
-              type="text"
-              value={inputText}
-              onChange={(e) => {
-                const val = e.target.value;
-                setInputText(val);
-                if (val.endsWith('/') && !isQuickRepliesOpen) {
-                  setIsQuickRepliesOpen(true);
-                }
-              }}
-              placeholder={
-                isSilentMode
-                  ? 'Andika ujumbe wa kimya (bila mlio)...'
-                  : editingMessage
-                  ? 'Hariri ujumbe wako...'
-                  : replyingToMessage
-                  ? 'Andika jibu...'
-                  : 'Andika ujumbe au gusa + kwa zawadi & kura...'
-              }
-              className="w-full bg-[#171F36] border border-white/[0.08] rounded-2xl pl-3.5 pr-3 py-2.5 text-xs text-white placeholder-slate-400 focus:outline-none focus:border-cyan-400"
-            />
+        {currentUser.id === 'guest' ? (
+          <div className="p-3 bg-[#0D1222] border-t border-cyan-500/30 flex flex-col sm:flex-row items-center justify-between gap-3 shadow-lg animate-in slide-in-from-bottom-2">
+            <div className="flex items-center gap-2.5 min-w-0">
+              <div className="w-9 h-9 rounded-xl bg-gradient-to-tr from-cyan-500/20 to-blue-500/20 border border-cyan-500/30 text-cyan-400 flex items-center justify-center shrink-0">
+                <Lock className="w-4 h-4" />
+              </div>
+              <div className="min-w-0">
+                <p className="text-xs font-bold text-white truncate flex items-center gap-1.5">
+                  <span>Hali ya Kuangalia Mazungumzo</span>
+                  <span className="text-[10px] font-normal px-1.5 py-0.5 rounded-full bg-cyan-500/10 text-cyan-300 border border-cyan-500/20">Mgeni</span>
+                </p>
+                <p className="text-[11px] text-slate-300 truncate">
+                  Ili kutuma ujumbe au kuchati na <strong className="text-cyan-300">{name}</strong>, tafadhali jisajili au ingia:
+                </p>
+              </div>
+            </div>
+            <div className="flex items-center gap-2 shrink-0 w-full sm:w-auto">
+              <button
+                type="button"
+                onClick={() => onOpenAuth?.('signup', `Jisajili ili uweze kuchati na ${name}`)}
+                className="flex-1 sm:flex-initial px-4 py-2 rounded-xl bg-gradient-to-r from-cyan-400 via-blue-500 to-indigo-600 hover:from-cyan-300 hover:to-indigo-500 text-slate-950 font-black text-xs shadow-md shadow-cyan-500/20 hover:scale-105 active:scale-95 transition-all flex items-center justify-center gap-1.5"
+              >
+                <UserPlus className="w-3.5 h-3.5" />
+                <span>Jisajili</span>
+              </button>
+              <button
+                type="button"
+                onClick={() => onOpenAuth?.('signin', `Ingia ili uweze kuchati na ${name}`)}
+                className="flex-1 sm:flex-initial px-3.5 py-2 rounded-xl bg-white/10 hover:bg-white/15 text-white font-semibold text-xs border border-white/10 active:scale-95 transition-all flex items-center justify-center gap-1.5"
+              >
+                <LogIn className="w-3.5 h-3.5" />
+                <span>Ingia</span>
+              </button>
+            </div>
           </div>
+        ) : (
+          <form
+            onSubmit={handleSend}
+            className="p-2 sm:p-2.5 bg-[#0D1222] border-t border-white/[0.08] flex items-center gap-1.5 sm:gap-2"
+          >
+            {/* Plus / Attach Button (Expands all 8 features) */}
+            <button
+              type="button"
+              onClick={() => setIsAttachMenuOpen(!isAttachMenuOpen)}
+              className={`p-2 rounded-xl border transition-all shrink-0 active:scale-95 ${
+                isAttachMenuOpen
+                  ? 'bg-cyan-500 text-slate-950 font-bold border-cyan-400'
+                  : 'bg-white/5 hover:bg-white/10 text-slate-300 border-white/5'
+              }`}
+              title="Vipengele vya Ziada (Zawadi, Kura, Panga, Siri)"
+            >
+              <Paperclip className="w-4 h-4" />
+            </button>
 
-          {/* Feature 2: Switch between Mic and Round Video Cam */}
-          {!inputText.trim() && !editingMessage && (
+            {/* Feature 6: Silent Message Toggle Button */}
             <button
               type="button"
               onClick={() => {
-                const next = recorderMode === 'voice' ? 'video_note' : 'voice';
-                setRecorderMode(next);
-                showToast(next === 'video_note' ? 'Hali ya Video ya Duara (Round Cam) 📹' : 'Hali ya Sauti (Voice Note) 🎙️');
+                setIsSilentMode(!isSilentMode);
+                showToast(!isSilentMode ? 'Ujumbe wa Kimya umewashwa 🤫' : 'Ujumbe wa kawaida umewashwa 🔔');
               }}
-              className="p-1 text-[10px] text-slate-400 hover:text-cyan-300 shrink-0"
-              title="Badili kati ya Sauti na Video ya Duara"
+              className={`p-2 rounded-xl border transition-all shrink-0 active:scale-95 ${
+                isSilentMode
+                  ? 'bg-purple-500/20 border-purple-400 text-purple-300'
+                  : 'bg-white/5 border-white/5 text-slate-400 hover:text-white'
+              }`}
+              title={isSilentMode ? 'Ujumbe wa Kimya (Silent)' : 'Washa Ujumbe wa Kimya'}
             >
-              {recorderMode === 'voice' ? '🎙️' : '⭕'}
+              {isSilentMode ? <BellOff className="w-4 h-4" /> : <Bell className="w-4 h-4" />}
             </button>
-          )}
 
-          {/* Action Trigger: Send or Record */}
-          {!inputText.trim() && !editingMessage ? (
-            recorderMode === 'voice' ? (
+            {/* Text Input */}
+            <div className="relative flex-1">
+              <input
+                type="text"
+                value={inputText}
+                onChange={(e) => {
+                  const val = e.target.value;
+                  setInputText(val);
+                  if (val.endsWith('/') && !isQuickRepliesOpen) {
+                    setIsQuickRepliesOpen(true);
+                  }
+                }}
+                placeholder={
+                  isSilentMode
+                    ? 'Andika ujumbe wa kimya (bila mlio)...'
+                    : editingMessage
+                    ? 'Hariri ujumbe wako...'
+                    : replyingToMessage
+                    ? 'Andika jibu...'
+                    : 'Andika ujumbe au gusa + kwa zawadi & kura...'
+                }
+                className="w-full bg-[#171F36] border border-white/[0.08] rounded-2xl pl-3.5 pr-3 py-2.5 text-xs text-white placeholder-slate-400 focus:outline-none focus:border-cyan-400"
+              />
+            </div>
+
+            {/* Feature 2: Switch between Mic and Round Video Cam */}
+            {!inputText.trim() && !editingMessage && (
               <button
                 type="button"
                 onClick={() => {
-                  const audioMsg: ChatMessage = {
-                    id: `msg_audio_${Date.now()}`,
-                    conversationId: conversation.id,
-                    senderId: currentUser.id,
-                    senderName: 'You',
-                    text: '🎙️ Ujumbe wa sauti (Voice Note)',
-                    messageType: 'audio',
-                    audioDuration: '0:14',
-                    transcription: 'Habari kiongozi! Nimepokea na nakamilisha sasa hivi.',
-                    createdAt: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
-                    isSilent: isSilentMode,
-                  };
-                  setMessages((prev) => [...prev, audioMsg]);
-                  showToast('Ujumbe wa sauti umetumwa na kunukuliwa! 🎙️');
+                  const next = recorderMode === 'voice' ? 'video_note' : 'voice';
+                  setRecorderMode(next);
+                  showToast(next === 'video_note' ? 'Hali ya Video ya Duara (Round Cam) 📹' : 'Hali ya Sauti (Voice Note) 🎙️');
                 }}
-                className="p-2.5 rounded-xl bg-cyan-500/15 hover:bg-cyan-500/25 border border-cyan-500/30 text-cyan-300 shadow-md hover:scale-105 active:scale-95 transition-all shrink-0"
-                title="Tuma Ujumbe wa Sauti"
+                className="p-1 text-[10px] text-slate-400 hover:text-cyan-300 shrink-0"
+                title="Badili kati ya Sauti na Video ya Duara"
               >
-                <Mic className="w-4 h-4" />
+                {recorderMode === 'voice' ? '🎙️' : '⭕'}
               </button>
+            )}
+
+            {/* Action Trigger: Send or Record */}
+            {!inputText.trim() && !editingMessage ? (
+              recorderMode === 'voice' ? (
+                <button
+                  type="button"
+                  onClick={() => {
+                    const audioMsg: ChatMessage = {
+                      id: `msg_audio_${Date.now()}`,
+                      conversationId: conversation.id,
+                      senderId: currentUser.id,
+                      senderName: 'You',
+                      text: '🎙️ Ujumbe wa sauti (Voice Note)',
+                      messageType: 'audio',
+                      audioDuration: '0:14',
+                      transcription: 'Habari kiongozi! Nimepokea na nakamilisha sasa hivi.',
+                      createdAt: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
+                      isSilent: isSilentMode,
+                    };
+                    setMessages((prev) => [...prev, audioMsg]);
+                    showToast('Ujumbe wa sauti umetumwa na kunukuliwa! 🎙️');
+                  }}
+                  className="p-2.5 rounded-xl bg-cyan-500/15 hover:bg-cyan-500/25 border border-cyan-500/30 text-cyan-300 shadow-md hover:scale-105 active:scale-95 transition-all shrink-0"
+                  title="Tuma Ujumbe wa Sauti"
+                >
+                  <Mic className="w-4 h-4" />
+                </button>
+              ) : (
+                <button
+                  type="button"
+                  onClick={handleSendVideoNote}
+                  className="p-2.5 rounded-xl bg-gradient-to-tr from-cyan-500 to-indigo-600 text-white shadow-md hover:scale-105 active:scale-95 transition-all shrink-0"
+                  title="Tuma Video ya Duara (Round Cam)"
+                >
+                  <Camera className="w-4 h-4" />
+                </button>
+              )
             ) : (
               <button
-                type="button"
-                onClick={handleSendVideoNote}
-                className="p-2.5 rounded-xl bg-gradient-to-tr from-cyan-500 to-indigo-600 text-white shadow-md hover:scale-105 active:scale-95 transition-all shrink-0"
-                title="Tuma Video ya Duara (Round Cam)"
+                type="submit"
+                className="p-2.5 rounded-xl bg-gradient-to-r from-cyan-500 to-blue-600 text-white shadow-md hover:scale-105 active:scale-95 transition-all shrink-0"
+                title={editingMessage ? 'Hifadhi Mabadiliko' : 'Tuma Ujumbe'}
               >
-                <Camera className="w-4 h-4" />
+                {editingMessage ? <Check className="w-4 h-4 stroke-[3]" /> : <Send className="w-4 h-4" />}
               </button>
-            )
-          ) : (
-            <button
-              type="submit"
-              className="p-2.5 rounded-xl bg-gradient-to-r from-cyan-500 to-blue-600 text-white shadow-md hover:scale-105 active:scale-95 transition-all shrink-0"
-              title={editingMessage ? 'Hifadhi Mabadiliko' : 'Tuma Ujumbe'}
-            >
-              {editingMessage ? <Check className="w-4 h-4 stroke-[3]" /> : <Send className="w-4 h-4" />}
-            </button>
-          )}
-        </form>
+            )}
+          </form>
+        )}
       </div>
 
       {/* ALL MODALS FOR FEATURES 1-8 */}

@@ -26,6 +26,8 @@ import {
   CornerUpLeft,
   Sparkles,
   Lock,
+  LogIn,
+  UserPlus,
 } from 'lucide-react';
 import { Conversation, ChatMessage, UserProfile } from '../../types';
 import { INITIAL_MESSAGES_CONV2, INITIAL_CONVERSATIONS } from '../../services/seed/initialData';
@@ -42,6 +44,7 @@ interface GroupChatRoomProps {
   onStartCall: (type: 'video' | 'voice') => void;
   onUpdateConversation?: (conv: Conversation) => void;
   onDeleteConversation?: (convId: string) => void;
+  onOpenAuth?: (preferMode?: 'signin' | 'signup', reason?: string) => void;
 }
 
 export const GroupChatRoom: React.FC<GroupChatRoomProps> = ({
@@ -51,6 +54,7 @@ export const GroupChatRoom: React.FC<GroupChatRoomProps> = ({
   onStartCall,
   onUpdateConversation,
   onDeleteConversation,
+  onOpenAuth,
 }) => {
   const [messages, setMessages] = useState<ChatMessage[]>(INITIAL_MESSAGES_CONV2);
   const [inputText, setInputText] = useState('');
@@ -816,65 +820,112 @@ export const GroupChatRoom: React.FC<GroupChatRoomProps> = ({
         </div>
       )}
 
-      {/* Input Bar matching Screenshot 7 */}
-      <form
-        onSubmit={handleSendMessage}
-        className="p-3 bg-[#0D1220] border-t border-white/[0.06] flex items-center gap-2"
-      >
-        <button
-          type="button"
-          className="p-2 text-slate-400 hover:text-white"
-        >
-          <Smile className="w-5 h-5" />
-        </button>
-
-        <div className="flex-1 relative">
-          <input
-            type="text"
-            value={inputText}
-            onChange={(e) => setInputText(e.target.value)}
-            placeholder={replyingToMessage ? "Andika jibu lako..." : "Type a message..."}
-            className="w-full bg-[#151C2E] border border-white/[0.08] rounded-2xl pl-4 pr-10 py-2.5 text-xs text-white placeholder-slate-400 focus:outline-none focus:border-cyan-400"
-          />
-          <button
-            type="button"
-            onClick={() => {
-              const newDoc: ChatMessage = {
-                id: `doc_${Date.now()}`,
-                conversationId: conversation.id,
-                senderId: currentUser.id,
-                senderName: 'You',
-                text: 'project_final.psd',
-                messageType: 'document',
-                fileName: 'project_final.psd',
-                fileSize: '2.4 MB',
-                createdAt: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
-              };
-              setMessages((prev) => [...prev, newDoc]);
-            }}
-            className="absolute right-3 top-2.5 text-slate-400 hover:text-white"
-            title="Attach file"
-          >
-            <Paperclip className="w-4 h-4" />
-          </button>
+      {/* Input Bar or Guest Prompt Bar */}
+      {currentUser.id === 'guest' ? (
+        <div className="p-3 bg-[#0D1220] border-t border-cyan-500/30 flex flex-col sm:flex-row items-center justify-between gap-3 shadow-lg animate-in slide-in-from-bottom-2">
+          <div className="flex items-center gap-2.5 min-w-0">
+            <div className="w-9 h-9 rounded-xl bg-gradient-to-tr from-cyan-500/20 to-blue-500/20 border border-cyan-500/30 text-cyan-400 flex items-center justify-center shrink-0">
+              <Lock className="w-4 h-4" />
+            </div>
+            <div className="min-w-0">
+              <p className="text-xs font-bold text-white truncate flex items-center gap-1.5">
+                <span>Hali ya Kuangalia Kikundi</span>
+                <span className="text-[10px] font-normal px-1.5 py-0.5 rounded-full bg-cyan-500/10 text-cyan-300 border border-cyan-500/20">Mgeni</span>
+              </p>
+              <p className="text-[11px] text-slate-300 truncate">
+                Ili kutuma ujumbe kwenye kikundi cha <strong className="text-cyan-300">{conversation.groupName || 'Zenia'}</strong>, jisajili au ingia:
+              </p>
+            </div>
+          </div>
+          <div className="flex items-center gap-2 shrink-0 w-full sm:w-auto">
+            <button
+              type="button"
+              onClick={() =>
+                onOpenAuth?.(
+                  'signup',
+                  `Jisajili ili uweze kuchati na kutuma ujumbe kwenye kikundi cha ${conversation.groupName || 'Zenia'}`
+                )
+              }
+              className="flex-1 sm:flex-initial px-4 py-2 rounded-xl bg-gradient-to-r from-cyan-400 via-blue-500 to-indigo-600 hover:from-cyan-300 hover:to-indigo-500 text-slate-950 font-black text-xs shadow-md shadow-cyan-500/20 hover:scale-105 active:scale-95 transition-all flex items-center justify-center gap-1.5"
+            >
+              <UserPlus className="w-3.5 h-3.5" />
+              <span>Jisajili</span>
+            </button>
+            <button
+              type="button"
+              onClick={() =>
+                onOpenAuth?.(
+                  'signin',
+                  `Ingia ili uweze kuchati na kutuma ujumbe kwenye kikundi cha ${conversation.groupName || 'Zenia'}`
+                )
+              }
+              className="flex-1 sm:flex-initial px-3.5 py-2 rounded-xl bg-white/10 hover:bg-white/15 text-white font-semibold text-xs border border-white/10 active:scale-95 transition-all flex items-center justify-center gap-1.5"
+            >
+              <LogIn className="w-3.5 h-3.5" />
+              <span>Ingia</span>
+            </button>
+          </div>
         </div>
-
-        {inputText.trim() ? (
-          <button
-            type="submit"
-            className="p-2.5 rounded-full bg-gradient-to-r from-cyan-500 to-blue-600 text-white shadow-lg active:scale-95 transition-transform"
-          >
-            <Send className="w-4 h-4" />
-          </button>
-        ) : (
+      ) : (
+        <form
+          onSubmit={handleSendMessage}
+          className="p-3 bg-[#0D1220] border-t border-white/[0.06] flex items-center gap-2"
+        >
           <button
             type="button"
             className="p-2 text-slate-400 hover:text-white"
           >
-            <Mic className="w-5 h-5" />
+            <Smile className="w-5 h-5" />
           </button>
-        )}
-      </form>
+
+          <div className="flex-1 relative">
+            <input
+              type="text"
+              value={inputText}
+              onChange={(e) => setInputText(e.target.value)}
+              placeholder={replyingToMessage ? "Andika jibu lako..." : "Type a message..."}
+              className="w-full bg-[#151C2E] border border-white/[0.08] rounded-2xl pl-4 pr-10 py-2.5 text-xs text-white placeholder-slate-400 focus:outline-none focus:border-cyan-400"
+            />
+            <button
+              type="button"
+              onClick={() => {
+                const newDoc: ChatMessage = {
+                  id: `doc_${Date.now()}`,
+                  conversationId: conversation.id,
+                  senderId: currentUser.id,
+                  senderName: 'You',
+                  text: 'project_final.psd',
+                  messageType: 'document',
+                  fileName: 'project_final.psd',
+                  fileSize: '2.4 MB',
+                  createdAt: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
+                };
+                setMessages((prev) => [...prev, newDoc]);
+              }}
+              className="absolute right-3 top-2.5 text-slate-400 hover:text-white"
+              title="Attach file"
+            >
+              <Paperclip className="w-4 h-4" />
+            </button>
+          </div>
+
+          {inputText.trim() ? (
+            <button
+              type="submit"
+              className="p-2.5 rounded-full bg-gradient-to-r from-cyan-500 to-blue-600 text-white shadow-lg active:scale-95 transition-transform"
+            >
+              <Send className="w-4 h-4" />
+            </button>
+          ) : (
+            <button
+              type="button"
+              className="p-2 text-slate-400 hover:text-white"
+            >
+              <Mic className="w-5 h-5" />
+            </button>
+          )}
+        </form>
+      )}
 
       {/* MESSAGE CONTEXT MENU */}
       {messageMenuState.isOpen && messageMenuState.message && (

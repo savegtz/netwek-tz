@@ -34,7 +34,7 @@ import sarahAvatar from '../../assets/images/sarah_avatar_1790802224123.jpg';
 import concertFestival from '../../assets/images/concert_festival_1790280974630.jpg';
 
 interface ChatListStatusRowProps {
-  currentUser: UserProfile;
+  currentUser: UserProfile | null;
   onOpenCreateStatus: () => void;
   onSendStatusReply?: (status: StatusItem, replyText: string) => void;
   customStatuses?: StatusItem[];
