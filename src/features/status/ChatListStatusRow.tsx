@@ -522,14 +522,9 @@ export const ChatListStatusRow: React.FC<ChatListStatusRowProps> = ({
                   </span>
                 </div>
 
-                {/* Author Name & Story Count indication */}
+                {/* Author Name */}
                 <span className="text-[11px] sm:text-xs font-semibold text-slate-200 group-hover:text-cyan-300 transition-colors truncate max-w-[78px] sm:max-w-[88px] text-center leading-tight">
                   {firstName}
-                  {isMulti && (
-                    <span className="ml-1 text-[10px] text-cyan-400 font-black">
-                      ({group.stories.length})
-                    </span>
-                  )}
                 </span>
               </button>
             );

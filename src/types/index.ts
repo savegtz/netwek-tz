@@ -183,6 +183,7 @@ export interface Conversation {
   isGroup: boolean;
   groupName?: string;
   groupAvatar?: string;
+  groupDescription?: string;
   lastMessage?: string;
   lastMessageSenderId?: string;
   lastMessageType?: MessageType;
@@ -195,6 +196,8 @@ export interface Conversation {
   lists?: string[];
   isBlocked?: boolean;
   isLocked?: boolean;
+  adminIds?: string[];
+  createdAt?: string;
 }
 
 export type StatusType =

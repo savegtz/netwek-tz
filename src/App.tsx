@@ -24,6 +24,7 @@ import { ChatRoom } from './features/chat/ChatRoom';
 import { GroupChatRoom } from './features/chat/GroupChatRoom';
 import { ChatGuestGateway } from './features/chat/ChatGuestGateway';
 import { StartNewChatModal } from './features/chat/components/StartNewChatModal';
+import { AppLockScreen } from './features/chat/components/AppLockScreen';
 import { CreateStatusModal } from './features/status/CreateStatusModal';
 import { StatusFeed } from './features/status/StatusFeed';
 import { ShopMarketplace } from './features/shop/ShopMarketplace';
@@ -125,6 +126,7 @@ export default function App() {
   const [createStatusType, setCreateStatusType] = useState<StatusType | 'ai' | null>(null);
   const [customStatuses, setCustomStatuses] = useState<StatusItem[]>([]);
   const [isFrameMode, setIsFrameMode] = useState<boolean>(false); // Full-width responsive web view by default
+  const [isAppLocked, setIsAppLocked] = useState<boolean>(false);
 
   const handleStartCallFromConversation = (type: 'video' | 'voice') => {
     if (!activeConversation) return;
@@ -466,6 +468,8 @@ export default function App() {
                       onOpenCreateStatus={() => setIsCreateMenuOpen(true)}
                       customStatuses={customStatuses}
                       onStartChatWithBusiness={handleStartChatWithBusiness}
+                      onSignOut={handleSignOut}
+                      onLockApp={() => setIsAppLocked(true)}
                       onUpdateConversation={(updated) => {
                         setConversations((prev) =>
                           prev.map((c) => (c.id === updated.id ? updated : c))
@@ -809,6 +813,11 @@ export default function App() {
 
       {/* Floating Zenia Beats & Podcasts Mini-Player */}
       <ZeniaMiniPlayer />
+
+      {/* Full Screen WhatsApp App Lock Overlay */}
+      {isAppLocked && (
+        <AppLockScreen onUnlock={() => setIsAppLocked(false)} />
+      )}
     </div>
   );
 }

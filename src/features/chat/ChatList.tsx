@@ -71,6 +71,8 @@ interface ChatListProps {
     initialMessage?: string,
     avatar?: string
   ) => void;
+  onSignOut?: () => void;
+  onLockApp?: () => void;
 }
 
 export const ChatList: React.FC<ChatListProps> = ({
@@ -88,6 +90,8 @@ export const ChatList: React.FC<ChatListProps> = ({
   onOpenCreateStatus,
   customStatuses,
   onStartChatWithBusiness,
+  onSignOut,
+  onLockApp,
 }) => {
   const [internalConversations, setInternalConversations] = useState<Conversation[]>(() => {
     if (!currentUser || currentUser.id === 'guest_user') return [];
@@ -199,6 +203,28 @@ export const ChatList: React.FC<ChatListProps> = ({
   const [confirmDeleteSingle, setConfirmDeleteSingle] = useState<Conversation | null>(null);
   const [confirmDeleteAll, setConfirmDeleteAll] = useState(false);
   const [confirmDeleteSelected, setConfirmDeleteSelected] = useState(false);
+
+  // WhatsApp-style 3-Dots Menu Modals State
+  const [isCreateGroupOpen, setIsCreateGroupOpen] = useState(false);
+  const [isStarredMessagesOpen, setIsStarredMessagesOpen] = useState(false);
+  const [isAppLockOpen, setIsAppLockOpen] = useState(false);
+  const [showLogoutConfirm, setShowLogoutConfirm] = useState(false);
+
+  const handleMarkAllAsRead = () => {
+    setConversations((prev) =>
+      prev.map((c) => ({
+        ...c,
+        unreadCount: 0,
+      }))
+    );
+    showToast('Mazungumzo yote yamewekwa kama yamesomwa! ✓✓');
+  };
+
+  const handleGroupCreated = (newGroup: Conversation) => {
+    setConversations((prev) => [newGroup, ...prev.filter((c) => c.id !== newGroup.id)]);
+    onSelectConversation(newGroup);
+    showToast(`Kikundi cha "${newGroup.groupName}" kimetengenezwa kikamilifu! 🎉`);
+  };
 
   const handleUpdateAvatar = (convId: string, newAvatarUrl: string) => {
     setConversations((prev) =>
@@ -827,58 +853,80 @@ export const ChatList: React.FC<ChatListProps> = ({
             {/* Dropdown Menu */}
             {isListMenuOpen && (
               <div className="absolute right-0 top-full mt-2 w-56 bg-[#0E1324] border border-white/10 rounded-2xl p-1.5 shadow-2xl z-50 animate-in fade-in zoom-in-95 duration-150 backdrop-blur-xl">
+                {/* 1. New group */}
                 <button
                   onClick={() => {
                     setIsListMenuOpen(false);
-                    onStartNewChat();
+                    setIsCreateGroupOpen(true);
                   }}
                   className="w-full flex items-center gap-2.5 px-3 py-2 rounded-xl text-xs text-slate-200 hover:text-white hover:bg-white/5 transition-colors text-left"
                 >
-                  <UserPlus className="w-3.5 h-3.5 text-cyan-400" />
-                  <span>Tafuta Mtu / Chat Mpya</span>
+                  <Users className="w-3.5 h-3.5 text-cyan-400 shrink-0" />
+                  <span>New group</span>
                 </button>
 
-                {filteredConversations.length > 0 && (
-                  <button
-                    onClick={() => {
-                      setIsListMenuOpen(false);
-                      setIsSelectionMode(true);
-                    }}
-                    className="w-full flex items-center gap-2.5 px-3 py-2 rounded-xl text-xs text-slate-200 hover:text-white hover:bg-white/5 transition-colors text-left"
-                  >
-                    <CheckSquare className="w-3.5 h-3.5 text-cyan-400" />
-                    <span>Chagua Mazungumzo (Select)</span>
-                  </button>
-                )}
-
+                {/* 2. Starred messages */}
                 <button
                   onClick={() => {
                     setIsListMenuOpen(false);
-                    const savedPin = localStorage.getItem('zenia_chat_security_pin');
-                    setPinModalState({
-                      isOpen: true,
-                      mode: savedPin ? 'change' : 'create',
-                      chatTitle: 'Usalama wa Meseji (Chat Security)',
-                    });
+                    setIsStarredMessagesOpen(true);
                   }}
                   className="w-full flex items-center gap-2.5 px-3 py-2 rounded-xl text-xs text-slate-200 hover:text-white hover:bg-white/5 transition-colors text-left"
                 >
-                  <KeyRound className="w-3.5 h-3.5 text-indigo-400" />
-                  <span>Usalama wa PIN (Lock chats)</span>
+                  <Star className="w-3.5 h-3.5 text-amber-400 shrink-0" />
+                  <span>Starred messages</span>
                 </button>
 
-                {filteredConversations.length > 0 && (
-                  <button
-                    onClick={() => {
-                      setIsListMenuOpen(false);
-                      setConfirmDeleteAll(true);
-                    }}
-                    className="w-full flex items-center gap-2.5 px-3 py-2 rounded-xl text-xs text-rose-300 hover:text-rose-200 hover:bg-rose-500/10 transition-colors text-left border-t border-white/5 mt-1 pt-2"
-                  >
-                    <Trash2 className="w-3.5 h-3.5 text-rose-400" />
-                    <span>Futa Mazungumzo Yote</span>
-                  </button>
-                )}
+                {/* 3. Select chats */}
+                <button
+                  onClick={() => {
+                    setIsListMenuOpen(false);
+                    setIsSelectionMode(true);
+                    setSelectedConversationIds(new Set());
+                  }}
+                  className="w-full flex items-center gap-2.5 px-3 py-2 rounded-xl text-xs text-slate-200 hover:text-white hover:bg-white/5 transition-colors text-left"
+                >
+                  <CheckSquare className="w-3.5 h-3.5 text-emerald-400 shrink-0" />
+                  <span>Select chats</span>
+                </button>
+
+                {/* 4. Mark all as read */}
+                <button
+                  onClick={() => {
+                    setIsListMenuOpen(false);
+                    handleMarkAllAsRead();
+                  }}
+                  className="w-full flex items-center gap-2.5 px-3 py-2 rounded-xl text-xs text-slate-200 hover:text-white hover:bg-white/5 transition-colors text-left"
+                >
+                  <CheckCheck className="w-3.5 h-3.5 text-blue-400 shrink-0" />
+                  <span>Mark all as read</span>
+                </button>
+
+                {/* 5. App lock */}
+                <button
+                  onClick={() => {
+                    setIsListMenuOpen(false);
+                    setIsAppLockOpen(true);
+                  }}
+                  className="w-full flex items-center gap-2.5 px-3 py-2 rounded-xl text-xs text-slate-200 hover:text-white hover:bg-white/5 transition-colors text-left"
+                >
+                  <Lock className="w-3.5 h-3.5 text-indigo-400 shrink-0" />
+                  <span>App lock</span>
+                </button>
+
+                <div className="my-1 border-t border-white/5" />
+
+                {/* 6. Log out */}
+                <button
+                  onClick={() => {
+                    setIsListMenuOpen(false);
+                    setShowLogoutConfirm(true);
+                  }}
+                  className="w-full flex items-center gap-2.5 px-3 py-2 rounded-xl text-xs text-rose-300 hover:text-rose-200 hover:bg-rose-500/10 transition-colors text-left"
+                >
+                  <LogOut className="w-3.5 h-3.5 text-rose-400 shrink-0" />
+                  <span>Log out</span>
+                </button>
               </div>
             )}
           </div>
@@ -1499,6 +1547,87 @@ export const ChatList: React.FC<ChatListProps> = ({
               >
                 <Trash2 className="w-4 h-4" />
                 <span>Futa ({selectedConversationIds.size})</span>
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* WhatsApp New Group Modal */}
+      {isCreateGroupOpen && (
+        <CreateGroupModal
+          isOpen={isCreateGroupOpen}
+          onClose={() => setIsCreateGroupOpen(false)}
+          currentUser={currentUser}
+          onCreateGroup={handleGroupCreated}
+        />
+      )}
+
+      {/* WhatsApp Starred Messages Modal */}
+      {isStarredMessagesOpen && (
+        <StarredMessagesModal
+          isOpen={isStarredMessagesOpen}
+          onClose={() => setIsStarredMessagesOpen(false)}
+          currentUser={currentUser}
+          conversations={conversations}
+          onOpenConversation={(convId) => {
+            const found = conversations.find((c) => c.id === convId);
+            if (found) onSelectConversation(found);
+          }}
+        />
+      )}
+
+      {/* WhatsApp App Lock Modal */}
+      {isAppLockOpen && (
+        <AppLockModal
+          isOpen={isAppLockOpen}
+          onClose={() => setIsAppLockOpen(false)}
+          onLockAppNow={() => {
+            if (onLockApp) {
+              onLockApp();
+            } else {
+              showToast('App imefungwa 🔒');
+            }
+          }}
+        />
+      )}
+
+      {/* Log Out Confirmation Dialog */}
+      {showLogoutConfirm && (
+        <div className="fixed inset-0 z-[70] flex items-center justify-center p-4 bg-black/80 backdrop-blur-md animate-in fade-in">
+          <div className="w-full max-w-sm bg-[#111628] border border-white/10 rounded-3xl p-5 shadow-2xl text-center animate-in zoom-in-95">
+            <div className="w-12 h-12 rounded-2xl bg-rose-500/20 text-rose-400 flex items-center justify-center mx-auto mb-3 shadow-lg shadow-rose-500/20">
+              <LogOut className="w-6 h-6 stroke-[2.5]" />
+            </div>
+            <h3 className="text-base font-bold text-white mb-1">
+              Toka Kwenye Akaunti (Log out)
+            </h3>
+            <p className="text-xs text-slate-300 mb-5 leading-relaxed">
+              Je, una uhakika unataka kutoka kwenye akaunti ya Zenia? Mazungumzo yako na taarifa zako zote zitabaki salama.
+            </p>
+            <div className="flex gap-2.5">
+              <button
+                type="button"
+                onClick={() => setShowLogoutConfirm(false)}
+                className="flex-1 py-2.5 rounded-xl bg-white/10 hover:bg-white/15 text-slate-300 text-xs font-semibold transition-colors"
+              >
+                Ghairi
+              </button>
+              <button
+                type="button"
+                onClick={() => {
+                  setShowLogoutConfirm(false);
+                  if (onSignOut) {
+                    onSignOut();
+                  } else {
+                    localStorage.removeItem('zenia_active_user');
+                    window.location.reload();
+                  }
+                }}
+                className="flex-1 py-2.5 rounded-xl bg-rose-600 hover:bg-rose-500 text-white text-xs font-bold shadow-lg shadow-rose-600/30 transition-colors flex items-center justify-center gap-1.5"
+              >
+                <LogOut className="w-4 h-4" />
+                <span>Ndiyo, Toka</span>
               </button>
             </div>
           </div>
