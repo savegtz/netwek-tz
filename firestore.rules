@@ -43,6 +43,19 @@ service cloud.firestore {
       }
     }
 
+    // WebRTC Live Calls & Signaling (CodeWithKael pattern)
+    match /calls/{callId} {
+      allow read, write: if true;
+
+      match /callerCandidates/{candId} {
+        allow read, write: if true;
+      }
+
+      match /receiverCandidates/{candId} {
+        allow read, write: if true;
+      }
+    }
+
     // Statuses
     match /statuses/{statusId} {
       allow read: if isSignedIn();

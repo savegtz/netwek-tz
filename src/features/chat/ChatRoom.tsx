@@ -837,7 +837,13 @@ export const ChatRoom: React.FC<ChatRoomProps> = ({
 
             {/* Voice Call */}
             <button
-              onClick={() => onStartCall('voice')}
+              onClick={() => {
+                if (currentUser.id === 'guest') {
+                  onOpenAuth?.('signup', 'Ili kupiga simu ya sauti ya WebRTC ya moja kwa moja, tafadhali jisajili au ingia kwanza.');
+                  return;
+                }
+                onStartCall('voice');
+              }}
               className="p-2 hover:bg-white/5 rounded-xl text-slate-200 hover:text-white transition-colors"
               title="Simu ya Sauti"
             >
@@ -846,7 +852,13 @@ export const ChatRoom: React.FC<ChatRoomProps> = ({
 
             {/* Video Call */}
             <button
-              onClick={() => onStartCall('video')}
+              onClick={() => {
+                if (currentUser.id === 'guest') {
+                  onOpenAuth?.('signup', 'Ili kupiga simu ya video ya WebRTC ya moja kwa moja, tafadhali jisajili au ingia kwanza.');
+                  return;
+                }
+                onStartCall('video');
+              }}
               className="p-2 hover:bg-cyan-500/15 rounded-xl text-cyan-400 transition-colors"
               title="Simu ya Video"
             >

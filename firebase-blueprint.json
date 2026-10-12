@@ -59,6 +59,27 @@
       },
       "required": ["id", "conversationId", "senderId", "text", "messageType", "createdAt"]
     },
+    "CallSession": {
+      "title": "CallSession",
+      "description": "WebRTC audio/video call session with real-time signaling",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string", "maxLength": 128 },
+        "callerId": { "type": "string", "maxLength": 128 },
+        "callerName": { "type": "string", "maxLength": 100 },
+        "callerAvatar": { "type": "string", "maxLength": 1024 },
+        "receiverId": { "type": "string", "maxLength": 128 },
+        "receiverName": { "type": "string", "maxLength": 100 },
+        "receiverAvatar": { "type": "string", "maxLength": 1024 },
+        "callType": { "type": "string", "enum": ["video", "voice"] },
+        "status": { "type": "string", "enum": ["calling", "connected", "ended", "rejected", "busy"] },
+        "offer": { "type": "object" },
+        "answer": { "type": "object" },
+        "createdAt": { "type": "string" },
+        "endedAt": { "type": "string" }
+      },
+      "required": ["id", "callerId", "receiverId", "callType", "status", "createdAt"]
+    },
     "Status": {
       "title": "Status",
       "description": "Ephemeral 24h multimedia status story with rich interactions",

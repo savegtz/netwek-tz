@@ -24,6 +24,9 @@ import {
   AlertTriangle,
   Star,
   LogOut,
+  Phone,
+  Video,
+  PhoneCall,
 } from 'lucide-react';
 import {
   collection,
@@ -75,6 +78,8 @@ interface ChatListProps {
   onSignOut?: () => void;
   onLockApp?: () => void;
   onOpenAuth?: (initialMode?: 'signin' | 'signup', promptReason?: string) => void;
+  onStartCall?: (type: 'video' | 'voice', conv: Conversation) => void;
+  onSimulateIncomingCall?: () => void;
 }
 
 export const ChatList: React.FC<ChatListProps> = ({
@@ -95,6 +100,8 @@ export const ChatList: React.FC<ChatListProps> = ({
   onSignOut,
   onLockApp,
   onOpenAuth,
+  onStartCall,
+  onSimulateIncomingCall,
 }) => {
   const effectiveUser: UserProfile = currentUser || {
     id: 'guest',
@@ -837,6 +844,34 @@ export const ChatList: React.FC<ChatListProps> = ({
         </div>
       )}
 
+      {/* WebRTC Live Calls Bar */}
+      <div className="mx-3.5 mt-2 mb-1 p-2 rounded-2xl bg-[#0B1020] border border-cyan-500/20 flex items-center justify-between gap-2 text-xs shadow-xs">
+        <div className="flex items-center gap-2 min-w-0">
+          <div className="w-7 h-7 rounded-xl bg-gradient-to-tr from-cyan-500 to-blue-600 text-slate-950 flex items-center justify-center shrink-0 shadow-xs">
+            <PhoneCall className="w-3.5 h-3.5" />
+          </div>
+          <div className="min-w-0">
+            <p className="text-[11px] font-bold text-white truncate flex items-center gap-1.5">
+              <span>Simu za WebRTC na Firebase</span>
+              <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse" />
+            </p>
+            <p className="text-[9.5px] text-slate-400 truncate">Video/Audio, Screen Sharing na Live Chat</p>
+          </div>
+        </div>
+        <div className="flex items-center gap-1.5 shrink-0">
+          {onSimulateIncomingCall && (
+            <button
+              onClick={onSimulateIncomingCall}
+              className="px-2.5 py-1 rounded-xl bg-cyan-500/15 hover:bg-cyan-500/25 border border-cyan-400/30 text-cyan-300 text-[10px] font-bold transition-all active:scale-95 flex items-center gap-1 shadow-xs"
+              title="Pima kupokea simu ya WebRTC yenye mlio wa simu"
+            >
+              <Phone className="w-3 h-3 text-cyan-400" />
+              <span>Pima Simu</span>
+            </button>
+          )}
+        </div>
+      </div>
+
       {/* Search Input Bar or Selection Mode Header */}
       {isSelectionMode ? (
         <div className="px-3.5 pt-2 pb-2 flex items-center justify-between gap-2 bg-[#0E1324] border-b border-cyan-500/30 animate-in slide-in-from-top-1">
@@ -1442,6 +1477,40 @@ export const ChatList: React.FC<ChatListProps> = ({
 
                       {!isSelectionMode && (
                         <div className="flex items-center gap-0.5">
+                          {/* Quick Video Call Button */}
+                          <button
+                            type="button"
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              if (!currentUser) {
+                                onOpenAuth?.('signup', 'Ili kupiga simu ya video ya WebRTC, tafadhali jisajili au ingia kwanza.');
+                                return;
+                              }
+                              onStartCall?.('video', conv);
+                            }}
+                            className="p-1.5 rounded-lg hover:bg-cyan-500/20 text-slate-400 hover:text-cyan-400 transition-colors active:scale-90 opacity-0 group-hover:opacity-100 focus:opacity-100"
+                            title={`Piga simu ya video na ${title}`}
+                          >
+                            <Video className="w-3.5 h-3.5" />
+                          </button>
+
+                          {/* Quick Voice Call Button */}
+                          <button
+                            type="button"
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              if (!currentUser) {
+                                onOpenAuth?.('signup', 'Ili kupiga simu ya sauti ya WebRTC, tafadhali jisajili au ingia kwanza.');
+                                return;
+                              }
+                              onStartCall?.('voice', conv);
+                            }}
+                            className="p-1.5 rounded-lg hover:bg-emerald-500/20 text-slate-400 hover:text-emerald-400 transition-colors active:scale-90 opacity-0 group-hover:opacity-100 focus:opacity-100"
+                            title={`Piga simu ya sauti na ${title}`}
+                          >
+                            <Phone className="w-3.5 h-3.5" />
+                          </button>
+
                           {/* Quick Delete Single Chat Button (kufuta moja) */}
                           <button
                             type="button"
@@ -1566,7 +1635,15 @@ export const ChatList: React.FC<ChatListProps> = ({
         onClose={() => setProfilePicModalState({ isOpen: false, conversation: null })}
         conversation={profilePicModalState.conversation}
         onOpenChat={(conv) => onSelectConversation(conv)}
-        onStartCall={(_type, conv) => onSelectConversation(conv)}
+        onStartCall={(type, conv) => {
+          if (conv) {
+            if (!currentUser) {
+              onOpenAuth?.('signup', 'Ili kupiga simu, tafadhali jisajili au ingia kwanza.');
+              return;
+            }
+            onStartCall?.(type, conv);
+          }
+        }}
         onOpenInfo={(conv) => onSelectConversation(conv)}
         onUpdateAvatar={handleUpdateAvatar}
       />

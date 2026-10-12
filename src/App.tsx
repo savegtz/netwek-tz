@@ -36,6 +36,8 @@ import { WalletView } from './features/payments/WalletView';
 import { CommunityView } from './features/communities/CommunityView';
 import { AIAssistantModal } from './features/ai/AIAssistantModal';
 import { VideoCallScreen } from './features/calls/VideoCallScreen';
+import { IncomingCallNotification } from './features/calls/IncomingCallNotification';
+import { webrtcService, WebRTCCallData } from './services/calls/webrtcService';
 import { NotificationsView } from './features/notifications/NotificationsView';
 import { AdminDevPanel } from './features/admin/AdminDevPanel';
 import { BroadcastBanner } from './components/BroadcastBanner';
@@ -55,6 +57,20 @@ export default function App() {
     }
     return INITIAL_USER;
   });
+
+  // Safe fallback representation for read-only child components when browsing as guest
+  const activeUser: UserProfile = currentUser || {
+    id: 'guest',
+    displayName: 'Mgeni (Guest)',
+    username: 'guest',
+    email: '',
+    accountType: 'personal',
+    verified: false,
+    followersCount: 0,
+    followingCount: 0,
+    postsCount: 0,
+    isOnline: false,
+  };
 
   const [activeTab, setActiveTab] = useState<string>('chats');
   const [activeConversation, setActiveConversation] = useState<Conversation | null>(null);
@@ -116,11 +132,27 @@ export default function App() {
   const [isNotificationsOpen, setIsNotificationsOpen] = useState(false);
   const [activeCallSession, setActiveCallSession] = useState<{
     type: 'video' | 'voice';
+    callId?: string;
+    remoteUserId?: string;
     remoteName: string;
     remoteAvatar?: string;
     subtitle?: string;
     isIncoming?: boolean;
+    incomingCallData?: WebRTCCallData;
   } | null>(null);
+  const [incomingCall, setIncomingCall] = useState<WebRTCCallData | null>(null);
+
+  // Subscribe to real-time incoming WebRTC calls via Firestore and BroadcastChannel
+  useEffect(() => {
+    if (!activeUser || !activeUser.id) return;
+    const unsubscribe = webrtcService.subscribeIncomingCalls(activeUser.id, (callData) => {
+      // Ignore if we are the caller or already on an active call
+      if (callData.callerId === activeUser.id) return;
+      if (activeCallSession) return;
+      setIncomingCall(callData);
+    });
+    return () => unsubscribe();
+  }, [activeUser.id, activeCallSession]);
   const [createStatusType, setCreateStatusType] = useState<StatusType | 'ai' | null>(null);
   const [customStatuses, setCustomStatuses] = useState<StatusItem[]>([]);
   const [isFrameMode, setIsFrameMode] = useState<boolean>(false); // Full-width responsive web view by default
@@ -140,31 +172,47 @@ export default function App() {
     setIsAuthOpen(true);
   };
 
-  const handleStartCallFromConversation = (type: 'video' | 'voice') => {
-    if (!activeConversation) return;
+  const handleStartCallFromConversation = (
+    type: 'video' | 'voice',
+    targetConv?: Conversation
+  ) => {
+    const conv = targetConv || activeConversation;
+    if (!conv) return;
+
+    if (activeUser.id === 'guest' || !currentUser) {
+      requireAuthToChat(
+        'Ili kupiga simu ya WebRTC ya moja kwa moja, tafadhali jisajili au ingia kwanza.'
+      );
+      return;
+    }
+
+    const otherParticipantId =
+      conv.participants.find((p) => p !== activeUser.id) || 'user_fresh_kk';
     const rName =
-      (activeConversation.isGroup
-        ? activeConversation.groupName
-        : activeConversation?.participantDetails &&
-          activeConversation.participants.find((p) => p !== activeUser.id)
-        ? activeConversation.participantDetails[
-            activeConversation.participants.find((p) => p !== activeUser.id)!
-          ]?.displayName
+      (conv.isGroup
+        ? conv.groupName
+        : conv?.participantDetails && otherParticipantId
+        ? conv.participantDetails[otherParticipantId]?.displayName
         : 'Fresh kk') || 'Fresh kk';
     const rAvatar =
-      (activeConversation.isGroup
-        ? activeConversation.groupAvatar
-        : activeConversation?.participantDetails &&
-          activeConversation.participants.find((p) => p !== activeUser.id)
-        ? activeConversation.participantDetails[
-            activeConversation.participants.find((p) => p !== activeUser.id)!
-          ]?.photoURL
+      (conv.isGroup
+        ? conv.groupAvatar
+        : conv?.participantDetails && otherParticipantId
+        ? conv.participantDetails[otherParticipantId]?.photoURL
         : freshKkAvatar) || freshKkAvatar;
+
+    const newCallId = `call_${Date.now()}_${Math.random().toString(36).substring(2, 7)}`;
+
     setActiveCallSession({
       type,
+      callId: newCallId,
+      remoteUserId: otherParticipantId,
       remoteName: rName,
       remoteAvatar: rAvatar,
-      subtitle: activeConversation.isGroup ? 'Kikundi cha Zenia • Simu ya Pamoja' : 'Zenia Call • E2E Encrypted',
+      subtitle: conv.isGroup
+        ? 'Kikundi cha Zenia • Simu ya Pamoja'
+        : 'Zenia Call • WebRTC P2P Encrypted',
+      isIncoming: false,
     });
   };
 
@@ -192,20 +240,6 @@ export default function App() {
       );
     } catch {}
   }, [notifications, currentUser?.id]);
-
-  // Safe fallback representation for read-only child components when browsing as guest
-  const activeUser: UserProfile = currentUser || {
-    id: 'guest',
-    displayName: 'Mgeni (Guest)',
-    username: 'guest',
-    email: '',
-    accountType: 'personal',
-    verified: false,
-    followersCount: 0,
-    followingCount: 0,
-    postsCount: 0,
-    isOnline: false,
-  };
 
   const handleSignOut = async () => {
     try {
@@ -429,6 +463,9 @@ export default function App() {
           isFrameMode={isFrameMode}
           onToggleFrameMode={() => setIsFrameMode(!isFrameMode)}
           unreadNotificationsCount={notifications.filter((n) => !n.read).length}
+          onTriggerSimulatedIncomingCall={() => {
+            webrtcService.triggerSimulatedIncomingCall(activeUser.id, 'Fresh kk', 'video');
+          }}
         />
       </div>
 
@@ -502,6 +539,10 @@ export default function App() {
                             localStorage.removeItem(`zenia_user_conversations_${currentUser.id}`);
                           } catch (_) {}
                         }
+                      }}
+                      onStartCall={(type, conv) => handleStartCallFromConversation(type, conv)}
+                      onSimulateIncomingCall={() => {
+                        webrtcService.triggerSimulatedIncomingCall(activeUser.id, 'Fresh kk', 'video');
                       }}
                     />
                   </div>
@@ -813,15 +854,45 @@ export default function App() {
         </div>
       )}
 
+      {/* Real-Time Incoming WebRTC Call Alert Notification */}
+      {incomingCall && !activeCallSession && (
+        <IncomingCallNotification
+          call={incomingCall}
+          onAccept={() => {
+            const call = incomingCall;
+            setIncomingCall(null);
+            setActiveCallSession({
+              type: call.callType,
+              callId: call.id,
+              remoteUserId: call.callerId,
+              remoteName: call.callerName || 'Mwanachama wa Zenia',
+              remoteAvatar: call.callerAvatar || freshKkAvatar,
+              subtitle: 'Zenia WebRTC • Simu Iliyopokelewa P2P',
+              isIncoming: true,
+              incomingCallData: call,
+            });
+          }}
+          onDecline={() => {
+            if (incomingCall) {
+              webrtcService.rejectCall(incomingCall.id);
+            }
+            setIncomingCall(null);
+          }}
+        />
+      )}
+
       {/* Direct Voice & Video Call Modal */}
       {activeCallSession && (
         <div className="fixed inset-0 z-50 flex items-center justify-center p-0 sm:p-4 bg-black/90 backdrop-blur-xl">
           <VideoCallScreen
             callType={activeCallSession.type}
+            callId={activeCallSession.callId}
+            remoteUserId={activeCallSession.remoteUserId}
             remoteUserName={activeCallSession.remoteName}
             remoteUserAvatar={activeCallSession.remoteAvatar || freshKkAvatar}
             remoteUserSubtitle={activeCallSession.subtitle}
             isIncoming={activeCallSession.isIncoming}
+            incomingCallData={activeCallSession.incomingCallData}
             currentUser={activeUser}
             onEndCall={() => setActiveCallSession(null)}
           />

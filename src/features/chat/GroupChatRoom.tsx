@@ -28,6 +28,8 @@ import {
   Lock,
   LogIn,
   UserPlus,
+  Phone,
+  Video,
 } from 'lucide-react';
 import { Conversation, ChatMessage, UserProfile } from '../../types';
 import { INITIAL_MESSAGES_CONV2, INITIAL_CONVERSATIONS } from '../../services/seed/initialData';
@@ -432,6 +434,36 @@ export const GroupChatRoom: React.FC<GroupChatRoomProps> = ({
               title="🔊 Sikiliza"
             >
               {isSpeaking ? <VolumeX className="w-4 h-4 text-cyan-400" /> : <Volume2 className="w-4 h-4" />}
+            </button>
+
+            {/* Group Voice Call */}
+            <button
+              onClick={() => {
+                if (currentUser.id === 'guest') {
+                  onOpenAuth?.('signup', 'Ili kupiga simu ya sauti ya kikundi, tafadhali jisajili au ingia kwanza.');
+                  return;
+                }
+                onStartCall('voice');
+              }}
+              className="p-2 hover:bg-white/5 rounded-xl text-slate-200 hover:text-white transition-colors"
+              title="Simu ya Sauti ya Kikundi"
+            >
+              <Phone className="w-4 h-4" />
+            </button>
+
+            {/* Group Video Call */}
+            <button
+              onClick={() => {
+                if (currentUser.id === 'guest') {
+                  onOpenAuth?.('signup', 'Ili kupiga simu ya video ya kikundi, tafadhali jisajili au ingia kwanza.');
+                  return;
+                }
+                onStartCall('video');
+              }}
+              className="p-2 hover:bg-cyan-500/15 rounded-xl text-cyan-400 transition-colors"
+              title="Simu ya Video ya Kikundi"
+            >
+              <Video className="w-4 h-4" />
             </button>
 
             {/* In-chat search button */}

@@ -19,6 +19,7 @@ import {
   Settings,
   CreditCard,
   Music,
+  PhoneCall,
 } from 'lucide-react';
 import { UserProfile, isUserAdmin } from '../types';
 import { SafeImage } from './SafeImage';
@@ -37,6 +38,7 @@ interface HeaderProps {
   isFrameMode: boolean;
   onToggleFrameMode: () => void;
   unreadNotificationsCount: number;
+  onTriggerSimulatedIncomingCall?: () => void;
 }
 
 export const Header: React.FC<HeaderProps> = ({
@@ -50,6 +52,7 @@ export const Header: React.FC<HeaderProps> = ({
   isFrameMode,
   onToggleFrameMode,
   unreadNotificationsCount,
+  onTriggerSimulatedIncomingCall,
 }) => {
   const { isDark, toggleTheme } = useTheme();
   const { openPlayer } = useMusicPlayer();
@@ -295,6 +298,24 @@ export const Header: React.FC<HeaderProps> = ({
                     🎵 Play
                   </span>
                 </button>
+
+                {onTriggerSimulatedIncomingCall && (
+                  <button
+                    onClick={() => {
+                      setIsMenuOpen(false);
+                      onTriggerSimulatedIncomingCall();
+                    }}
+                    className="w-full flex items-center justify-between px-3 py-2 rounded-xl text-xs text-cyan-300 hover:text-white hover:bg-cyan-500/15 transition-colors text-left"
+                  >
+                    <div className="flex items-center gap-2.5">
+                      <PhoneCall className="w-3.5 h-3.5 text-cyan-400 animate-pulse" />
+                      <span>Pima Simu ya WebRTC (Jaribio)</span>
+                    </div>
+                    <span className="text-[9px] px-1.5 py-0.5 rounded-full bg-cyan-500/20 text-cyan-300 font-bold border border-cyan-400/30">
+                      Live Call
+                    </span>
+                  </button>
+                )}
 
                 <button
                   onClick={() => {
