@@ -27,7 +27,11 @@ import {
   Phone,
   Video,
   PhoneCall,
+  PhoneIncoming,
+  PhoneOutgoing,
+  PhoneMissed,
 } from 'lucide-react';
+import { callHistoryService, CallRecord } from '../../services/calls/callHistoryService';
 import {
   collection,
   onSnapshot,
@@ -162,7 +166,15 @@ export const ChatList: React.FC<ChatListProps> = ({
   }, [currentUser?.id, propConversations]);
 
   const [searchQuery, setSearchQuery] = useState('');
-  const [activeFilter, setActiveFilter] = useState<'all' | 'unread' | 'favorites' | 'groups' | 'archived' | 'locked'>('all');
+  const [activeFilter, setActiveFilter] = useState<'all' | 'unread' | 'favorites' | 'groups' | 'calls' | 'archived' | 'locked'>('all');
+  const [callLogs, setCallLogs] = useState<CallRecord[]>(() => callHistoryService.getCallHistory(effectiveUser.id));
+
+  useEffect(() => {
+    const unsub = callHistoryService.subscribe((updated) => {
+      setCallLogs(updated);
+    });
+    return () => unsub();
+  }, [effectiveUser.id]);
   const [customLists, setCustomLists] = useState<string[]>(['Family', 'Work', 'VIP', 'Close Friends']);
   const [activeListFilter, setActiveListFilter] = useState<string | null>(null);
 
@@ -1049,6 +1061,7 @@ export const ChatList: React.FC<ChatListProps> = ({
           { id: 'unread', label: 'Hazijasomwa' },
           { id: 'groups', label: 'Vikundi' },
           { id: 'favorites', label: 'Vipendwa' },
+          { id: 'calls', label: `Simu${callLogs.length > 0 ? ` (${callLogs.length})` : ''}` },
           ...(lockedCount > 0
             ? [{ id: 'locked', label: `Zilizofungwa (${lockedCount})` }]
             : []),
@@ -1178,7 +1191,215 @@ export const ChatList: React.FC<ChatListProps> = ({
           </div>
         )}
 
-        {filteredConversations.length === 0 && matchingContacts.length === 0 ? (
+        {activeFilter === 'calls' ? (
+          /* Dedicated Call History (Simu) Section */
+          <div className="p-3.5 space-y-3 animate-in fade-in duration-200">
+            {/* Top Call Action Bar */}
+            <div className="flex items-center justify-between p-3 rounded-2xl bg-gradient-to-r from-cyan-950/40 via-blue-950/30 to-indigo-950/40 border border-cyan-500/20">
+              <div className="flex items-center gap-2">
+                <div className="w-8 h-8 rounded-xl bg-cyan-500/20 flex items-center justify-center text-cyan-400">
+                  <PhoneCall className="w-4 h-4" />
+                </div>
+                <div>
+                  <h4 className="text-xs font-bold text-white">Simu za Moja kwa Moja</h4>
+                  <p className="text-[10px] text-cyan-300 font-mono">WebRTC P2P • End-to-End Encrypted</p>
+                </div>
+              </div>
+
+              <div className="flex items-center gap-1.5">
+                {onSimulateIncomingCall && (
+                  <button
+                    onClick={onSimulateIncomingCall}
+                    className="px-2.5 py-1 rounded-xl bg-cyan-500/20 hover:bg-cyan-500/35 border border-cyan-400/40 text-cyan-300 text-[10px] font-bold transition-all active:scale-95"
+                    title="Pima simu inayoingia"
+                  >
+                    Pima Simu
+                  </button>
+                )}
+
+                {callLogs.length > 0 && (
+                  <button
+                    onClick={() => callHistoryService.clearCallHistory(effectiveUser.id)}
+                    className="p-1.5 rounded-xl hover:bg-rose-500/20 text-slate-400 hover:text-rose-300 transition-colors"
+                    title="Futa rekodi zote za simu"
+                  >
+                    <Trash2 className="w-3.5 h-3.5" />
+                  </button>
+                )}
+              </div>
+            </div>
+
+            {/* List of Call Records */}
+            {callLogs.length === 0 ? (
+              <div className="py-12 text-center text-slate-400">
+                <div className="w-12 h-12 rounded-2xl bg-white/5 border border-white/10 flex items-center justify-center mx-auto mb-2 text-cyan-400">
+                  <Phone className="w-6 h-6 opacity-60" />
+                </div>
+                <p className="text-xs font-bold text-white">Hakuna rekodi za simu bado</p>
+                <p className="text-[11px] text-slate-400 mt-1">
+                  Piga simu ya sauti au video kwa marafiki zako ili zionekane hapa.
+                </p>
+              </div>
+            ) : (
+              <div className="space-y-1.5">
+                {callLogs.map((log) => {
+                  const isMissed = log.direction === 'missed';
+                  const isIncoming = log.direction === 'incoming';
+
+                  return (
+                    <div
+                      key={log.id}
+                      className="p-3 rounded-2xl bg-white/[0.03] hover:bg-white/[0.06] border border-white/5 hover:border-cyan-500/30 flex items-center justify-between transition-all group"
+                    >
+                      <div className="flex items-center gap-3 min-w-0">
+                        {/* Remote Avatar */}
+                        <div className="relative shrink-0">
+                          <SafeImage
+                            src={log.remoteUserAvatar}
+                            fallbackText={log.remoteUserName}
+                            fallbackGradient="from-cyan-800 to-indigo-950"
+                            alt={log.remoteUserName}
+                            className="w-11 h-11 rounded-2xl object-cover ring-1 ring-white/10"
+                          />
+                          <span
+                            className={`absolute -bottom-1 -right-1 p-0.5 rounded-full border-2 border-[#090D1A] ${
+                              isMissed
+                                ? 'bg-rose-500 text-white'
+                                : isIncoming
+                                ? 'bg-emerald-500 text-slate-950'
+                                : 'bg-cyan-500 text-slate-950'
+                            }`}
+                          >
+                            {isMissed ? (
+                              <PhoneMissed className="w-2.5 h-2.5" />
+                            ) : isIncoming ? (
+                              <PhoneIncoming className="w-2.5 h-2.5" />
+                            ) : (
+                              <PhoneOutgoing className="w-2.5 h-2.5" />
+                            )}
+                          </span>
+                        </div>
+
+                        {/* Details */}
+                        <div className="min-w-0">
+                          <h4
+                            className={`font-bold text-xs truncate ${
+                              isMissed ? 'text-rose-300' : 'text-white'
+                            }`}
+                          >
+                            {log.remoteUserName}
+                          </h4>
+                          <div className="flex items-center gap-1.5 text-[10px] text-slate-400 mt-0.5">
+                            <span
+                              className={`font-semibold ${
+                                isMissed
+                                  ? 'text-rose-400'
+                                  : isIncoming
+                                  ? 'text-emerald-400'
+                                  : 'text-cyan-400'
+                              }`}
+                            >
+                              {isMissed
+                                ? 'Imekosekana'
+                                : isIncoming
+                                ? 'Iliyopokelewa'
+                                : 'Iliyopigwa'}
+                            </span>
+                            <span>•</span>
+                            <span>{log.timestamp}</span>
+                            {log.durationSeconds > 0 && (
+                              <>
+                                <span>•</span>
+                                <span className="font-mono text-cyan-300">
+                                  {Math.floor(log.durationSeconds / 60)}:
+                                  {(log.durationSeconds % 60).toString().padStart(2, '0')}
+                                </span>
+                              </>
+                            )}
+                          </div>
+                          {log.note && (
+                            <p className="text-[10px] text-slate-400 italic mt-0.5 truncate max-w-[200px]">
+                              {log.note}
+                            </p>
+                          )}
+                        </div>
+                      </div>
+
+                      {/* Callback buttons */}
+                      <div className="flex items-center gap-1 shrink-0 ml-2">
+                        {/* Voice callback */}
+                        <button
+                          onClick={() => {
+                            if (!currentUser) {
+                              onOpenAuth?.('signup', 'Tafadhali jisajili au ingia ili kupiga simu!');
+                              return;
+                            }
+                            const matchedConv = propConversations?.find(
+                              (c) => !c.isGroup && c.participants.includes(log.remoteUserId)
+                            );
+                            const syntheticConv: Conversation = matchedConv || {
+                              id: `conv_${log.remoteUserId}`,
+                              participants: [effectiveUser.id, log.remoteUserId],
+                              participantDetails: {
+                                [log.remoteUserId]: {
+                                  displayName: log.remoteUserName,
+                                  photoURL: log.remoteUserAvatar,
+                                  username: log.remoteUserName.toLowerCase().replace(/\s+/g, '_'),
+                                },
+                              },
+                              isGroup: false,
+                              createdAt: new Date().toISOString(),
+                              updatedAt: new Date().toISOString(),
+                            };
+                            onStartCall?.('voice', syntheticConv);
+                          }}
+                          className="p-2.5 rounded-xl bg-white/5 hover:bg-emerald-500/20 text-slate-300 hover:text-emerald-300 transition-colors"
+                          title={`Piga simu ya sauti kwa ${log.remoteUserName}`}
+                        >
+                          <Phone className="w-4 h-4" />
+                        </button>
+
+                        {/* Video callback */}
+                        <button
+                          onClick={() => {
+                            if (!currentUser) {
+                              onOpenAuth?.('signup', 'Tafadhali jisajili au ingia ili kupiga simu!');
+                              return;
+                            }
+                            const matchedConv = propConversations?.find(
+                              (c) => !c.isGroup && c.participants.includes(log.remoteUserId)
+                            );
+                            const syntheticConv: Conversation = matchedConv || {
+                              id: `conv_${log.remoteUserId}`,
+                              participants: [effectiveUser.id, log.remoteUserId],
+                              participantDetails: {
+                                [log.remoteUserId]: {
+                                  displayName: log.remoteUserName,
+                                  photoURL: log.remoteUserAvatar,
+                                  username: log.remoteUserName.toLowerCase().replace(/\s+/g, '_'),
+                                },
+                              },
+                              isGroup: false,
+                              createdAt: new Date().toISOString(),
+                              updatedAt: new Date().toISOString(),
+                            };
+                            onStartCall?.('video', syntheticConv);
+                          }}
+                          className="p-2.5 rounded-xl bg-white/5 hover:bg-cyan-500/20 text-slate-300 hover:text-cyan-300 transition-colors"
+                          title={`Piga simu ya video kwa ${log.remoteUserName}`}
+                        >
+                          <Video className="w-4 h-4" />
+                        </button>
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+            )}
+          </div>
+        ) : (
+          <>
+            {filteredConversations.length === 0 && matchingContacts.length === 0 ? (
           <div className="py-10 px-4 text-center text-slate-400 text-xs flex flex-col items-center justify-center animate-in fade-in duration-300">
             <div className="w-16 h-16 rounded-3xl bg-gradient-to-tr from-cyan-500/15 via-blue-500/15 to-purple-500/15 border border-cyan-500/30 flex items-center justify-center mb-3 shadow-lg shadow-cyan-500/10">
               <MessageSquarePlus className="w-8 h-8 text-cyan-400 animate-pulse" />
@@ -1552,6 +1773,8 @@ export const ChatList: React.FC<ChatListProps> = ({
               </div>
             );
           })
+        )}
+          </>
         )}
       </div>
 

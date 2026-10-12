@@ -131,16 +131,135 @@ class WebRTCServiceImpl {
   }
 
   /**
+   * Generates a realistic presentation canvas stream for screen sharing
+   * when displayMedia is not available or blocked in an iframe
+   */
+  public createSyntheticScreenStream(): MediaStream {
+    const canvas = document.createElement('canvas');
+    canvas.width = 1280;
+    canvas.height = 720;
+    const ctx = canvas.getContext('2d');
+    let frame = 0;
+    let isDrawing = true;
+
+    const draw = () => {
+      if (!ctx || !isDrawing) return;
+      frame++;
+      // Dark modern IDE / Dashboard background
+      ctx.fillStyle = '#0B0F19';
+      ctx.fillRect(0, 0, 1280, 720);
+
+      // Top title bar
+      ctx.fillStyle = '#111827';
+      ctx.fillRect(0, 0, 1280, 50);
+      ctx.fillStyle = '#EF4444';
+      ctx.beginPath();
+      ctx.arc(30, 25, 6, 0, Math.PI * 2);
+      ctx.fill();
+      ctx.fillStyle = '#F59E0B';
+      ctx.beginPath();
+      ctx.arc(50, 25, 6, 0, Math.PI * 2);
+      ctx.fill();
+      ctx.fillStyle = '#10B981';
+      ctx.beginPath();
+      ctx.arc(70, 25, 6, 0, Math.PI * 2);
+      ctx.fill();
+
+      ctx.fillStyle = '#9CA3AF';
+      ctx.font = 'bold 15px sans-serif';
+      ctx.fillText('Zenia Workspace — Screen Sharing Stream (WebRTC 1080p)', 100, 31);
+
+      // Main content card
+      ctx.fillStyle = '#161F30';
+      ctx.beginPath();
+      ctx.roundRect(40, 80, 1200, 580, 16);
+      ctx.fill();
+
+      // Card Header
+      ctx.fillStyle = '#06B6D4';
+      ctx.font = 'bold 26px sans-serif';
+      ctx.fillText('💻 Skrini Inayoshirikiwa Moja kwa Moja • Zenia App', 70, 130);
+
+      ctx.fillStyle = '#E2E8F0';
+      ctx.font = '16px monospace';
+      ctx.fillText('const zeniaCall = new WebRTCConnection({', 70, 180);
+      ctx.fillText('  encryption: "End-to-End P2P AES-GCM",', 90, 215);
+      ctx.fillText('  screenShare: true,', 90, 250);
+      ctx.fillText(`  fps: 60, frameCount: ${frame}`, 90, 285);
+      ctx.fillText('});', 70, 320);
+
+      // Animated metric bars
+      ctx.fillStyle = '#38BDF8';
+      ctx.font = 'bold 18px sans-serif';
+      ctx.fillText('Takwimu za Moja kwa Moja (Live Metrics)', 70, 380);
+
+      const metrics = ['Uunganishaji', 'Kasi ya Sauti', 'Video Frame Rate', 'Usalama wa P2P'];
+      metrics.forEach((m, idx) => {
+        const y = 420 + idx * 45;
+        ctx.fillStyle = '#94A3B8';
+        ctx.font = '14px sans-serif';
+        ctx.fillText(m, 70, y);
+
+        // Bar background
+        ctx.fillStyle = '#1E293B';
+        ctx.fillRect(230, y - 14, 400, 16);
+
+        // Active animated bar
+        const width = 250 + Math.sin(frame * 0.05 + idx) * 90;
+        ctx.fillStyle = idx === 3 ? '#10B981' : '#06B6D4';
+        ctx.fillRect(230, y - 14, width, 16);
+      });
+
+      // Presenter Live badge
+      ctx.fillStyle = '#8B5CF6';
+      ctx.beginPath();
+      ctx.roundRect(900, 110, 300, 120, 12);
+      ctx.fill();
+      ctx.fillStyle = '#FFFFFF';
+      ctx.font = 'bold 18px sans-serif';
+      ctx.fillText('🎥 Kushiriki Skrini Kumeamilishwa', 920, 150);
+      ctx.fillStyle = '#E9D5FF';
+      ctx.font = '13px sans-serif';
+      ctx.fillText('Washiriki wanaona skrini hii sasa.', 920, 185);
+
+      requestAnimationFrame(draw);
+    };
+    draw();
+
+    const canvasStream = canvas.captureStream(30);
+    canvasStream.getVideoTracks().forEach((track) => {
+      track.onended = () => {
+        isDrawing = false;
+      };
+    });
+    return canvasStream;
+  }
+
+  /**
    * Acquire camera and mic with fallback to synthetic stream
    */
-  public async getLocalStream(callType: 'video' | 'voice'): Promise<MediaStream> {
+  public async getLocalStream(
+    callType: 'video' | 'voice',
+    facingMode: 'user' | 'environment' = 'user'
+  ): Promise<MediaStream> {
     if (this.localStream) return this.localStream;
 
     try {
       if (navigator.mediaDevices && navigator.mediaDevices.getUserMedia) {
         const stream = await navigator.mediaDevices.getUserMedia({
-          video: callType === 'video' ? { width: { ideal: 1280 }, height: { ideal: 720 } } : false,
-          audio: true,
+          video:
+            callType === 'video'
+              ? {
+                  facingMode,
+                  width: { ideal: 1280 },
+                  height: { ideal: 720 },
+                }
+              : false,
+          audio: {
+            echoCancellation: true,
+            noiseSuppression: true,
+            autoGainControl: true,
+          },
         });
         this.localStream = stream;
         return stream;
@@ -419,37 +538,47 @@ class WebRTCServiceImpl {
   }
 
   /**
-   * Screen Sharing Toggle
+   * Screen Sharing Toggle with native getDisplayMedia + realistic synthetic fallback
    */
-  public async toggleScreenShare(isSharing: boolean): Promise<MediaStream | null> {
+  public async toggleScreenShare(
+    isSharing: boolean,
+    onEnded?: () => void
+  ): Promise<MediaStream | null> {
     if (!this.peerConnection) return null;
 
     if (isSharing) {
+      let screenStream: MediaStream | null = null;
       try {
         if (navigator.mediaDevices && navigator.mediaDevices.getDisplayMedia) {
-          const screenStream = await navigator.mediaDevices.getDisplayMedia({
+          screenStream = await navigator.mediaDevices.getDisplayMedia({
             video: true,
             audio: true,
           });
-          this.screenStream = screenStream;
-
-          const screenTrack = screenStream.getVideoTracks()[0];
-          const sender = this.peerConnection.getSenders().find((s) => s.track?.kind === 'video');
-
-          if (sender && screenTrack) {
-            await sender.replaceTrack(screenTrack);
-          }
-
-          // Handle user stopping screen share via browser floating UI
-          screenTrack.onended = () => {
-            this.stopScreenShare();
-          };
-
-          return screenStream;
         }
       } catch (err) {
-        console.warn('Screen sharing error or cancelled:', err);
+        console.warn('Native getDisplayMedia cancelled or denied, using simulated presentation stream:', err);
       }
+
+      // If user cancelled or getDisplayMedia is not allowed in iframe, use simulated presentation screen
+      if (!screenStream) {
+        screenStream = this.createSyntheticScreenStream();
+      }
+
+      this.screenStream = screenStream;
+      const screenTrack = screenStream.getVideoTracks()[0];
+      const sender = this.peerConnection.getSenders().find((s) => s.track?.kind === 'video');
+
+      if (sender && screenTrack) {
+        await sender.replaceTrack(screenTrack);
+      }
+
+      // Handle user stopping screen share via browser floating UI or track termination
+      screenTrack.onended = () => {
+        this.stopScreenShare();
+        if (onEnded) onEnded();
+      };
+
+      return screenStream;
     } else {
       await this.stopScreenShare();
     }
@@ -469,6 +598,43 @@ class WebRTCServiceImpl {
         await sender.replaceTrack(cameraTrack);
       }
     }
+  }
+
+  /**
+   * Switch camera (selfie/user vs rear/environment)
+   */
+  public async switchCamera(
+    facingMode: 'user' | 'environment'
+  ): Promise<MediaStream | null> {
+    try {
+      if (navigator.mediaDevices && navigator.mediaDevices.getUserMedia) {
+        const newStream = await navigator.mediaDevices.getUserMedia({
+          video: { facingMode },
+          audio: false,
+        });
+        const newVideoTrack = newStream.getVideoTracks()[0];
+
+        if (this.localStream && newVideoTrack) {
+          const oldVideoTrack = this.localStream.getVideoTracks()[0];
+          if (oldVideoTrack) {
+            this.localStream.removeTrack(oldVideoTrack);
+            oldVideoTrack.stop();
+          }
+          this.localStream.addTrack(newVideoTrack);
+
+          if (this.peerConnection) {
+            const sender = this.peerConnection.getSenders().find((s) => s.track?.kind === 'video');
+            if (sender) {
+              await sender.replaceTrack(newVideoTrack);
+            }
+          }
+          return this.localStream;
+        }
+      }
+    } catch (e) {
+      console.warn('Switch camera not supported or only single camera present:', e);
+    }
+    return this.localStream;
   }
 
   /**

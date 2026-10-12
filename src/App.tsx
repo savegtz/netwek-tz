@@ -7,7 +7,7 @@ import React, { useState, useEffect } from 'react';
 import { onAuthStateChanged, signOut } from 'firebase/auth';
 import { doc, getDoc, setDoc } from 'firebase/firestore';
 import { auth, db } from './services/firebase/config';
-import { UserProfile, Conversation, StatusType, StatusItem, NotificationItem, isUserAdmin } from './types';
+import { UserProfile, Conversation, StatusType, StatusItem, NotificationItem, isUserAdmin, ChatMessage } from './types';
 import { INITIAL_USER, INITIAL_CONVERSATIONS, INITIAL_NOTIFICATIONS } from './services/seed/initialData';
 import { MessageSquare, Plus, Sparkles, ShieldCheck, Lock } from 'lucide-react';
 
@@ -36,8 +36,10 @@ import { WalletView } from './features/payments/WalletView';
 import { CommunityView } from './features/communities/CommunityView';
 import { AIAssistantModal } from './features/ai/AIAssistantModal';
 import { VideoCallScreen } from './features/calls/VideoCallScreen';
+import { FloatingCallBubble } from './features/calls/FloatingCallBubble';
 import { IncomingCallNotification } from './features/calls/IncomingCallNotification';
 import { webrtcService, WebRTCCallData } from './services/calls/webrtcService';
+import { ChatSyncService } from './services/chat/chatSyncService';
 import { NotificationsView } from './features/notifications/NotificationsView';
 import { AdminDevPanel } from './features/admin/AdminDevPanel';
 import { BroadcastBanner } from './components/BroadcastBanner';
@@ -141,6 +143,21 @@ export default function App() {
     incomingCallData?: WebRTCCallData;
   } | null>(null);
   const [incomingCall, setIncomingCall] = useState<WebRTCCallData | null>(null);
+  const [isCallMinimized, setIsCallMinimized] = useState<boolean>(false);
+  const [minimizedCallMuted, setMinimizedCallMuted] = useState<boolean>(false);
+  const [minimizedCallSeconds, setMinimizedCallSeconds] = useState<number>(0);
+
+  // Timer for minimized floating call duration
+  useEffect(() => {
+    if (!activeCallSession) {
+      setMinimizedCallSeconds(0);
+      return;
+    }
+    const timer = setInterval(() => {
+      setMinimizedCallSeconds((s) => s + 1);
+    }, 1000);
+    return () => clearInterval(timer);
+  }, [activeCallSession]);
 
   // Subscribe to real-time incoming WebRTC calls via Firestore and BroadcastChannel
   useEffect(() => {
@@ -861,6 +878,7 @@ export default function App() {
           onAccept={() => {
             const call = incomingCall;
             setIncomingCall(null);
+            setIsCallMinimized(false);
             setActiveCallSession({
               type: call.callType,
               callId: call.id,
@@ -878,11 +896,32 @@ export default function App() {
             }
             setIncomingCall(null);
           }}
+          onReplyWithMessage={(msg) => {
+            if (incomingCall) {
+              webrtcService.rejectCall(incomingCall.id);
+              const conv = conversations.find(
+                (c) => !c.isGroup && c.participants.includes(incomingCall.callerId)
+              );
+              if (conv) {
+                const autoMsg: ChatMessage = {
+                  id: `reply_${Date.now()}`,
+                  conversationId: conv.id,
+                  senderId: activeUser.id,
+                  senderName: activeUser.displayName || 'Mimi',
+                  text: `📞 [Jibu la Simu]: ${msg}`,
+                  messageType: 'text',
+                  createdAt: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
+                };
+                ChatSyncService.sendMessage(conv.id, autoMsg);
+              }
+            }
+            setIncomingCall(null);
+          }}
         />
       )}
 
-      {/* Direct Voice & Video Call Modal */}
-      {activeCallSession && (
+      {/* Direct Voice & Video Call Modal (Full Screen) */}
+      {activeCallSession && !isCallMinimized && (
         <div className="fixed inset-0 z-50 flex items-center justify-center p-0 sm:p-4 bg-black/90 backdrop-blur-xl">
           <VideoCallScreen
             callType={activeCallSession.type}
@@ -894,9 +933,35 @@ export default function App() {
             isIncoming={activeCallSession.isIncoming}
             incomingCallData={activeCallSession.incomingCallData}
             currentUser={activeUser}
-            onEndCall={() => setActiveCallSession(null)}
+            onEndCall={() => {
+              setActiveCallSession(null);
+              setIsCallMinimized(false);
+            }}
+            onMinimizeCall={() => setIsCallMinimized(true)}
           />
         </div>
+      )}
+
+      {/* Minimized Floating Call Bubble (Tazama Mazungumzo Mode) */}
+      {activeCallSession && isCallMinimized && (
+        <FloatingCallBubble
+          remoteName={activeCallSession.remoteName}
+          remoteAvatar={activeCallSession.remoteAvatar || freshKkAvatar}
+          callType={activeCallSession.type}
+          durationSeconds={minimizedCallSeconds}
+          isMuted={minimizedCallMuted}
+          onToggleMute={() => {
+            const next = !minimizedCallMuted;
+            setMinimizedCallMuted(next);
+            webrtcService.toggleMute(next);
+          }}
+          onExpand={() => setIsCallMinimized(false)}
+          onEndCall={() => {
+            webrtcService.endCall();
+            setActiveCallSession(null);
+            setIsCallMinimized(false);
+          }}
+        />
       )}
 
       {/* Floating Zenia Beats & Podcasts Mini-Player */}

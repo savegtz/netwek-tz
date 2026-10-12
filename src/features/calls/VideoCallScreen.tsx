@@ -24,10 +24,14 @@ import {
   Sparkles,
   Maximize2,
   Minimize2,
+  FlipHorizontal,
+  Wifi,
+  Activity,
 } from 'lucide-react';
 import { webrtcService, WebRTCCallData } from '../../services/calls/webrtcService';
 import { ChatSyncService } from '../../services/chat/chatSyncService';
 import { soundEffects } from '../../services/audio/soundEffects';
+import { callHistoryService } from '../../services/calls/callHistoryService';
 import { UserProfile, ChatMessage } from '../../types';
 import { SafeImage } from '../../components/SafeImage';
 import freshKkAvatar from '../../assets/images/fresh_kk_avatar_1791078365294.jpg';
@@ -42,6 +46,7 @@ interface VideoCallScreenProps {
   isIncoming?: boolean;
   incomingCallData?: WebRTCCallData;
   onEndCall: () => void;
+  onMinimizeCall?: () => void;
   currentUser: UserProfile;
 }
 
@@ -55,6 +60,7 @@ export const VideoCallScreen: React.FC<VideoCallScreenProps> = ({
   isIncoming = false,
   incomingCallData,
   onEndCall,
+  onMinimizeCall,
   currentUser,
 }) => {
   const effectiveCallId = useRef(callId || incomingCallData?.id || `call_${Date.now()}`).current;
@@ -74,12 +80,16 @@ export const VideoCallScreen: React.FC<VideoCallScreenProps> = ({
   const [chatInputText, setChatInputText] = useState('');
   const [isFullscreen, setIsFullscreen] = useState(false);
   const [hasRemoteVideo, setHasRemoteVideo] = useState(false);
+  const [facingMode, setFacingMode] = useState<'user' | 'environment'>('user');
+  const [isSwappedVideo, setIsSwappedVideo] = useState(false);
+  const [qualityMode, setQualityMode] = useState<'hd' | 'sd'>('hd');
 
   const localVideoRef = useRef<HTMLVideoElement>(null);
   const remoteVideoRef = useRef<HTMLVideoElement>(null);
   const remoteAudioRef = useRef<HTMLAudioElement>(null);
   const containerRef = useRef<HTMLDivElement>(null);
   const chatBottomRef = useRef<HTMLDivElement>(null);
+  const callLoggedRef = useRef(false);
 
   // Play realistic ringtone sound during ringing or incoming
   useEffect(() => {
@@ -107,13 +117,34 @@ export const VideoCallScreen: React.FC<VideoCallScreenProps> = ({
     return `${m.toString().padStart(2, '0')}:${s.toString().padStart(2, '0')}`;
   };
 
-  // WebRTC Real-Time Connection Setup (CodeWithKael pattern)
+  // Record call into call history service when call ends
+  const logCallRecord = (duration: number, finalStatus: 'connected' | 'missed' | 'rejected' = 'connected') => {
+    if (callLoggedRef.current) return;
+    callLoggedRef.current = true;
+
+    callHistoryService.addCallRecord(
+      {
+        callId: effectiveCallId,
+        remoteUserId,
+        remoteUserName,
+        remoteUserAvatar,
+        callType,
+        direction: isIncoming ? 'incoming' : 'outgoing',
+        status: finalStatus,
+        durationSeconds: duration,
+        timestamp: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
+      },
+      currentUser.id
+    );
+  };
+
+  // WebRTC Real-Time Connection Setup
   useEffect(() => {
     let isCancelled = false;
 
     async function setupWebRTC() {
       // 1. Get local camera/audio stream and attach to local video preview
-      const localStream = await webrtcService.getLocalStream(callType);
+      const localStream = await webrtcService.getLocalStream(callType, facingMode);
       if (localVideoRef.current && localStream) {
         localVideoRef.current.srcObject = localStream;
       }
@@ -141,6 +172,7 @@ export const VideoCallScreen: React.FC<VideoCallScreenProps> = ({
           soundEffects.stopRingtone();
           soundEffects.playHangupTone();
           setCallStatus('ended');
+          logCallRecord(seconds, 'connected');
           setTimeout(() => {
             onEndCall();
           }, 1000);
@@ -216,12 +248,23 @@ export const VideoCallScreen: React.FC<VideoCallScreenProps> = ({
   const handleToggleScreenShare = async () => {
     const nextState = !isScreenSharing;
     setIsScreenSharing(nextState);
-    const screenStream = await webrtcService.toggleScreenShare(nextState);
+    const screenStream = await webrtcService.toggleScreenShare(nextState, () => {
+      setIsScreenSharing(false);
+    });
     if (nextState && screenStream && localVideoRef.current) {
       localVideoRef.current.srcObject = screenStream;
     } else if (!nextState && localVideoRef.current) {
-      const cameraStream = await webrtcService.getLocalStream(callType);
+      const cameraStream = await webrtcService.getLocalStream(callType, facingMode);
       localVideoRef.current.srcObject = cameraStream;
+    }
+  };
+
+  const handleFlipCamera = async () => {
+    const nextMode = facingMode === 'user' ? 'environment' : 'user';
+    setFacingMode(nextMode);
+    const stream = await webrtcService.switchCamera(nextMode);
+    if (stream && localVideoRef.current) {
+      localVideoRef.current.srcObject = stream;
     }
   };
 
@@ -249,13 +292,14 @@ export const VideoCallScreen: React.FC<VideoCallScreenProps> = ({
   const handleHangup = () => {
     soundEffects.stopRingtone();
     soundEffects.playHangupTone();
+    logCallRecord(seconds, callStatus === 'connected' ? 'connected' : 'missed');
     webrtcService.endCall(effectiveCallId);
     onEndCall();
   };
 
-  const handleSendInCallMessage = async (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!chatInputText.trim()) return;
+  const handleSendInCallMessage = async (textToSend?: string) => {
+    const text = (textToSend || chatInputText).trim();
+    if (!text) return;
 
     const chatConvId = `call_chat_${effectiveCallId}`;
     const newMsg: ChatMessage = {
@@ -263,12 +307,12 @@ export const VideoCallScreen: React.FC<VideoCallScreenProps> = ({
       conversationId: chatConvId,
       senderId: currentUser.id,
       senderName: currentUser.displayName || 'Mimi',
-      text: chatInputText.trim(),
+      text,
       messageType: 'text',
       createdAt: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
     };
 
-    setChatInputText('');
+    if (!textToSend) setChatInputText('');
     await ChatSyncService.sendMessage(chatConvId, newMsg);
   };
 
@@ -291,15 +335,18 @@ export const VideoCallScreen: React.FC<VideoCallScreenProps> = ({
       {/* Hidden audio element for WebRTC Remote Sound */}
       <audio ref={remoteAudioRef} autoPlay playsInline />
 
-      {/* Main Remote Video or Ambient Animated Background */}
+      {/* Main Remote Video or Swapped Video Feed */}
       {callType === 'video' && !isVideoOff ? (
         <div className="absolute inset-0 z-0 bg-black overflow-hidden flex items-center justify-center">
-          {/* Real Remote Video Element */}
+          {/* Main Video View */}
           <video
-            ref={remoteVideoRef}
+            ref={isSwappedVideo ? localVideoRef : remoteVideoRef}
             autoPlay
             playsInline
-            className="w-full h-full object-cover filter contrast-[1.05]"
+            muted={isSwappedVideo}
+            className={`w-full h-full object-cover filter contrast-[1.05] ${
+              isSwappedVideo && !isScreenSharing ? 'scale-x-[-1]' : ''
+            }`}
           />
           {/* Overlay gradient */}
           <div className="absolute inset-0 bg-gradient-to-b from-black/80 via-transparent to-black/90 pointer-events-none" />
@@ -316,28 +363,58 @@ export const VideoCallScreen: React.FC<VideoCallScreenProps> = ({
       )}
 
       {/* Top Bar Header */}
-      <div className="relative z-20 p-4 sm:p-5 flex items-center justify-between text-white">
-        <button
-          onClick={handleHangup}
-          className="p-2.5 rounded-full bg-black/40 backdrop-blur-md hover:bg-white/20 transition-all active:scale-95 text-slate-300 hover:text-white border border-white/10"
-          title="Rudi Nyuma"
-        >
-          <ArrowLeft className="w-5 h-5" />
-        </button>
+      <div className="relative z-20 p-3 sm:p-5 flex items-center justify-between text-white gap-2">
+        <div className="flex items-center gap-2">
+          <button
+            onClick={handleHangup}
+            className="p-2 sm:p-2.5 rounded-full bg-black/40 backdrop-blur-md hover:bg-white/20 transition-all active:scale-95 text-slate-300 hover:text-white border border-white/10"
+            title="Kata simu na urudi"
+          >
+            <ArrowLeft className="w-4 h-4 sm:w-5 sm:h-5" />
+          </button>
 
-        <div className="flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-black/50 backdrop-blur-md border border-cyan-500/30 text-[11px] text-cyan-300 shadow-sm">
-          <Lock className="w-3.5 h-3.5 text-cyan-400" />
-          <span className="font-semibold tracking-wide">WebRTC P2P • End-to-End Encrypted</span>
+          {/* BORESHA 5: "Tazama Mazungumzo" (Minimize Call to floating window & view chats) */}
+          {onMinimizeCall && (
+            <button
+              onClick={onMinimizeCall}
+              className="flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-cyan-500/20 hover:bg-cyan-500/35 border border-cyan-400/40 text-cyan-200 text-xs font-bold transition-all active:scale-95 shadow-sm group"
+              title="Punguza simu uendelee kuchati (Tazama Mazungumzo)"
+            >
+              <MessageSquare className="w-3.5 h-3.5 text-cyan-400 group-hover:scale-110 transition-transform" />
+              <span className="hidden sm:inline">Tazama Mazungumzo</span>
+              <span className="sm:hidden">Mazungumzo</span>
+            </button>
+          )}
         </div>
 
+        {/* Security & Quality Pill */}
         <div className="flex items-center gap-2">
+          <div className="hidden sm:flex items-center gap-1.5 px-3 py-1 rounded-full bg-black/50 backdrop-blur-md border border-cyan-500/30 text-[11px] text-cyan-300 shadow-sm">
+            <Lock className="w-3 h-3 text-cyan-400" />
+            <span className="font-semibold tracking-wide">WebRTC P2P</span>
+          </div>
+
+          <button
+            onClick={() => setQualityMode(qualityMode === 'hd' ? 'sd' : 'hd')}
+            className={`px-2 py-0.5 rounded-full text-[10px] font-mono font-bold border transition-colors ${
+              qualityMode === 'hd'
+                ? 'bg-emerald-500/20 border-emerald-400/40 text-emerald-300'
+                : 'bg-amber-500/20 border-amber-400/40 text-amber-300'
+            }`}
+            title="Bofya kubadili ubora wa video"
+          >
+            {qualityMode.toUpperCase()} 60fps
+          </button>
+        </div>
+
+        <div className="flex items-center gap-1.5 sm:gap-2">
           {/* Fullscreen Toggle */}
           <button
             onClick={toggleFullscreen}
             className="p-2 rounded-full bg-black/40 backdrop-blur-md hover:bg-white/20 text-slate-300 hover:text-white transition-all border border-white/10"
             title={isFullscreen ? 'Toka Screen Kubwa' : 'Screen Kubwa'}
           >
-            {isFullscreen ? <Minimize2 className="w-4 h-4" /> : <Maximize2 className="w-4 h-4" />}
+            {isFullscreen ? <Minimize2 className="w-3.5 h-3.5 sm:w-4 sm:h-4" /> : <Maximize2 className="w-3.5 h-3.5 sm:w-4 sm:h-4" />}
           </button>
 
           {/* Volume dropdown */}
@@ -347,11 +424,11 @@ export const VideoCallScreen: React.FC<VideoCallScreenProps> = ({
               className="p-2 rounded-full bg-black/40 backdrop-blur-md hover:bg-white/20 text-slate-300 hover:text-white transition-all border border-white/10"
               title="Kiwango cha Sauti"
             >
-              <Sliders className="w-4 h-4" />
+              <Sliders className="w-3.5 h-3.5 sm:w-4 sm:h-4" />
             </button>
 
             {showVolumeSlider && (
-              <div className="absolute right-0 top-11 bg-black/90 backdrop-blur-xl border border-white/15 p-3 rounded-2xl shadow-2xl flex flex-col items-center gap-2 w-36 z-30 animate-in fade-in">
+              <div className="absolute right-0 top-11 bg-black/95 backdrop-blur-xl border border-white/15 p-3 rounded-2xl shadow-2xl flex flex-col items-center gap-2 w-36 z-30 animate-in fade-in">
                 <span className="text-[10px] text-cyan-300 font-bold uppercase tracking-wider">
                   Sauti: {callVolume}%
                 </span>
@@ -375,23 +452,30 @@ export const VideoCallScreen: React.FC<VideoCallScreenProps> = ({
         </div>
       </div>
 
-      {/* Screen Sharing Active Banner */}
+      {/* BORESHA 3: Screen Sharing Active Banner */}
       {isScreenSharing && (
-        <div className="relative z-20 mx-4 px-3 py-1.5 rounded-xl bg-gradient-to-r from-purple-900/80 to-indigo-900/80 border border-purple-400/40 text-purple-200 text-xs flex items-center justify-between shadow-lg backdrop-blur-md animate-in slide-in-from-top-1">
-          <div className="flex items-center gap-2">
-            <Monitor className="w-4 h-4 text-purple-300 animate-pulse" />
-            <span className="font-bold text-[11px]">Unashiriki Skrini (Screen Sharing Active)</span>
+        <div className="relative z-20 mx-4 px-3.5 py-2 rounded-2xl bg-gradient-to-r from-purple-900/90 to-indigo-900/90 border border-purple-400/50 text-purple-200 text-xs flex items-center justify-between shadow-xl backdrop-blur-md animate-in slide-in-from-top-1">
+          <div className="flex items-center gap-2.5">
+            <span className="relative flex h-2.5 w-2.5">
+              <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-purple-400 opacity-75"></span>
+              <span className="relative inline-flex rounded-full h-2.5 w-2.5 bg-purple-500"></span>
+            </span>
+            <Monitor className="w-4 h-4 text-purple-300" />
+            <div className="flex flex-col">
+              <span className="font-bold text-[11px] text-white">Unashiriki Skrini Yako (Screen Share)</span>
+              <span className="text-[9px] text-purple-300">Washiriki wanaona skrini hii kwa wakati mmoja</span>
+            </div>
           </div>
           <button
             onClick={handleToggleScreenShare}
-            className="text-[10px] font-bold px-2 py-0.5 rounded-lg bg-rose-500/30 hover:bg-rose-500/50 text-rose-200 transition-colors"
+            className="text-[10px] font-bold px-2.5 py-1 rounded-xl bg-rose-600/80 hover:bg-rose-600 text-white transition-colors shadow-sm"
           >
             Acha Kushiriki
           </button>
         </div>
       )}
 
-      {/* Center Contact & Status Section (Shown if voice call or while ringing) */}
+      {/* Center Contact & Status Section (Shown if voice call or while ringing/connecting) */}
       {(callType === 'voice' || isVideoOff || callStatus !== 'connected') && (
         <div className="relative z-10 flex-1 flex flex-col items-center justify-center p-6 text-center">
           {/* Avatar with Pulsing Rings */}
@@ -498,27 +582,34 @@ export const VideoCallScreen: React.FC<VideoCallScreenProps> = ({
         </div>
       )}
 
-      {/* Picture-in-Picture Local Video View (Self-view or Screen Share) */}
+      {/* Picture-in-Picture Local / Swapped Video View (Click to Swap Streams!) */}
       {callType === 'video' && !isVideoOff && (
         <div className="relative z-20 px-5 flex justify-end mb-2">
-          <div className="w-28 h-36 rounded-2xl overflow-hidden border-2 border-cyan-400/50 shadow-2xl bg-slate-900 relative group">
+          <div
+            onClick={() => setIsSwappedVideo(!isSwappedVideo)}
+            className="w-28 h-36 rounded-2xl overflow-hidden border-2 border-cyan-400/60 shadow-2xl bg-slate-900 relative group cursor-pointer hover:border-cyan-300 transition-all active:scale-95"
+            title="Bofya hapa kubadilisha mwonekano wa video (Click to swap views)"
+          >
             <video
-              ref={localVideoRef}
+              ref={isSwappedVideo ? remoteVideoRef : localVideoRef}
               autoPlay
               playsInline
-              muted
-              className="w-full h-full object-cover scale-x-[-1]"
+              muted={!isSwappedVideo}
+              className={`w-full h-full object-cover ${
+                !isSwappedVideo && !isScreenSharing ? 'scale-x-[-1]' : ''
+              }`}
             />
-            <div className="absolute bottom-1 left-1 px-1.5 py-0.5 rounded-md bg-black/70 backdrop-blur-xs text-[9px] font-bold text-cyan-200">
-              {isScreenSharing ? 'Skrini Yako' : 'Wewe (You)'}
+            <div className="absolute bottom-1 left-1 px-1.5 py-0.5 rounded-md bg-black/80 backdrop-blur-xs text-[9px] font-bold text-cyan-200 flex items-center gap-1">
+              <span>{isSwappedVideo ? remoteUserName : isScreenSharing ? 'Skrini' : 'Wewe'}</span>
+              <FlipHorizontal className="w-2.5 h-2.5 opacity-60" />
             </div>
           </div>
         </div>
       )}
 
-      {/* In-Call Live Chat Drawer (Slide-up modal) */}
+      {/* In-Call Live Chat Drawer (Slide-up modal with Swahili Quick Reaction Chips) */}
       {isChatOpen && (
-        <div className="absolute inset-x-0 bottom-24 top-20 z-30 mx-3 p-3 rounded-3xl bg-[#090E1D]/95 border border-cyan-500/30 backdrop-blur-xl flex flex-col shadow-2xl animate-in slide-in-from-bottom-5">
+        <div className="absolute inset-x-0 bottom-24 top-16 z-30 mx-3 p-3.5 rounded-3xl bg-[#090E1D]/95 border border-cyan-500/30 backdrop-blur-xl flex flex-col shadow-2xl animate-in slide-in-from-bottom-5">
           <div className="flex items-center justify-between pb-2 mb-2 border-b border-white/10">
             <div className="flex items-center gap-2">
               <MessageSquare className="w-4 h-4 text-cyan-400" />
@@ -530,6 +621,19 @@ export const VideoCallScreen: React.FC<VideoCallScreenProps> = ({
             >
               <X className="w-4 h-4" />
             </button>
+          </div>
+
+          {/* Quick Swahili Reaction Chips */}
+          <div className="flex items-center gap-1.5 overflow-x-auto pb-2 pt-1 no-scrollbar shrink-0">
+            {['👋 Habari!', '👂 Nakusikia vizuri', '👍 Sawa kabisa', '📍 Niko hapa', '🚀 Safi sana!'].map((chip, idx) => (
+              <button
+                key={idx}
+                onClick={() => handleSendInCallMessage(chip)}
+                className="px-2.5 py-1 rounded-xl bg-white/5 hover:bg-cyan-500/20 text-[10px] text-cyan-200 border border-white/10 hover:border-cyan-400/40 whitespace-nowrap transition-colors"
+              >
+                {chip}
+              </button>
+            ))}
           </div>
 
           {/* Messages scroll list */}
@@ -562,8 +666,28 @@ export const VideoCallScreen: React.FC<VideoCallScreenProps> = ({
             <div ref={chatBottomRef} />
           </div>
 
+          {/* Quick Emojis Row */}
+          <div className="flex items-center gap-2 pt-2 border-t border-white/10">
+            {['❤️', '🔥', '😂', '👏', '🙏', '👍'].map((em) => (
+              <button
+                key={em}
+                type="button"
+                onClick={() => handleSendInCallMessage(em)}
+                className="p-1 rounded-lg hover:bg-white/10 text-sm transition-transform active:scale-125"
+              >
+                {em}
+              </button>
+            ))}
+          </div>
+
           {/* Message input */}
-          <form onSubmit={handleSendInCallMessage} className="mt-2 pt-2 border-t border-white/10 flex items-center gap-2">
+          <form
+            onSubmit={(e) => {
+              e.preventDefault();
+              handleSendInCallMessage();
+            }}
+            className="mt-1 flex items-center gap-2"
+          >
             <input
               type="text"
               value={chatInputText}
@@ -606,7 +730,7 @@ export const VideoCallScreen: React.FC<VideoCallScreenProps> = ({
           </div>
         ) : (
           /* Active Call Controls Bar */
-          <div className="max-w-md mx-auto flex items-center justify-between gap-1.5 sm:gap-2 px-4 py-3 rounded-full bg-black/75 backdrop-blur-2xl border border-white/15 shadow-2xl">
+          <div className="max-w-md mx-auto flex items-center justify-between gap-1 sm:gap-2 px-3 sm:px-4 py-3 rounded-full bg-black/80 backdrop-blur-2xl border border-white/15 shadow-2xl">
             {/* 1. Mute Mic */}
             <button
               onClick={toggleMute}
@@ -645,6 +769,17 @@ export const VideoCallScreen: React.FC<VideoCallScreenProps> = ({
             >
               {isVideoOff ? <VideoOff className="w-4 h-4" /> : <Video className="w-4 h-4" />}
             </button>
+
+            {/* 3b. Flip Camera (if video is on) */}
+            {callType === 'video' && !isVideoOff && (
+              <button
+                onClick={handleFlipCamera}
+                className="p-3 rounded-full bg-white/10 text-white hover:bg-white/20 transition-all active:scale-95"
+                title="Geuza Kamera (Flip Camera)"
+              >
+                <FlipHorizontal className="w-4 h-4" />
+              </button>
+            )}
 
             {/* 4. Screen Sharing Toggle */}
             <button
