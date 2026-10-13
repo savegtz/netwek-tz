@@ -1697,7 +1697,7 @@ export const ChatList: React.FC<ChatListProps> = ({
                       )}
 
                       {!isSelectionMode && (
-                        <div className="flex items-center gap-0.5">
+                        <div className="flex items-center gap-0.5 shrink-0">
                           {/* Quick Video Call Button */}
                           <button
                             type="button"
@@ -1709,7 +1709,7 @@ export const ChatList: React.FC<ChatListProps> = ({
                               }
                               onStartCall?.('video', conv);
                             }}
-                            className="p-1.5 rounded-lg hover:bg-cyan-500/20 text-slate-400 hover:text-cyan-400 transition-colors active:scale-90 opacity-0 group-hover:opacity-100 focus:opacity-100"
+                            className="p-1.5 rounded-lg hover:bg-cyan-500/20 text-slate-400 hover:text-cyan-400 transition-colors active:scale-90"
                             title={`Piga simu ya video na ${title}`}
                           >
                             <Video className="w-3.5 h-3.5" />
@@ -1726,7 +1726,7 @@ export const ChatList: React.FC<ChatListProps> = ({
                               }
                               onStartCall?.('voice', conv);
                             }}
-                            className="p-1.5 rounded-lg hover:bg-emerald-500/20 text-slate-400 hover:text-emerald-400 transition-colors active:scale-90 opacity-0 group-hover:opacity-100 focus:opacity-100"
+                            className="p-1.5 rounded-lg hover:bg-emerald-500/20 text-slate-400 hover:text-emerald-400 transition-colors active:scale-90"
                             title={`Piga simu ya sauti na ${title}`}
                           >
                             <Phone className="w-3.5 h-3.5" />
@@ -1739,7 +1739,7 @@ export const ChatList: React.FC<ChatListProps> = ({
                               e.stopPropagation();
                               setConfirmDeleteSingle(conv);
                             }}
-                            className="p-1.5 rounded-lg hover:bg-rose-500/20 text-slate-400 hover:text-rose-400 transition-colors active:scale-90 opacity-0 group-hover:opacity-100 focus:opacity-100"
+                            className="p-1.5 rounded-lg hover:bg-rose-500/20 text-slate-400 hover:text-rose-400 transition-colors active:scale-90"
                             title={`Futa mazungumzo na ${title}`}
                           >
                             <Trash2 className="w-3.5 h-3.5" />
