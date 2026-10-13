@@ -37,7 +37,7 @@ import {
   ExternalLink,
 } from 'lucide-react';
 import { auth, db, testFirestoreConnection } from '../../services/firebase/config';
-import { doc, setDoc } from 'firebase/firestore';
+import { doc, setDoc, deleteDoc } from 'firebase/firestore';
 import { UserProfile, ProductItem, EventItem, JobItem, PRIMARY_ADMIN_EMAIL, isUserAdmin } from '../../types';
 import {
   INITIAL_CONVERSATIONS,
@@ -49,6 +49,7 @@ import {
 } from '../../services/seed/initialData';
 import { SafeImage } from '../../components/SafeImage';
 import { AdminVisualCharts } from './AdminVisualCharts';
+import { userService } from '../../services/user/userService';
 import freshKkAvatar from '../../assets/images/fresh_kk_avatar_1791078365294.jpg';
 
 interface AdminDevPanelProps {
@@ -105,84 +106,101 @@ export const AdminDevPanel: React.FC<AdminDevPanelProps> = ({
   // 1. USERS STATE
   const [userSearch, setUserSearch] = useState('');
   const [userFilterRole, setUserFilterRole] = useState<'all' | 'personal' | 'creator' | 'business'>('all');
-  const [usersList, setUsersList] = useState<UserProfile[]>([
-    {
-      id: 'u_1',
-      displayName: 'Fresh kk',
-      username: 'fresh_kk',
-      email: 'fresh.kk@zenia.app',
-      photoURL: freshKkAvatar,
-      accountType: 'business',
-      verified: true,
-      followersCount: 18400,
-      followingCount: 310,
-      postsCount: 420,
-      walletBalance: 485000,
-      isOnline: true,
-      role: 'user',
-    },
-    {
-      id: 'current_user_id',
-      displayName: currentUser.displayName || 'Amina Kaunga',
-      username: currentUser.username || 'amina_kaunga',
-      email: currentUser.email || 'savegamour@gmail.com',
-      photoURL: currentUser.photoURL,
-      accountType: currentUser.accountType || 'creator',
-      verified: true,
-      followersCount: 12400,
-      followingCount: 245,
-      postsCount: 3200,
-      walletBalance: 320000,
-      isOnline: true,
-      role: 'superadmin',
-    },
-    {
-      id: 'u_2',
-      displayName: 'Alex Kanyama',
-      username: 'alex_k',
-      email: 'alex@example.com',
-      photoURL: '/assets/images/alex_avatar_1790802235334.jpg',
-      accountType: 'personal',
-      verified: false,
-      followersCount: 890,
-      followingCount: 140,
-      postsCount: 45,
-      walletBalance: 15000,
-      isOnline: false,
-      role: 'user',
-    },
-    {
-      id: 'u_3',
-      displayName: 'Sarah Mwangi',
-      username: 'sarah_m',
-      email: 'sarah@soundwave.tz',
-      photoURL: '/assets/images/sarah_avatar_1790802224123.jpg',
-      accountType: 'creator',
-      verified: true,
-      followersCount: 8900,
-      followingCount: 412,
-      postsCount: 310,
-      walletBalance: 1250000,
-      isOnline: true,
-      role: 'user',
-    },
-    {
-      id: 'u_4',
-      displayName: 'Baraka Moto',
-      username: 'baraka_moto',
-      email: 'baraka@spam.xyz',
-      photoURL: 'https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?w=150',
-      accountType: 'personal',
-      verified: false,
-      followersCount: 12,
-      followingCount: 800,
-      postsCount: 2,
-      walletBalance: 0,
-      isSuspended: true,
-      isOnline: false,
-      role: 'user',
-    },
-  ]);
+  const [confirmDeleteUser, setConfirmDeleteUser] = useState<UserProfile | null>(null);
+  const [usersList, setUsersList] = useState<UserProfile[]>(() => {
+    try {
+      const saved = localStorage.getItem('zenia_admin_users_list');
+      if (saved) {
+        const parsed: UserProfile[] = JSON.parse(saved);
+        return parsed.filter((u) => !userService.isUserDeleted(u));
+      }
+    } catch {}
+    const defaultList: UserProfile[] = [
+      {
+        id: 'u_1',
+        displayName: 'Fresh kk',
+        username: 'fresh_kk',
+        email: 'fresh.kk@zenia.app',
+        photoURL: freshKkAvatar,
+        accountType: 'business',
+        verified: true,
+        followersCount: 18400,
+        followingCount: 310,
+        postsCount: 420,
+        walletBalance: 485000,
+        isOnline: true,
+        role: 'user',
+      },
+      {
+        id: 'current_user_id',
+        displayName: currentUser.displayName || 'Amina Kaunga',
+        username: currentUser.username || 'amina_kaunga',
+        email: currentUser.email || 'savegamour@gmail.com',
+        photoURL: currentUser.photoURL,
+        accountType: currentUser.accountType || 'creator',
+        verified: true,
+        followersCount: 12400,
+        followingCount: 245,
+        postsCount: 3200,
+        walletBalance: 320000,
+        isOnline: true,
+        role: 'superadmin',
+      },
+      {
+        id: 'u_2',
+        displayName: 'Alex Kanyama',
+        username: 'alex_k',
+        email: 'alex@example.com',
+        photoURL: '/assets/images/alex_avatar_1790802235334.jpg',
+        accountType: 'personal',
+        verified: false,
+        followersCount: 890,
+        followingCount: 140,
+        postsCount: 45,
+        walletBalance: 15000,
+        isOnline: false,
+        role: 'user',
+      },
+      {
+        id: 'u_3',
+        displayName: 'Sarah Mwangi',
+        username: 'sarah_m',
+        email: 'sarah@soundwave.tz',
+        photoURL: '/assets/images/sarah_avatar_1790802224123.jpg',
+        accountType: 'creator',
+        verified: true,
+        followersCount: 8900,
+        followingCount: 412,
+        postsCount: 310,
+        walletBalance: 1250000,
+        isOnline: true,
+        role: 'user',
+      },
+      {
+        id: 'u_4',
+        displayName: 'Baraka Moto',
+        username: 'baraka_moto',
+        email: 'baraka@spam.xyz',
+        photoURL: 'https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?w=150',
+        accountType: 'personal',
+        verified: false,
+        followersCount: 12,
+        followingCount: 800,
+        postsCount: 2,
+        walletBalance: 0,
+        isSuspended: true,
+        isOnline: false,
+        role: 'user',
+      },
+    ];
+    return defaultList.filter((u) => !userService.isUserDeleted(u));
+  });
+
+  useEffect(() => {
+    try {
+      localStorage.setItem('zenia_admin_users_list', JSON.stringify(usersList));
+    } catch {}
+  }, [usersList]);
 
   // 2. PRODUCTS STATE
   const [productsList, setProductsList] = useState<ProductItem[]>(INITIAL_PRODUCTS);
@@ -345,6 +363,32 @@ export const AdminDevPanel: React.FC<AdminDevPanelProps> = ({
       prev.map((u) => (u.id === userId ? { ...u, accountType: newType } : u))
     );
     showToast(`Aina ya akaunti imebadilishwa kuwa "${newType}"`);
+  };
+
+  const handleDeleteUser = async (userToDelete: UserProfile) => {
+    if (userToDelete.email?.toLowerCase() === PRIMARY_ADMIN_EMAIL.toLowerCase()) {
+      showToast('Admin Mkuu hawezi kufutwa!');
+      setConfirmDeleteUser(null);
+      return;
+    }
+
+    try {
+      await deleteDoc(doc(db, 'users', userToDelete.id));
+    } catch (_) {}
+
+    // Register user as deleted across the entire platform
+    userService.deleteUser(userToDelete.id, userToDelete.username);
+
+    setUsersList((prev) => {
+      const updated = prev.filter((u) => u.id !== userToDelete.id && u.username !== userToDelete.username);
+      try {
+        localStorage.setItem('zenia_admin_users_list', JSON.stringify(updated));
+      } catch {}
+      return updated;
+    });
+
+    showToast(`Mtumiaji @${userToDelete.username} (${userToDelete.displayName}) amefutwa kabisa kwenye mfumo! 🗑️`);
+    setConfirmDeleteUser(null);
   };
 
   // PRODUCT ACTIONS
@@ -805,6 +849,15 @@ export const AdminDevPanel: React.FC<AdminDevPanelProps> = ({
                             >
                               {u.isSuspended ? <Unlock className="w-4 h-4" /> : <Ban className="w-4 h-4" />}
                             </button>
+
+                            {/* Delete User Button (Futa Mtumiaji Kabisa) */}
+                            <button
+                              onClick={() => setConfirmDeleteUser(u)}
+                              className="p-2 rounded-xl bg-white/5 hover:bg-rose-500/20 border border-white/10 hover:border-rose-500/40 text-slate-400 hover:text-rose-400 transition-all active:scale-95 flex items-center justify-center group"
+                              title={`Futa Mtumiaji @${u.username} Kabisa`}
+                            >
+                              <Trash2 className="w-4 h-4 group-hover:scale-110 transition-transform" />
+                            </button>
                           </>
                         )}
                       </div>
@@ -1180,6 +1233,62 @@ export const AdminDevPanel: React.FC<AdminDevPanelProps> = ({
           )}
         </div>
       </div>
+
+      {/* Delete User Confirmation Modal */}
+      {confirmDeleteUser && (
+        <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-black/80 backdrop-blur-md animate-in fade-in">
+          <div className="w-full max-w-md bg-[#0D1224] border border-rose-500/40 rounded-3xl p-6 shadow-2xl animate-in zoom-in-95 text-center relative overflow-hidden">
+            <div className="w-14 h-14 rounded-2xl bg-rose-500/20 border border-rose-500/30 flex items-center justify-center mx-auto mb-4 text-rose-400 shadow-lg shadow-rose-500/20">
+              <Trash2 className="w-7 h-7" />
+            </div>
+
+            <h3 className="text-lg font-black text-white mb-1">
+              Futa Mtumiaji Kabisa?
+            </h3>
+            <p className="text-xs text-slate-300 mb-4 leading-relaxed">
+              Una uhakika unataka kumfuta mtumiaji <span className="font-bold text-white">{confirmDeleteUser.displayName}</span> (<span className="text-cyan-400 font-mono">@{confirmDeleteUser.username}</span>)?
+            </p>
+
+            <div className="p-3 rounded-2xl bg-white/[0.03] border border-white/5 mb-4 flex items-center gap-3 text-left">
+              <SafeImage
+                src={confirmDeleteUser.photoURL}
+                fallbackText={confirmDeleteUser.displayName}
+                fallbackGradient="from-rose-800 to-indigo-950"
+                alt={confirmDeleteUser.displayName}
+                className="w-10 h-10 rounded-xl object-cover ring-1 ring-white/10 shrink-0"
+              />
+              <div className="min-w-0">
+                <p className="text-xs font-bold text-white truncate">{confirmDeleteUser.displayName}</p>
+                <p className="text-[10px] text-slate-400 font-mono truncate">{confirmDeleteUser.email || `@${confirmDeleteUser.username}`}</p>
+                <p className="text-[10px] text-cyan-300 font-mono mt-0.5">Salio: TZS {(confirmDeleteUser.walletBalance || 0).toLocaleString()}</p>
+              </div>
+            </div>
+
+            <div className="p-2.5 rounded-xl bg-rose-500/10 border border-rose-500/20 text-[11px] text-rose-300 mb-5 flex items-start gap-2 text-left">
+              <AlertTriangle className="w-4 h-4 shrink-0 text-rose-400 mt-0.5" />
+              <span>
+                Hatua hii ni ya kudumu. Akaunti ya mtumiaji huyu, mazungumzo, na data zake zote zitaondolewa kwenye mfumo.
+              </span>
+            </div>
+
+            <div className="flex items-center justify-end gap-2.5">
+              <button
+                onClick={() => setConfirmDeleteUser(null)}
+                className="px-4 py-2 rounded-xl bg-white/5 hover:bg-white/10 text-xs font-bold text-slate-300 hover:text-white transition-colors"
+              >
+                Ghairi (Cancel)
+              </button>
+              <button
+                onClick={() => handleDeleteUser(confirmDeleteUser)}
+                className="px-4 py-2 rounded-xl bg-rose-600 hover:bg-rose-500 text-xs font-bold text-white flex items-center gap-1.5 shadow-lg shadow-rose-600/30 transition-all active:scale-95"
+              >
+                <Trash2 className="w-3.5 h-3.5" />
+                <span>Ndio, Futa Kabisa</span>
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 };

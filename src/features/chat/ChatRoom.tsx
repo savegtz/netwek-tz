@@ -78,6 +78,7 @@ import { ChatSyncService } from '../../services/chat/chatSyncService';
 import { AVAILABLE_CONTACTS } from './components/StartNewChatModal';
 import { ArrowLeftRight } from 'lucide-react';
 import freshKkAvatar from '../../assets/images/fresh_kk_avatar_1791078365294.jpg';
+import { userService } from '../../services/user/userService';
 
 interface ChatRoomProps {
   conversation: Conversation;
@@ -213,6 +214,10 @@ export const ChatRoom: React.FC<ChatRoomProps> = ({
   // Disappearing Messages Modal State
   const [isDisappearingModalOpen, setIsDisappearingModalOpen] = useState(false);
   const [disappearingTimer, setDisappearingTimer] = useState<string | null>(null);
+
+  // Direct Delete Chat / User State
+  const [isDirectDeleteModalOpen, setIsDirectDeleteModalOpen] = useState(false);
+  const [deleteUserAsWell, setDeleteUserAsWell] = useState(false);
 
   // Swipe-to-Reply State
   const [replyingToMessage, setReplyingToMessage] = useState<ChatMessage | null>(null);
@@ -863,6 +868,15 @@ export const ChatRoom: React.FC<ChatRoomProps> = ({
               title="Simu ya Video"
             >
               <Video className="w-4 h-4" />
+            </button>
+
+            {/* Direct Delete Chat / User Button */}
+            <button
+              onClick={() => setIsDirectDeleteModalOpen(true)}
+              className="p-2 hover:bg-rose-500/20 text-slate-300 hover:text-rose-400 rounded-xl transition-colors active:scale-95"
+              title="Futa Mazungumzo / Mtumiaji"
+            >
+              <Trash2 className="w-4 h-4" />
             </button>
 
             {/* Three Dots More Menu */}
@@ -1893,6 +1907,65 @@ export const ChatRoom: React.FC<ChatRoomProps> = ({
         onClose={() => setIsAgentDashboardOpen(false)}
         agentName={currentUser.displayName || 'You'}
       />
+
+      {/* DIRECT DELETE CHAT / USER MODAL */}
+      {isDirectDeleteModalOpen && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/85 backdrop-blur-md animate-in fade-in select-none">
+          <div className="w-full max-w-sm bg-[#111628] border border-rose-500/30 rounded-3xl p-5 shadow-2xl animate-in zoom-in-95 text-center">
+            <div className="w-12 h-12 rounded-2xl bg-rose-500/20 text-rose-400 flex items-center justify-center mx-auto mb-3">
+              <Trash2 className="w-6 h-6 stroke-[2.5]" />
+            </div>
+            <h3 className="text-base font-bold text-white mb-1">Futa Mazungumzo na {name}?</h3>
+            <p className="text-xs text-slate-300 mb-4 leading-relaxed">
+              Mazungumzo haya na jumbe zote zitaondolewa kwenye kifaa chako.
+            </p>
+
+            {/* Checkbox to also delete user completely */}
+            {!conversation.isGroup && (
+              <label className="flex items-center gap-2.5 p-3 rounded-2xl bg-white/[0.04] border border-white/5 mb-5 cursor-pointer text-left hover:bg-white/[0.07] transition-all">
+                <input
+                  type="checkbox"
+                  checked={deleteUserAsWell}
+                  onChange={(e) => setDeleteUserAsWell(e.target.checked)}
+                  className="w-4 h-4 rounded text-rose-500 focus:ring-rose-500 accent-rose-500 shrink-0"
+                />
+                <div className="min-w-0 text-xs">
+                  <span className="font-bold text-white block">Mfute mtumiaji huyu kabisa</span>
+                  <span className="text-[10px] text-slate-400 block">Hataonekana tena kwenye orodha ya mawasiliano wala utafutaji</span>
+                </div>
+              </label>
+            )}
+
+            <div className="flex gap-2.5">
+              <button
+                type="button"
+                onClick={() => setIsDirectDeleteModalOpen(false)}
+                className="flex-1 py-2.5 rounded-xl bg-white/10 hover:bg-white/15 text-slate-300 text-xs font-semibold transition-colors"
+              >
+                Ghairi
+              </button>
+              <button
+                type="button"
+                onClick={() => {
+                  setIsDirectDeleteModalOpen(false);
+                  if (deleteUserAsWell && otherUserId) {
+                    userService.deleteUser(otherUserId, otherUser?.username, otherUser?.displayName);
+                  }
+                  if (onDeleteConversation) {
+                    onDeleteConversation(conversation.id);
+                  }
+                  onBack();
+                  showToast(deleteUserAsWell ? `Mtumiaji na mazungumzo yamefutwa kabisa! 🗑️` : `Mazungumzo yamefutwa! 🗑️`);
+                }}
+                className="flex-1 py-2.5 rounded-xl bg-rose-600 hover:bg-rose-500 text-white text-xs font-bold shadow-lg shadow-rose-600/30 transition-colors flex items-center justify-center gap-1.5"
+              >
+                <Trash2 className="w-4 h-4" />
+                <span>Ndio, Futa</span>
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 };

@@ -1,3 +1,5 @@
+import { userService } from '../user/userService';
+
 export interface CallRecord {
   id: string;
   callId: string;
@@ -20,15 +22,25 @@ class CallHistoryServiceImpl {
   }
 
   public getCallHistory(userId?: string): CallRecord[] {
+    let list: CallRecord[] = [];
     try {
       const data = localStorage.getItem(this.getStorageKey(userId));
       if (data) {
-        return JSON.parse(data);
+        list = JSON.parse(data);
+      } else {
+        list = this.getDefaultHistory();
       }
     } catch (e) {
       console.warn('Failed to load call history:', e);
+      list = this.getDefaultHistory();
     }
-    return this.getDefaultHistory();
+
+    // Filter out any calls with deleted users
+    return list.filter((call) => {
+      if (userService.isIdentifierDeleted(call.remoteUserId)) return false;
+      if (userService.isIdentifierDeleted(call.remoteUserName)) return false;
+      return true;
+    });
   }
 
   public addCallRecord(record: Omit<CallRecord, 'id'>, userId?: string): CallRecord {
@@ -49,9 +61,20 @@ class CallHistoryServiceImpl {
     return newRecord;
   }
 
+  public deleteCallRecord(recordId: string, userId?: string) {
+    try {
+      const current = this.getCallHistory(userId);
+      const updated = current.filter((r) => r.id !== recordId);
+      localStorage.setItem(this.getStorageKey(userId), JSON.stringify(updated));
+      window.dispatchEvent(new CustomEvent(CALL_HISTORY_EVENT, { detail: updated }));
+    } catch (e) {
+      console.warn('Failed to delete call record:', e);
+    }
+  }
+
   public clearCallHistory(userId?: string) {
     try {
-      localStorage.removeItem(this.getStorageKey(userId));
+      localStorage.setItem(this.getStorageKey(userId), JSON.stringify([]));
       window.dispatchEvent(new CustomEvent(CALL_HISTORY_EVENT, { detail: [] }));
     } catch (e) {
       console.warn('Failed to clear call history:', e);
@@ -63,6 +86,8 @@ class CallHistoryServiceImpl {
       const customEvent = e as CustomEvent<CallRecord[]>;
       if (customEvent.detail) {
         callback(customEvent.detail);
+      } else {
+        callback(this.getCallHistory());
       }
     };
     window.addEventListener(CALL_HISTORY_EVENT, handler);
@@ -70,7 +95,7 @@ class CallHistoryServiceImpl {
   }
 
   private getDefaultHistory(): CallRecord[] {
-    return [
+    const defaults: CallRecord[] = [
       {
         id: 'hist_1',
         callId: 'call_seed_1',
@@ -99,28 +124,22 @@ class CallHistoryServiceImpl {
       {
         id: 'hist_3',
         callId: 'call_seed_3',
-        remoteUserId: 'user_sarah',
-        remoteUserName: 'Sarah Juma',
-        remoteUserAvatar: '/assets/images/sarah_portrait_1791059459448.jpg',
-        callType: 'video',
+        remoteUserId: 'user_amina',
+        remoteUserName: 'Amina Kaunga',
+        remoteUserAvatar: '/assets/images/amina_avatar_1790280951312.jpg',
+        callType: 'voice',
         direction: 'outgoing',
         status: 'connected',
         durationSeconds: 310,
         timestamp: 'Jana, 16:20 Jioni',
       },
-      {
-        id: 'hist_4',
-        callId: 'call_seed_4',
-        remoteUserId: 'user_amina',
-        remoteUserName: 'Amina Salum',
-        remoteUserAvatar: '/assets/images/amina_avatar_1790280951312.jpg',
-        callType: 'voice',
-        direction: 'incoming',
-        status: 'connected',
-        durationSeconds: 84,
-        timestamp: 'Jana, 14:05 Mchana',
-      },
     ];
+
+    return defaults.filter((call) => {
+      if (userService.isIdentifierDeleted(call.remoteUserId)) return false;
+      if (userService.isIdentifierDeleted(call.remoteUserName)) return false;
+      return true;
+    });
   }
 }
 

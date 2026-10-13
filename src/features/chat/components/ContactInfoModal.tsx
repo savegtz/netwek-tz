@@ -35,6 +35,7 @@ import {
 import { Conversation, ChatMessage, UserProfile } from '../../../types';
 import { SafeImage } from '../../../components/SafeImage';
 import { CHAT_THEMES } from './ChatRoomMoreMenu';
+import { userService } from '../../../services/user/userService';
 
 export interface ContactInfoModalProps {
   isOpen: boolean;
@@ -89,6 +90,7 @@ export const ContactInfoModal: React.FC<ContactInfoModalProps> = ({
   const [reportReason, setReportReason] = useState('Spam or commercial fraud');
   const [showClearModal, setShowClearModal] = useState(false);
   const [showDeleteModal, setShowDeleteModal] = useState(false);
+  const [showDeleteUserModal, setShowDeleteUserModal] = useState(false);
   const [showAddToListModal, setShowAddToListModal] = useState(false);
   const [newListName, setNewListName] = useState('');
   const [showAddMemberModal, setShowAddMemberModal] = useState(false);
@@ -842,8 +844,24 @@ export const ContactInfoModal: React.FC<ContactInfoModalProps> = ({
               <div className="w-8 h-8 rounded-xl bg-rose-500/15 flex items-center justify-center shrink-0">
                 <Trash2 className="w-4 h-4" />
               </div>
-              <span className="text-xs sm:text-sm font-bold">Delete {isGroup ? 'group' : 'chat'}</span>
+              <span className="text-xs sm:text-sm font-bold">Futa Mazungumzo (Delete {isGroup ? 'group' : 'chat'})</span>
             </button>
+
+            {/* Delete user / contact permanently */}
+            {!isGroup && (
+              <button
+                onClick={() => setShowDeleteUserModal(true)}
+                className="w-full flex items-center gap-3 p-3.5 hover:bg-rose-600/15 text-left transition-colors text-rose-300 border-t border-white/5"
+              >
+                <div className="w-8 h-8 rounded-xl bg-rose-600/20 text-rose-400 flex items-center justify-center shrink-0">
+                  <Trash2 className="w-4 h-4 stroke-[2.5]" />
+                </div>
+                <div>
+                  <p className="text-xs sm:text-sm font-bold text-rose-300">Futa Mtumiaji Kabisa</p>
+                  <p className="text-[10px] text-slate-400">Ondoa mawasiliano na akaunti ya {displayName} kabisa</p>
+                </div>
+              </button>
+            )}
           </div>
         </div>
       </div>
@@ -1445,6 +1463,47 @@ export const ContactInfoModal: React.FC<ContactInfoModalProps> = ({
                 className="py-2.5 rounded-xl bg-rose-600 hover:bg-rose-500 text-white font-bold text-xs shadow-lg shadow-rose-600/30"
               >
                 Delete
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* DELETE USER PERMANENTLY MODAL */}
+      {showDeleteUserModal && (
+        <div className="fixed inset-0 z-[75] flex items-center justify-center p-4 bg-black/90 backdrop-blur-md">
+          <div className="w-full max-w-sm bg-[#0E1324] border border-rose-500/40 rounded-3xl p-6 shadow-2xl animate-in zoom-in-95 text-center">
+            <div className="w-14 h-14 rounded-2xl bg-rose-500/20 text-rose-400 flex items-center justify-center mx-auto mb-4">
+              <Trash2 className="w-7 h-7 stroke-[2.5]" />
+            </div>
+            <h3 className="text-lg font-bold text-white mb-2">Futa Mtumiaji Kabisa?</h3>
+            <p className="text-xs text-slate-300 leading-relaxed mb-6">
+              Una uhakika unataka kumfuta kabisa <strong className="text-white">{displayName}</strong> (@{username})?
+              Mawasiliano yote, mazungumzo, na rekodi zake zitaondolewa kabisa kwenye mfumo na hutaona jina lake tena popote.
+            </p>
+            <div className="grid grid-cols-2 gap-3">
+              <button
+                onClick={() => setShowDeleteUserModal(false)}
+                className="py-2.5 rounded-xl bg-white/10 hover:bg-white/15 text-slate-300 text-xs font-semibold"
+              >
+                Ghairi
+              </button>
+              <button
+                onClick={() => {
+                  setShowDeleteUserModal(false);
+                  if (otherUserId) {
+                    userService.deleteUser(otherUserId, username, displayName);
+                  }
+                  if (onDeleteConversation) {
+                    onDeleteConversation(conversation.id);
+                  }
+                  onClose();
+                  onShowToast(`Mtumiaji ${displayName} amefutwa kabisa kwenye mfumo! 🗑️`);
+                }}
+                className="py-2.5 rounded-xl bg-rose-600 hover:bg-rose-500 text-white font-bold text-xs shadow-lg shadow-rose-600/30 flex items-center justify-center gap-1.5"
+              >
+                <Trash2 className="w-4 h-4" />
+                <span>Ndio, Mfute</span>
               </button>
             </div>
           </div>

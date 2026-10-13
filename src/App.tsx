@@ -43,6 +43,7 @@ import { ChatSyncService } from './services/chat/chatSyncService';
 import { NotificationsView } from './features/notifications/NotificationsView';
 import { AdminDevPanel } from './features/admin/AdminDevPanel';
 import { BroadcastBanner } from './components/BroadcastBanner';
+import { userService } from './services/user/userService';
 import { ZeniaMiniPlayer } from './components/ZeniaMiniPlayer';
 import freshKkAvatar from './assets/images/fresh_kk_avatar_1791078365294.jpg';
 
@@ -77,6 +78,15 @@ export default function App() {
   const [activeTab, setActiveTab] = useState<string>('chats');
   const [activeConversation, setActiveConversation] = useState<Conversation | null>(null);
 
+  // Helper to purge any conversations with deleted users
+  const filterDeletedConversations = (convList: Conversation[]) => {
+    return convList.filter((c) => {
+      if (c.isGroup) return true;
+      const hasDeleted = c.participants?.some((p) => userService.isIdentifierDeleted(p));
+      return !hasDeleted;
+    });
+  };
+
   // User-scoped conversations: Defaults to INITIAL_CONVERSATIONS for initial demo experience
   const [conversations, setConversations] = useState<Conversation[]>(() => {
     const saved = localStorage.getItem('zenia_active_user');
@@ -85,29 +95,43 @@ export default function App() {
         const user = JSON.parse(saved);
         if (user && user.id) {
           const userConvs = localStorage.getItem(`zenia_user_conversations_${user.id}`);
-          if (userConvs) return JSON.parse(userConvs);
+          if (userConvs) return filterDeletedConversations(JSON.parse(userConvs));
         }
       } catch {}
     }
-    return INITIAL_CONVERSATIONS;
+    return filterDeletedConversations(INITIAL_CONVERSATIONS);
   });
+
+  // Listen to global user deletion events
+  useEffect(() => {
+    const unsub = userService.subscribe(() => {
+      setConversations((prev) => filterDeletedConversations(prev));
+      setActiveConversation((curr) => {
+        if (curr && !curr.isGroup && curr.participants?.some((p) => userService.isIdentifierDeleted(p))) {
+          return null;
+        }
+        return curr;
+      });
+    });
+    return unsub;
+  }, []);
 
   // Sync conversations with currentUser (falls back to INITIAL_CONVERSATIONS for guest browsing)
   useEffect(() => {
     if (!currentUser) {
-      setConversations(INITIAL_CONVERSATIONS);
+      setConversations(filterDeletedConversations(INITIAL_CONVERSATIONS));
     } else {
       try {
         const userConvs = localStorage.getItem(`zenia_user_conversations_${currentUser.id}`);
         setConversations(
           userConvs
-            ? JSON.parse(userConvs)
+            ? filterDeletedConversations(JSON.parse(userConvs))
             : currentUser.id === INITIAL_USER.id
-            ? INITIAL_CONVERSATIONS
+            ? filterDeletedConversations(INITIAL_CONVERSATIONS)
             : []
         );
       } catch {
-        setConversations(currentUser.id === INITIAL_USER.id ? INITIAL_CONVERSATIONS : []);
+        setConversations(currentUser.id === INITIAL_USER.id ? filterDeletedConversations(INITIAL_CONVERSATIONS) : []);
       }
     }
   }, [currentUser?.id]);

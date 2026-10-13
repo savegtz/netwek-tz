@@ -12,9 +12,11 @@ import {
   MessageSquare,
   CheckCircle2,
   UserPlus,
+  Trash2,
 } from 'lucide-react';
 import { SafeImage } from '../../components/SafeImage';
 import { AVAILABLE_CONTACTS } from '../chat/components/StartNewChatModal';
+import { userService } from '../../services/user/userService';
 
 interface DiscoverViewProps {
   onSelectCategory: (category: string) => void;
@@ -34,6 +36,14 @@ export const DiscoverView: React.FC<DiscoverViewProps> = ({
 }) => {
   const [searchQuery, setSearchQuery] = useState('');
   const [activeChip, setActiveChip] = useState<'trending' | 'nearby' | 'people'>('people');
+  const [, setRefreshTick] = useState(0);
+
+  React.useEffect(() => {
+    const unsub = userService.subscribe(() => {
+      setRefreshTick((t) => t + 1);
+    });
+    return unsub;
+  }, []);
 
   const categories = [
     { id: 'creators', title: 'Creators', count: '14.2K Active', icon: Users, gradient: 'from-rose-500/25 to-pink-600/30 border-rose-500/40 text-rose-400' },
@@ -73,7 +83,9 @@ export const DiscoverView: React.FC<DiscoverViewProps> = ({
     },
   ];
 
-  const filteredPeople = AVAILABLE_CONTACTS.filter((p) => {
+  const filteredPeople = AVAILABLE_CONTACTS.filter(
+    (p) => !userService.isUserDeleted(p)
+  ).filter((p) => {
     if (!searchQuery.trim()) return true;
     return (
       p.displayName.toLowerCase().includes(searchQuery.toLowerCase()) ||
@@ -204,17 +216,33 @@ export const DiscoverView: React.FC<DiscoverViewProps> = ({
                       <span>{person.isOnline ? 'Online' : 'Karibuni hivi'}</span>
                     </span>
 
-                    <button
-                      onClick={() => {
-                        if (onStartChatWithUser) {
-                          onStartChatWithUser(person);
-                        }
-                      }}
-                      className="px-3.5 py-1.5 rounded-xl bg-gradient-to-r from-cyan-500 to-blue-600 hover:from-cyan-400 hover:to-blue-500 text-slate-950 font-bold text-xs flex items-center gap-1.5 shadow-md shadow-cyan-500/20 active:scale-95 transition-all"
-                    >
-                      <MessageSquare className="w-3.5 h-3.5" />
-                      <span>Tuma Ujumbe</span>
-                    </button>
+                    <div className="flex items-center gap-1.5">
+                      <button
+                        onClick={() => {
+                          if (onStartChatWithUser) {
+                            onStartChatWithUser(person);
+                          }
+                        }}
+                        className="px-3 py-1.5 rounded-xl bg-gradient-to-r from-cyan-500 to-blue-600 hover:from-cyan-400 hover:to-blue-500 text-slate-950 font-bold text-xs flex items-center gap-1.5 shadow-md shadow-cyan-500/20 active:scale-95 transition-all"
+                      >
+                        <MessageSquare className="w-3.5 h-3.5" />
+                        <span>Tuma Ujumbe</span>
+                      </button>
+
+                      <button
+                        type="button"
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          if (window.confirm(`Una uhakika unataka kumfuta kabisa @${person.username} (${person.displayName}) kwenye mfumo?`)) {
+                            userService.deleteUser(person.id, person.username, person.displayName);
+                          }
+                        }}
+                        className="p-1.5 rounded-xl bg-white/5 hover:bg-rose-500/20 text-slate-400 hover:text-rose-400 border border-white/5 hover:border-rose-500/30 transition-all active:scale-90"
+                        title={`Futa mawasiliano na @${person.username}`}
+                      >
+                        <Trash2 className="w-4 h-4" />
+                      </button>
+                    </div>
                   </div>
                 </div>
               ))}

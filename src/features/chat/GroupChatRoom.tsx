@@ -466,6 +466,20 @@ export const GroupChatRoom: React.FC<GroupChatRoomProps> = ({
               <Video className="w-4 h-4" />
             </button>
 
+            {/* Delete Group Chat Button */}
+            <button
+              onClick={() => {
+                if (window.confirm('Una uhakika unataka kufuta mazungumzo ya kikundi hiki?')) {
+                  if (onDeleteConversation) onDeleteConversation(conversation.id);
+                  onBack();
+                }
+              }}
+              className="p-2 hover:bg-rose-500/20 text-slate-300 hover:text-rose-400 rounded-xl transition-colors"
+              title="Futa Mazungumzo ya Kikundi"
+            >
+              <Trash2 className="w-4 h-4" />
+            </button>
+
             {/* In-chat search button */}
             <button
               onClick={() => setIsSearchOpen(!isSearchOpen)}

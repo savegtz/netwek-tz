@@ -12,6 +12,7 @@ import {
 } from 'lucide-react';
 import { Conversation, UserProfile } from '../../../types';
 import { AVAILABLE_CONTACTS } from './StartNewChatModal';
+import { userService } from '../../../services/user/userService';
 import { SafeImage } from '../../../components/SafeImage';
 
 interface CreateGroupModalProps {
@@ -69,14 +70,16 @@ export const CreateGroupModal: React.FC<CreateGroupModalProps> = ({
   const [groupName, setGroupName] = useState('');
   const [groupDesc, setGroupDesc] = useState('');
   const [selectedAvatarUrl, setSelectedAvatarUrl] = useState(PRESET_GROUP_AVATARS[0].url);
-  const [selectedContactIds, setSelectedContactIds] = useState<string[]>(['user_fresh_kk']);
+  const [selectedContactIds, setSelectedContactIds] = useState<string[]>(() =>
+    !userService.isIdentifierDeleted('user_fresh_kk') ? ['user_fresh_kk'] : []
+  );
   const [searchQuery, setSearchQuery] = useState('');
   const [step, setStep] = useState<'info' | 'members'>('info');
 
   if (!isOpen) return null;
 
   const contactsToSelect = AVAILABLE_CONTACTS.filter(
-    (c) => c.id !== currentUser.id
+    (c) => c.id !== currentUser.id && !userService.isUserDeleted(c)
   ).filter(
     (c) =>
       c.displayName.toLowerCase().includes(searchQuery.toLowerCase()) ||

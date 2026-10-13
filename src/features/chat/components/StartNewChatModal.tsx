@@ -1,7 +1,8 @@
-import React, { useState } from 'react';
-import { X, Search, MessageSquare, Check, UserPlus, Sparkles } from 'lucide-react';
-import { Conversation, UserProfile } from '../../../types';
+import React, { useState, useEffect } from 'react';
+import { X, Search, MessageSquare, Trash2, AlertTriangle, Check } from 'lucide-react';
+import { UserProfile } from '../../../types';
 import { SafeImage } from '../../../components/SafeImage';
+import { userService } from '../../../services/user/userService';
 import freshKkAvatar from '../../../assets/images/fresh_kk_avatar_1791078365294.jpg';
 
 interface StartNewChatModalProps {
@@ -66,18 +67,49 @@ export const StartNewChatModal: React.FC<StartNewChatModalProps> = ({
   onSelectUserToChat,
 }) => {
   const [searchQuery, setSearchQuery] = useState('');
+  const [confirmDeleteContact, setConfirmDeleteContact] = useState<typeof AVAILABLE_CONTACTS[0] | null>(null);
+  const [deleteToast, setDeleteToast] = useState<string | null>(null);
+  const [, setRefreshTick] = useState(0);
+
+  useEffect(() => {
+    const unsub = userService.subscribe(() => {
+      setRefreshTick((t) => t + 1);
+    });
+    return unsub;
+  }, []);
 
   if (!isOpen) return null;
 
-  const contactsToDisplay = AVAILABLE_CONTACTS.filter((c) => c.id !== currentUser.id).filter(
+  // Filter out any contacts that have been deleted across the application
+  const contactsToDisplay = AVAILABLE_CONTACTS.filter(
+    (c) => c.id !== currentUser.id && !userService.isUserDeleted(c)
+  ).filter(
     (c) =>
       c.displayName.toLowerCase().includes(searchQuery.toLowerCase()) ||
       c.username.toLowerCase().includes(searchQuery.toLowerCase())
   );
 
+  const handleDeleteContact = (contact: typeof AVAILABLE_CONTACTS[0]) => {
+    userService.deleteUser(contact.id, contact.username, contact.displayName);
+    setConfirmDeleteContact(null);
+    setDeleteToast(`Mawasiliano na @${contact.username} (${contact.displayName}) yamefutwa kabisa!`);
+    setTimeout(() => setDeleteToast(null), 3000);
+  };
+
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center p-3 sm:p-4 bg-black/80 backdrop-blur-md animate-in fade-in select-none">
-      <div className="w-full max-w-md bg-[#0F1426] border border-cyan-500/30 rounded-3xl p-5 shadow-2xl flex flex-col max-h-[85vh] animate-in zoom-in-95">
+      <div className="w-full max-w-md bg-[#0F1426] border border-cyan-500/30 rounded-3xl p-5 shadow-2xl flex flex-col max-h-[85vh] animate-in zoom-in-95 relative">
+        {/* Toast Alert */}
+        {deleteToast && (
+          <div className="absolute top-3 left-4 right-4 z-50 bg-rose-950/90 border border-rose-500/40 text-rose-200 text-xs px-3 py-2 rounded-2xl flex items-center justify-between shadow-xl">
+            <div className="flex items-center gap-2">
+              <Check className="w-4 h-4 text-rose-400 shrink-0" />
+              <span>{deleteToast}</span>
+            </div>
+            <button onClick={() => setDeleteToast(null)} className="text-rose-400 font-bold ml-2">✕</button>
+          </div>
+        )}
+
         {/* Header */}
         <div className="flex items-center justify-between pb-3 border-b border-white/10 mb-3">
           <div className="flex items-center gap-2.5">
@@ -86,7 +118,7 @@ export const StartNewChatModal: React.FC<StartNewChatModalProps> = ({
             </div>
             <div>
               <h3 className="font-bold text-sm text-white">Anza Mazungumzo Mapya</h3>
-              <p className="text-[11px] text-cyan-300">Chagua mtu unayetaka kumtumia ujumbe</p>
+              <p className="text-[11px] text-cyan-300">Chagua mtu wa kuchati naye au kumfuta</p>
             </div>
           </div>
           <button
@@ -112,15 +144,17 @@ export const StartNewChatModal: React.FC<StartNewChatModalProps> = ({
         {/* Contacts List */}
         <div className="flex-1 overflow-y-auto space-y-2 py-1">
           {contactsToDisplay.map((contact) => (
-            <button
+            <div
               key={contact.id}
-              onClick={() => {
-                onSelectUserToChat(contact);
-                onClose();
-              }}
               className="w-full p-3 rounded-2xl bg-white/[0.03] hover:bg-cyan-500/10 border border-white/5 hover:border-cyan-500/30 flex items-center justify-between text-left transition-all group"
             >
-              <div className="flex items-center gap-3 min-w-0">
+              <div
+                onClick={() => {
+                  onSelectUserToChat(contact);
+                  onClose();
+                }}
+                className="flex items-center gap-3 min-w-0 flex-1 cursor-pointer"
+              >
                 <div className="relative shrink-0">
                   <SafeImage
                     src={contact.photoURL}
@@ -145,18 +179,75 @@ export const StartNewChatModal: React.FC<StartNewChatModalProps> = ({
                 </div>
               </div>
 
-              <span className="px-3 py-1.5 rounded-xl bg-cyan-500/20 text-cyan-300 font-bold text-xs group-hover:bg-cyan-500 group-hover:text-slate-950 transition-all shrink-0 ml-2">
-                Tuma Ujumbe
-              </span>
-            </button>
+              <div className="flex items-center gap-1.5 shrink-0 ml-2">
+                <button
+                  type="button"
+                  onClick={() => {
+                    onSelectUserToChat(contact);
+                    onClose();
+                  }}
+                  className="px-3 py-1.5 rounded-xl bg-cyan-500/20 text-cyan-300 font-bold text-xs hover:bg-cyan-500 hover:text-slate-950 transition-all shrink-0 active:scale-95"
+                >
+                  Tuma Ujumbe
+                </button>
+
+                {/* Permanent Delete Contact Button (Futa Mawasiliano) */}
+                <button
+                  type="button"
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    setConfirmDeleteContact(contact);
+                  }}
+                  className="p-1.5 rounded-xl bg-white/5 hover:bg-rose-500/20 text-slate-400 hover:text-rose-400 border border-white/5 hover:border-rose-500/30 transition-all active:scale-90"
+                  title={`Futa mawasiliano na ${contact.displayName} kabisa`}
+                >
+                  <Trash2 className="w-4 h-4" />
+                </button>
+              </div>
+            </div>
           ))}
 
           {contactsToDisplay.length === 0 && (
             <div className="text-center py-8 text-xs text-slate-400">
-              Hakuna mtumiaji aliyepatikana kwa jina hilo.
+              Hakuna mtumiaji aliyepatikana kwa jina hilo au wote wamefutwa.
             </div>
           )}
         </div>
+
+        {/* Delete Contact Confirmation Modal */}
+        {confirmDeleteContact && (
+          <div className="fixed inset-0 z-[60] flex items-center justify-center p-4 bg-black/85 backdrop-blur-md animate-in fade-in duration-200">
+            <div className="w-full max-w-sm bg-[#111628] border border-rose-500/40 rounded-3xl p-5 shadow-2xl animate-in zoom-in-95 text-center">
+              <div className="w-12 h-12 rounded-2xl bg-rose-500/20 text-rose-400 flex items-center justify-center mx-auto mb-3">
+                <Trash2 className="w-6 h-6 stroke-[2.5]" />
+              </div>
+              <h3 className="text-base font-bold text-white mb-1">Futa Mawasiliano Kabisa?</h3>
+              <p className="text-xs text-slate-300 mb-5 leading-relaxed">
+                Una uhakika unataka kumfuta kabisa mtumiaji{' '}
+                <strong className="text-white font-bold">{confirmDeleteContact.displayName}</strong>{' '}
+                (<span className="text-cyan-400 font-mono">@{confirmDeleteContact.username}</span>)?
+                Hataonekana tena kwenye orodha ya mawasiliano, utafutaji, wala mazungumzo mapya.
+              </p>
+              <div className="flex gap-2.5">
+                <button
+                  type="button"
+                  onClick={() => setConfirmDeleteContact(null)}
+                  className="flex-1 py-2.5 rounded-xl bg-white/10 hover:bg-white/15 text-slate-300 text-xs font-semibold transition-colors"
+                >
+                  Ghairi
+                </button>
+                <button
+                  type="button"
+                  onClick={() => handleDeleteContact(confirmDeleteContact)}
+                  className="flex-1 py-2.5 rounded-xl bg-rose-600 hover:bg-rose-500 text-white text-xs font-bold shadow-lg shadow-rose-600/30 transition-colors flex items-center justify-center gap-1.5"
+                >
+                  <Trash2 className="w-4 h-4" />
+                  <span>Ndio, Mfute Kabisa</span>
+                </button>
+              </div>
+            </div>
+          </div>
+        )}
       </div>
     </div>
   );

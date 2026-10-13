@@ -53,6 +53,7 @@ import { StarredMessagesModal } from './components/StarredMessagesModal';
 import { AppLockModal } from './components/AppLockModal';
 import { GuestChatPromptModal } from './components/GuestChatPromptModal';
 import freshKkAvatar from '../../assets/images/fresh_kk_avatar_1791078365294.jpg';
+import { userService } from '../../services/user/userService';
 
 interface ChatListProps {
   currentUser: UserProfile | null;
@@ -175,6 +176,18 @@ export const ChatList: React.FC<ChatListProps> = ({
     });
     return () => unsub();
   }, [effectiveUser.id]);
+
+  const [deleteUserToo, setDeleteUserToo] = useState(false);
+  const [, setDeletionTick] = useState(0);
+
+  useEffect(() => {
+    const unsub = userService.subscribe(() => {
+      setDeletionTick((t) => t + 1);
+      setCallLogs(callHistoryService.getCallHistory(effectiveUser.id));
+    });
+    return () => unsub();
+  }, [effectiveUser.id]);
+
   const [customLists, setCustomLists] = useState<string[]>(['Family', 'Work', 'VIP', 'Close Friends']);
   const [activeListFilter, setActiveListFilter] = useState<string | null>(null);
 
@@ -564,7 +577,7 @@ export const ChatList: React.FC<ChatListProps> = ({
     showToast('Jumbe zote za mazungumzo haya zimefutwa (Chat cleared)');
   };
 
-  const handleDeleteChat = (conv: Conversation) => {
+  const handleDeleteChat = (conv: Conversation, alsoDeleteUser: boolean = false) => {
     setConversations((prev) => prev.filter((c) => c.id !== conv.id));
     if (onDeleteConversation) {
       onDeleteConversation(conv.id);
@@ -577,7 +590,18 @@ export const ChatList: React.FC<ChatListProps> = ({
       next.delete(conv.id);
       return next;
     });
-    showToast('Mazungumzo yamefutwa kabisa (Chat deleted)');
+
+    if (alsoDeleteUser && !conv.isGroup) {
+      const currentUserId = currentUser ? currentUser.id : 'guest';
+      const otherUserId = conv.participants.find((p) => p !== currentUserId) || conv.participants[0];
+      const otherUser = otherUserId && conv.participantDetails ? conv.participantDetails[otherUserId] : null;
+      if (otherUserId) {
+        userService.deleteUser(otherUserId, otherUser?.username, otherUser?.displayName);
+      }
+      showToast('Mazungumzo na mtumiaji vimefutwa kabisa (Chat & user deleted)');
+    } else {
+      showToast('Mazungumzo yamefutwa kabisa (Chat deleted)');
+    }
   };
 
   const toggleSelectConversation = (convId: string) => {
@@ -744,6 +768,17 @@ export const ChatList: React.FC<ChatListProps> = ({
       const effectiveUserId = currentUser ? currentUser.id : 'guest';
       const otherId = c.participants.find((p) => p !== effectiveUserId) || '';
       const other = c.participantDetails?.[otherId];
+
+      // Exclude conversations with permanently deleted users
+      if (!c.isGroup) {
+        if (c.participants?.some((p) => p !== effectiveUserId && userService.isIdentifierDeleted(p))) {
+          return false;
+        }
+        if (other && userService.isUserDeleted(other)) {
+          return false;
+        }
+      }
+
       const name = c.isGroup ? c.groupName || '' : other?.displayName || 'Chat';
       const matchesSearch =
         name.toLowerCase().includes(searchQuery.toLowerCase()) ||
@@ -775,6 +810,7 @@ export const ChatList: React.FC<ChatListProps> = ({
   const matchingContacts = searchQuery.trim()
     ? AVAILABLE_CONTACTS.filter(
         (c) =>
+          !userService.isUserDeleted(c) &&
           c.id !== (currentUser ? currentUser.id : 'guest') &&
           (c.displayName.toLowerCase().includes(searchQuery.toLowerCase()) ||
             c.username.toLowerCase().includes(searchQuery.toLowerCase()) ||
@@ -1390,6 +1426,19 @@ export const ChatList: React.FC<ChatListProps> = ({
                         >
                           <Video className="w-4 h-4" />
                         </button>
+
+                        {/* Delete single call record button */}
+                        <button
+                          type="button"
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            callHistoryService.deleteCallRecord(log.id, effectiveUser.id);
+                          }}
+                          className="p-2.5 rounded-xl bg-white/5 hover:bg-rose-500/20 text-slate-400 hover:text-rose-400 transition-colors"
+                          title="Futa rekodi hii ya simu"
+                        >
+                          <Trash2 className="w-4 h-4" />
+                        </button>
                       </div>
                     </div>
                   );
@@ -1439,7 +1488,7 @@ export const ChatList: React.FC<ChatListProps> = ({
                   <span>Marafiki Waliopo Mtandaoni:</span>
                 </p>
                 <div className="space-y-2">
-                  {AVAILABLE_CONTACTS.filter((c) => c.id !== (currentUser ? currentUser.id : 'guest')).slice(0, 3).map((contact) => (
+                  {AVAILABLE_CONTACTS.filter((c) => !userService.isUserDeleted(c) && c.id !== (currentUser ? currentUser.id : 'guest')).slice(0, 3).map((contact) => (
                     <div
                       key={contact.id}
                       className="flex items-center justify-between gap-2 p-1.5 rounded-xl hover:bg-white/5 transition-colors"
@@ -1697,7 +1746,7 @@ export const ChatList: React.FC<ChatListProps> = ({
                       )}
 
                       {!isSelectionMode && (
-                        <div className="flex items-center gap-0.5 shrink-0">
+                        <div className="flex items-center gap-1 shrink-0">
                           {/* Quick Video Call Button */}
                           <button
                             type="button"
@@ -1709,7 +1758,7 @@ export const ChatList: React.FC<ChatListProps> = ({
                               }
                               onStartCall?.('video', conv);
                             }}
-                            className="p-1.5 rounded-lg hover:bg-cyan-500/20 text-slate-400 hover:text-cyan-400 transition-colors active:scale-90"
+                            className="p-1.5 rounded-xl bg-cyan-500/10 hover:bg-cyan-500/25 text-cyan-400 border border-cyan-500/20 hover:border-cyan-400/40 transition-all active:scale-90"
                             title={`Piga simu ya video na ${title}`}
                           >
                             <Video className="w-3.5 h-3.5" />
@@ -1726,7 +1775,7 @@ export const ChatList: React.FC<ChatListProps> = ({
                               }
                               onStartCall?.('voice', conv);
                             }}
-                            className="p-1.5 rounded-lg hover:bg-emerald-500/20 text-slate-400 hover:text-emerald-400 transition-colors active:scale-90"
+                            className="p-1.5 rounded-xl bg-emerald-500/10 hover:bg-emerald-500/25 text-emerald-400 border border-emerald-500/20 hover:border-emerald-400/40 transition-all active:scale-90"
                             title={`Piga simu ya sauti na ${title}`}
                           >
                             <Phone className="w-3.5 h-3.5" />
@@ -1739,7 +1788,7 @@ export const ChatList: React.FC<ChatListProps> = ({
                               e.stopPropagation();
                               setConfirmDeleteSingle(conv);
                             }}
-                            className="p-1.5 rounded-lg hover:bg-rose-500/20 text-slate-400 hover:text-rose-400 transition-colors active:scale-90"
+                            className="p-1.5 rounded-xl bg-rose-500/10 hover:bg-rose-500/25 text-rose-400 border border-rose-500/20 hover:border-rose-400/40 transition-all active:scale-90"
                             title={`Futa mazungumzo na ${title}`}
                           >
                             <Trash2 className="w-3.5 h-3.5" />
@@ -1879,7 +1928,7 @@ export const ChatList: React.FC<ChatListProps> = ({
               <Trash2 className="w-6 h-6 stroke-[2.5]" />
             </div>
             <h3 className="text-base font-bold text-white mb-1">Futa Mazungumzo?</h3>
-            <p className="text-xs text-slate-300 mb-5 leading-relaxed">
+            <p className="text-xs text-slate-300 mb-4 leading-relaxed">
               Je, una uhakika unataka kufuta mazungumzo haya na{' '}
               <strong className="text-white">
                 {confirmDeleteSingle.isGroup
@@ -1888,10 +1937,30 @@ export const ChatList: React.FC<ChatListProps> = ({
               </strong>
               ? Mazungumzo haya na jumbe zake zote zitaondolewa kabisa.
             </p>
+
+            {/* Checkbox to also delete user completely */}
+            {!confirmDeleteSingle.isGroup && (
+              <label className="flex items-center gap-2.5 p-3 rounded-2xl bg-white/[0.04] border border-white/5 mb-5 cursor-pointer text-left hover:bg-white/[0.07] transition-all">
+                <input
+                  type="checkbox"
+                  checked={deleteUserToo}
+                  onChange={(e) => setDeleteUserToo(e.target.checked)}
+                  className="w-4 h-4 rounded text-rose-500 focus:ring-rose-500 accent-rose-500 shrink-0"
+                />
+                <div className="min-w-0 text-xs">
+                  <span className="font-bold text-white block">Mfute mtumiaji huyu kabisa</span>
+                  <span className="text-[10px] text-slate-400 block">Hataonekana tena kwenye orodha ya watu wala utafutaji</span>
+                </div>
+              </label>
+            )}
+
             <div className="flex gap-2.5">
               <button
                 type="button"
-                onClick={() => setConfirmDeleteSingle(null)}
+                onClick={() => {
+                  setConfirmDeleteSingle(null);
+                  setDeleteUserToo(false);
+                }}
                 className="flex-1 py-2.5 rounded-xl bg-white/10 hover:bg-white/15 text-slate-300 text-xs font-semibold transition-colors"
               >
                 Ghairi
@@ -1900,13 +1969,15 @@ export const ChatList: React.FC<ChatListProps> = ({
                 type="button"
                 onClick={() => {
                   const target = confirmDeleteSingle;
+                  const alsoUser = deleteUserToo;
                   setConfirmDeleteSingle(null);
-                  handleDeleteChat(target);
+                  setDeleteUserToo(false);
+                  handleDeleteChat(target, alsoUser);
                 }}
                 className="flex-1 py-2.5 rounded-xl bg-rose-600 hover:bg-rose-500 text-white text-xs font-bold shadow-lg shadow-rose-600/30 transition-colors flex items-center justify-center gap-1.5"
               >
                 <Trash2 className="w-4 h-4" />
-                <span>Futa Mazungumzo</span>
+                <span>{deleteUserToo ? 'Futa na Mtumiaji' : 'Futa Mazungumzo'}</span>
               </button>
             </div>
           </div>
