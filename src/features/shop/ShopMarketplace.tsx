@@ -16,14 +16,20 @@ import {
   X,
   Phone,
   Video,
+  Lock,
+  UserPlus,
+  Clock,
 } from 'lucide-react';
 import { ProductItem, CartItem, OrderItem } from '../../types';
 import { INITIAL_PRODUCTS } from '../../services/seed/initialData';
 import { PaymentService } from '../../services/payments/paymentService';
 import { SafeImage } from '../../components/SafeImage';
 import aminaAvatar from '../../assets/images/amina_avatar_1790280951312.jpg';
+import { friendshipService } from '../../services/user/friendshipService';
+import { UserProfile } from '../../types';
 
 interface ShopMarketplaceProps {
+  currentUser?: UserProfile | null;
   onStartChatWithSeller: (sellerId: string, sellerName: string) => void;
   onOpenCreateProduct: () => void;
   onStartCallWithSeller?: (
@@ -35,6 +41,7 @@ interface ShopMarketplaceProps {
 }
 
 export const ShopMarketplace: React.FC<ShopMarketplaceProps> = ({
+  currentUser,
   onStartChatWithSeller,
   onOpenCreateProduct,
   onStartCallWithSeller,
@@ -47,6 +54,20 @@ export const ShopMarketplace: React.FC<ShopMarketplaceProps> = ({
   const [selectedProduct, setSelectedProduct] = useState<ProductItem | null>(null);
   const [paymentProcessing, setPaymentProcessing] = useState(false);
   const [orderSuccess, setOrderSuccess] = useState<OrderItem | null>(null);
+  const [shopToast, setShopToast] = useState<string | null>(null);
+
+  const [, setFriendshipTick] = useState(0);
+  React.useEffect(() => {
+    const unsub = friendshipService.subscribe(() => setFriendshipTick((t) => t + 1));
+    return unsub;
+  }, []);
+
+  React.useEffect(() => {
+    if (shopToast) {
+      const timer = setTimeout(() => setShopToast(null), 3500);
+      return () => clearTimeout(timer);
+    }
+  }, [shopToast]);
 
   const categories = [
     { id: 'All', label: 'All', icon: Sparkles },
@@ -130,7 +151,23 @@ export const ShopMarketplace: React.FC<ShopMarketplaceProps> = ({
 
   return (
     <div className="w-full flex flex-col bg-[#070A12] text-white flex-1 pb-28 md:pb-12 select-none">
-      <div className="max-w-7xl mx-auto w-full flex flex-col flex-1">
+      <div className="max-w-7xl mx-auto w-full flex flex-col flex-1 relative">
+        {/* In-UI Toast Notice */}
+        {shopToast && (
+          <div className="mx-4 mt-2 p-3 rounded-2xl bg-gradient-to-r from-cyan-950 via-[#0E1528] to-slate-900 border border-cyan-500/40 text-cyan-200 text-xs font-semibold shadow-xl flex items-center justify-between animate-in slide-in-from-top-2 z-40">
+            <div className="flex items-center gap-2">
+              <Check className="w-4 h-4 text-cyan-400 shrink-0" />
+              <span>{shopToast}</span>
+            </div>
+            <button
+              onClick={() => setShopToast(null)}
+              className="text-cyan-400/80 hover:text-white text-xs ml-2 font-bold"
+            >
+              ✕
+            </button>
+          </div>
+        )}
+
         {/* Search Bar & Cart Action */}
       <div className="px-4 pt-3 pb-2 flex items-center gap-2">
         <div className="relative flex-1">
@@ -316,22 +353,133 @@ export const ShopMarketplace: React.FC<ShopMarketplaceProps> = ({
                 In Stock ({selectedProduct.stock})
               </span>
             </div>
+            {/* Seller Relationship Card */}
+            {(() => {
+              const currentUid = currentUser?.id || 'current_user_id';
+              const relStatus = friendshipService.getFriendshipStatus(currentUid, selectedProduct.sellerId);
+              const isFriend = relStatus === 'friends';
+              const isPendingReceived = relStatus === 'pending_received';
+              const isPendingSent = relStatus === 'pending_sent';
+
+              return (
+                <div className="mb-3 p-3 rounded-2xl bg-white/[0.04] border border-white/10 space-y-2">
+                  <div className="flex items-center justify-between">
+                    <span className="text-xs font-bold text-white">Muuzaji: {selectedProduct.sellerName}</span>
+                    {isFriend ? (
+                      <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full bg-emerald-500/20 text-emerald-300 border border-emerald-400/30 text-[10px] font-bold">
+                        <Check className="w-3 h-3 text-emerald-400" />
+                        <span>Marafiki (Friends)</span>
+                      </span>
+                    ) : isPendingReceived ? (
+                      <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full bg-indigo-500/20 text-indigo-300 border border-indigo-400/30 text-[10px] font-bold">
+                        <UserPlus className="w-3 h-3" />
+                        <span>Amekuomba Urafiki</span>
+                      </span>
+                    ) : isPendingSent ? (
+                      <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full bg-amber-500/20 text-amber-300 border border-amber-400/30 text-[10px] font-bold">
+                        <Clock className="w-3 h-3 text-amber-400" />
+                        <span>Ombi Limetumwa</span>
+                      </span>
+                    ) : (
+                      <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full bg-rose-500/20 text-rose-300 border border-rose-400/30 text-[10px] font-bold">
+                        <Lock className="w-3 h-3 text-rose-400" />
+                        <span>Si Rafiki Bado</span>
+                      </span>
+                    )}
+                  </div>
+
+                  {!isFriend && (
+                    <div className="pt-1.5 flex items-center justify-between gap-2 border-t border-white/5">
+                      <span className="text-[11px] text-slate-300">
+                        {isPendingReceived
+                          ? 'Kubali ombi ili uanze kuchat na kumpigia simu.'
+                          : isPendingSent
+                          ? 'Inasubiri muuzaji athibitishe ombi lako.'
+                          : 'Ili kuchat au kumpigia muuzaji, omba urafiki kwanza.'}
+                      </span>
+                      {isPendingReceived ? (
+                        <div className="flex items-center gap-1 shrink-0">
+                          <button
+                            type="button"
+                            onClick={() => {
+                              friendshipService.acceptFriendRequest(currentUid, selectedProduct.sellerId);
+                              setShopToast(`Umethibitisha urafiki na ${selectedProduct.sellerName}! Sasa mnaweza kuchati na kupigiana simu.`);
+                            }}
+                            className="px-2.5 py-1 rounded-xl bg-emerald-500 hover:bg-emerald-400 text-slate-950 text-xs font-bold active:scale-95 transition-all"
+                          >
+                            Kubali
+                          </button>
+                          <button
+                            type="button"
+                            onClick={() => {
+                              friendshipService.declineFriendRequest(currentUid, selectedProduct.sellerId);
+                              setShopToast('Ombi limekataliwa.');
+                            }}
+                            className="px-2 py-1 rounded-xl bg-white/10 text-slate-300 text-xs font-medium"
+                          >
+                            Kataa
+                          </button>
+                        </div>
+                      ) : isPendingSent ? (
+                        <button
+                          type="button"
+                          onClick={() => {
+                            friendshipService.cancelFriendRequest(currentUid, selectedProduct.sellerId);
+                            setShopToast('Umeghairi ombi la urafiki.');
+                          }}
+                          className="text-[11px] text-slate-400 hover:text-rose-400 underline shrink-0"
+                        >
+                          Ghairi
+                        </button>
+                      ) : (
+                        <button
+                          type="button"
+                          onClick={() => {
+                            friendshipService.sendFriendRequest(
+                              currentUser || ({ id: currentUid, displayName: 'Amina Kaunga' } as any),
+                              { id: selectedProduct.sellerId, displayName: selectedProduct.sellerName }
+                            );
+                            setShopToast(`Ombi la urafiki limetumwa kwa ${selectedProduct.sellerName}! Mara tu atakapokubali mtaanza kuchati na kupigiana simu.`);
+                          }}
+                          className="px-2.5 py-1.5 rounded-xl bg-gradient-to-r from-cyan-400 to-blue-500 hover:from-cyan-300 hover:to-blue-400 text-slate-950 text-xs font-black shrink-0 active:scale-95 transition-all flex items-center gap-1 shadow-sm"
+                        >
+                          <UserPlus className="w-3.5 h-3.5" />
+                          <span>Omba Urafiki</span>
+                        </button>
+                      )}
+                    </div>
+                  )}
+                </div>
+              );
+            })()}
+
             <div className="flex gap-2 mb-2">
               <button
                 onClick={() => {
                   addToCart(selectedProduct);
                   setSelectedProduct(null);
                 }}
-                className="flex-1 py-2.5 rounded-xl bg-cyan-400 hover:bg-cyan-300 text-slate-950 font-bold text-xs"
+                className="flex-1 py-2.5 rounded-xl bg-cyan-400 hover:bg-cyan-300 text-slate-950 font-bold text-xs shadow-md"
               >
                 Add to Cart
               </button>
               <button
                 onClick={() => {
+                  const currentUid = currentUser?.id || 'current_user_id';
+                  if (!friendshipService.areFriends(currentUid, selectedProduct.sellerId)) {
+                    friendshipService.sendFriendRequest(
+                      currentUser || ({ id: currentUid, displayName: 'Amina Kaunga' } as any),
+                      { id: selectedProduct.sellerId, displayName: selectedProduct.sellerName }
+                    );
+                    setShopToast(
+                      `Ili kuchat na ${selectedProduct.sellerName}, mnapaswa kuwa marafiki! Ombi la urafiki limetumwa mara moja.`
+                    );
+                    return;
+                  }
                   onStartChatWithSeller(selectedProduct.sellerId, selectedProduct.sellerName);
                   setSelectedProduct(null);
                 }}
-                className="px-3 py-2.5 rounded-xl bg-white/10 hover:bg-white/20 text-white text-xs font-semibold"
+                className="px-3.5 py-2.5 rounded-xl bg-white/10 hover:bg-white/20 text-white text-xs font-semibold active:scale-95 transition-all"
               >
                 Chat Seller
               </button>
@@ -341,8 +489,17 @@ export const ShopMarketplace: React.FC<ShopMarketplaceProps> = ({
             <div className="grid grid-cols-2 gap-2 pt-2 border-t border-white/5">
               <button
                 onClick={() => {
+                  const currentUid = currentUser?.id || 'current_user_id';
                   const sName = selectedProduct.sellerName;
                   const sPhoto = selectedProduct.images[0];
+                  if (!friendshipService.areFriends(currentUid, selectedProduct.sellerId)) {
+                    friendshipService.sendFriendRequest(
+                      currentUser || ({ id: currentUid, displayName: 'Amina Kaunga' } as any),
+                      { id: selectedProduct.sellerId, displayName: sName }
+                    );
+                    setShopToast(`Huwezi kumpigia simu ${sName} kabla hajawa rafiki yako. Ombi la urafiki limetumwa sasa!`);
+                    return;
+                  }
                   setSelectedProduct(null);
                   onStartCallWithSeller?.(
                     sName,
@@ -359,8 +516,17 @@ export const ShopMarketplace: React.FC<ShopMarketplaceProps> = ({
 
               <button
                 onClick={() => {
+                  const currentUid = currentUser?.id || 'current_user_id';
                   const sName = selectedProduct.sellerName;
                   const sPhoto = selectedProduct.images[0];
+                  if (!friendshipService.areFriends(currentUid, selectedProduct.sellerId)) {
+                    friendshipService.sendFriendRequest(
+                      currentUser || ({ id: currentUid, displayName: 'Amina Kaunga' } as any),
+                      { id: selectedProduct.sellerId, displayName: sName }
+                    );
+                    setShopToast(`Huwezi kumpigia video call ${sName} kabla hajawa rafiki yako. Ombi la urafiki limetumwa sasa!`);
+                    return;
+                  }
                   setSelectedProduct(null);
                   onStartCallWithSeller?.(
                     sName,

@@ -54,6 +54,7 @@ import { AppLockModal } from './components/AppLockModal';
 import { GuestChatPromptModal } from './components/GuestChatPromptModal';
 import freshKkAvatar from '../../assets/images/fresh_kk_avatar_1791078365294.jpg';
 import { userService } from '../../services/user/userService';
+import { friendshipService } from '../../services/user/friendshipService';
 
 interface ChatListProps {
   currentUser: UserProfile | null;
@@ -1387,6 +1388,20 @@ export const ChatList: React.FC<ChatListProps> = ({
                               createdAt: new Date().toISOString(),
                               updatedAt: new Date().toISOString(),
                             };
+
+                            if (!friendshipService.areFriends(effectiveUser.id, log.remoteUserId)) {
+                              if (window.confirm(`Huwezi kumpigia simu ${log.remoteUserName} kwa sababu si rafiki yako bado! Je, ungependa kumtumia ombi la urafiki sasa hivi?`)) {
+                                friendshipService.sendFriendRequest(effectiveUser as any, {
+                                  id: log.remoteUserId,
+                                  displayName: log.remoteUserName,
+                                  photoURL: log.remoteUserAvatar,
+                                  username: log.remoteUserName.toLowerCase().replace(/\s+/g, '_'),
+                                });
+                                alert(`Ombi la urafiki limetumwa kwa ${log.remoteUserName}!`);
+                              }
+                              return;
+                            }
+
                             onStartCall?.('voice', syntheticConv);
                           }}
                           className="p-2.5 rounded-xl bg-white/5 hover:bg-emerald-500/20 text-slate-300 hover:text-emerald-300 transition-colors"
@@ -1419,6 +1434,20 @@ export const ChatList: React.FC<ChatListProps> = ({
                               createdAt: new Date().toISOString(),
                               updatedAt: new Date().toISOString(),
                             };
+
+                            if (!friendshipService.areFriends(effectiveUser.id, log.remoteUserId)) {
+                              if (window.confirm(`Huwezi kumpigia simu ${log.remoteUserName} kwa sababu si rafiki yako bado! Je, ungependa kumtumia ombi la urafiki sasa hivi?`)) {
+                                friendshipService.sendFriendRequest(effectiveUser as any, {
+                                  id: log.remoteUserId,
+                                  displayName: log.remoteUserName,
+                                  photoURL: log.remoteUserAvatar,
+                                  username: log.remoteUserName.toLowerCase().replace(/\s+/g, '_'),
+                                });
+                                alert(`Ombi la urafiki limetumwa kwa ${log.remoteUserName}!`);
+                              }
+                              return;
+                            }
+
                             onStartCall?.('video', syntheticConv);
                           }}
                           className="p-2.5 rounded-xl bg-white/5 hover:bg-cyan-500/20 text-slate-300 hover:text-cyan-300 transition-colors"
@@ -1756,6 +1785,19 @@ export const ChatList: React.FC<ChatListProps> = ({
                                 onOpenAuth?.('signup', 'Ili kupiga simu ya video ya WebRTC, tafadhali jisajili au ingia kwanza.');
                                 return;
                               }
+                              const otherId = conv.participants.find((p) => p !== currentUser.id);
+                              if (!conv.isGroup && otherId && !friendshipService.areFriends(currentUser.id, otherId)) {
+                                if (window.confirm(`Huwezi kumpigia simu ${title} kabla hajawa rafiki yako! Je, ungependa kumtumia ombi la urafiki sasa hivi?`)) {
+                                  friendshipService.sendFriendRequest(currentUser, {
+                                    id: otherId,
+                                    displayName: title,
+                                    photoURL: avatar,
+                                    username: otherId.replace('user_', ''),
+                                  });
+                                  alert(`Ombi la urafiki limetumwa kwa ${title}!`);
+                                }
+                                return;
+                              }
                               onStartCall?.('video', conv);
                             }}
                             className="p-1.5 rounded-xl bg-cyan-500/10 hover:bg-cyan-500/25 text-cyan-400 border border-cyan-500/20 hover:border-cyan-400/40 transition-all active:scale-90"
@@ -1771,6 +1813,19 @@ export const ChatList: React.FC<ChatListProps> = ({
                               e.stopPropagation();
                               if (!currentUser) {
                                 onOpenAuth?.('signup', 'Ili kupiga simu ya sauti ya WebRTC, tafadhali jisajili au ingia kwanza.');
+                                return;
+                              }
+                              const otherId = conv.participants.find((p) => p !== currentUser.id);
+                              if (!conv.isGroup && otherId && !friendshipService.areFriends(currentUser.id, otherId)) {
+                                if (window.confirm(`Huwezi kumpigia simu ${title} kabla hajawa rafiki yako! Je, ungependa kumtumia ombi la urafiki sasa hivi?`)) {
+                                  friendshipService.sendFriendRequest(currentUser, {
+                                    id: otherId,
+                                    displayName: title,
+                                    photoURL: avatar,
+                                    username: otherId.replace('user_', ''),
+                                  });
+                                  alert(`Ombi la urafiki limetumwa kwa ${title}!`);
+                                }
                                 return;
                               }
                               onStartCall?.('voice', conv);

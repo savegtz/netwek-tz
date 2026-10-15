@@ -48,6 +48,7 @@ import {
   Share2,
   LogIn,
   UserPlus,
+  Users,
 } from 'lucide-react';
 import {
   Conversation,
@@ -79,6 +80,7 @@ import { AVAILABLE_CONTACTS } from './components/StartNewChatModal';
 import { ArrowLeftRight } from 'lucide-react';
 import freshKkAvatar from '../../assets/images/fresh_kk_avatar_1791078365294.jpg';
 import { userService } from '../../services/user/userService';
+import { friendshipService } from '../../services/user/friendshipService';
 
 interface ChatRoomProps {
   conversation: Conversation;
@@ -109,6 +111,25 @@ export const ChatRoom: React.FC<ChatRoomProps> = ({
   const otherUser = otherUserId && conversation.participantDetails ? conversation.participantDetails[otherUserId] : null;
   const name = otherUser?.displayName || (conversation.isGroup ? conversation.groupName || 'Chat' : 'Fresh kk');
   const avatar = otherUser?.photoURL || freshKkAvatar;
+
+  const [, setFriendshipTick] = useState(0);
+  useEffect(() => {
+    const unsub = friendshipService.subscribe(() => {
+      setFriendshipTick((t) => t + 1);
+    });
+    return unsub;
+  }, []);
+
+  const isFriend =
+    conversation.isGroup ||
+    (otherUserId ? friendshipService.areFriends(currentUserId, otherUserId) : true);
+
+  const relStatus =
+    conversation.isGroup
+      ? 'friends'
+      : otherUserId
+      ? friendshipService.getFriendshipStatus(currentUserId, otherUserId)
+      : 'friends';
 
   const [messages, setMessages] = useState<ChatMessage[]>(() => {
     try {
@@ -809,7 +830,18 @@ export const ChatRoom: React.FC<ChatRoomProps> = ({
                 </div>
                 <p className="text-[11px] text-emerald-400 flex items-center gap-1">
                   <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse" />
-                  <span>Online • Direct Chat</span>
+                  <span>
+                    Online •{' '}
+                    {conversation.isGroup
+                      ? 'Kikundi'
+                      : isFriend
+                      ? 'Marafiki (Friends)'
+                      : relStatus === 'pending_received'
+                      ? 'Amekuomba Urafiki'
+                      : relStatus === 'pending_sent'
+                      ? 'Ombi Limetumwa'
+                      : 'Si Rafiki Bado'}
+                  </span>
                 </p>
               </div>
             </div>
@@ -847,6 +879,10 @@ export const ChatRoom: React.FC<ChatRoomProps> = ({
                   onOpenAuth?.('signup', 'Ili kupiga simu ya sauti ya WebRTC ya moja kwa moja, tafadhali jisajili au ingia kwanza.');
                   return;
                 }
+                if (!isFriend) {
+                  showToast(`Huwezi kumpigia simu ${name}. Mnapaswa kuwa marafiki kwanza! Tuma ombi la urafiki chini.`);
+                  return;
+                }
                 onStartCall('voice');
               }}
               className="p-2 hover:bg-white/5 rounded-xl text-slate-200 hover:text-white transition-colors"
@@ -860,6 +896,10 @@ export const ChatRoom: React.FC<ChatRoomProps> = ({
               onClick={() => {
                 if (currentUser.id === 'guest') {
                   onOpenAuth?.('signup', 'Ili kupiga simu ya video ya WebRTC ya moja kwa moja, tafadhali jisajili au ingia kwanza.');
+                  return;
+                }
+                if (!isFriend) {
+                  showToast(`Huwezi kumpigia simu ${name}. Mnapaswa kuwa marafiki kwanza! Tuma ombi la urafiki chini.`);
                   return;
                 }
                 onStartCall('video');
@@ -1589,6 +1629,103 @@ export const ChatRoom: React.FC<ChatRoomProps> = ({
                 <LogIn className="w-3.5 h-3.5" />
                 <span>Ingia</span>
               </button>
+            </div>
+          </div>
+        ) : !isFriend ? (
+          <div className="p-3 sm:p-4 bg-gradient-to-r from-[#121628] via-[#0E1325] to-[#141933] border-t border-cyan-500/30 flex flex-col sm:flex-row items-center justify-between gap-3 shadow-2xl animate-in slide-in-from-bottom-2">
+            <div className="flex items-center gap-3 min-w-0">
+              <div className="w-10 h-10 rounded-2xl bg-cyan-500/15 border border-cyan-400/30 flex items-center justify-center shrink-0 text-cyan-400">
+                <Users className="w-5 h-5" />
+              </div>
+              <div className="min-w-0">
+                <h4 className="font-bold text-xs text-white">
+                  {relStatus === 'pending_received'
+                    ? `${name} amekuomba muwe marafiki!`
+                    : relStatus === 'pending_sent'
+                    ? `Ombi la urafiki kwa ${name} limetumwa`
+                    : `Mnapaswa kuwa marafiki kwanza`}
+                </h4>
+                <p className="text-[11px] text-slate-300">
+                  {relStatus === 'pending_received'
+                    ? `Kubali ombi la urafiki hapa chini ili muanze kuchat na kupigiana simu.`
+                    : relStatus === 'pending_sent'
+                    ? `Inasubiri ${name} athibitishe ombi lako kabla hamjaanza kuchati.`
+                    : `Ili uweze kuchat na kumpigia simu ${name}, tuma ombi la urafiki kwanza.`}
+                </p>
+              </div>
+            </div>
+
+            <div className="flex items-center gap-2 shrink-0 w-full sm:w-auto">
+              {relStatus === 'pending_received' ? (
+                <>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      if (otherUserId) {
+                        friendshipService.acceptFriendRequest(currentUserId, otherUserId);
+                        showToast(`Umethibitisha urafiki na ${name}! Sasa mnaweza kuchat.`);
+                      }
+                    }}
+                    className="flex-1 sm:flex-initial px-4 py-2 rounded-xl bg-emerald-500 hover:bg-emerald-400 text-slate-950 font-bold text-xs flex items-center justify-center gap-1.5 shadow-md shadow-emerald-500/20 active:scale-95 transition-all"
+                  >
+                    <UserCheck className="w-4 h-4" />
+                    <span>Kubali Urafiki</span>
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      if (otherUserId) {
+                        friendshipService.declineFriendRequest(currentUserId, otherUserId);
+                        showToast(`Ombi limekataliwa.`);
+                      }
+                    }}
+                    className="px-3 py-2 rounded-xl bg-white/5 hover:bg-rose-500/20 text-slate-300 hover:text-rose-400 border border-white/10 text-xs font-semibold"
+                  >
+                    Kataa
+                  </button>
+                </>
+              ) : relStatus === 'pending_sent' ? (
+                <div className="flex items-center gap-2">
+                  <span className="text-xs text-amber-300 font-semibold flex items-center gap-1 px-3 py-1.5 rounded-xl bg-amber-500/15 border border-amber-400/30">
+                    <Clock className="w-3.5 h-3.5" />
+                    <span>Ombi Limetumwa (Pending)</span>
+                  </span>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      if (otherUserId) {
+                        friendshipService.cancelFriendRequest(currentUserId, otherUserId);
+                        showToast(`Umeghairi ombi la urafiki.`);
+                      }
+                    }}
+                    className="text-xs text-slate-400 hover:text-rose-400 underline"
+                  >
+                    Ghairi
+                  </button>
+                </div>
+              ) : (
+                <button
+                  type="button"
+                  onClick={() => {
+                    if (otherUserId) {
+                      friendshipService.sendFriendRequest(
+                        currentUser,
+                        {
+                          id: otherUserId,
+                          displayName: name,
+                          photoURL: avatar,
+                          username: otherUser?.username || 'user',
+                        }
+                      );
+                      showToast(`Ombi la urafiki limetumwa kwa ${name}!`);
+                    }
+                  }}
+                  className="flex-1 sm:flex-initial px-4 py-2 rounded-xl bg-gradient-to-r from-cyan-400 via-blue-500 to-indigo-600 hover:from-cyan-300 hover:to-indigo-500 text-slate-950 font-black text-xs flex items-center justify-center gap-1.5 shadow-md shadow-cyan-500/20 active:scale-95 transition-all"
+                >
+                  <UserPlus className="w-4 h-4" />
+                  <span>Omba Urafiki (Follow)</span>
+                </button>
+              )}
             </div>
           </div>
         ) : (

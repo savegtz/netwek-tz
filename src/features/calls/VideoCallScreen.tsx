@@ -201,14 +201,20 @@ export const VideoCallScreen: React.FC<VideoCallScreenProps> = ({
           handleEnd
         );
 
-        // Fallback simulation timer if testing in single tab without a second user
-        const autoConnectFallback = setTimeout(() => {
+        // 35s unanswered call timeout (missed call)
+        const missedCallTimeout = setTimeout(() => {
           if (callStatus === 'ringing' && !isCancelled) {
-            handleConnected();
+            soundEffects.stopRingtone();
+            soundEffects.playHangupTone();
+            setCallStatus('ended');
+            logCallRecord(0, 'missed');
+            setTimeout(() => {
+              onEndCall();
+            }, 1200);
           }
-        }, 3600);
+        }, 35000);
 
-        return () => clearTimeout(autoConnectFallback);
+        return () => clearTimeout(missedCallTimeout);
       }
     }
 
@@ -551,17 +557,49 @@ export const VideoCallScreen: React.FC<VideoCallScreenProps> = ({
           </div>
 
           {callStatus === 'ringing' && !isIncoming && (
-            <button
-              onClick={() => {
-                soundEffects.stopRingtone();
-                soundEffects.playConnectedChime();
-                setCallStatus('connected');
-              }}
-              className="mt-3 px-3.5 py-1.5 rounded-full bg-cyan-500/20 hover:bg-cyan-500/35 border border-cyan-400/40 text-cyan-300 text-[11px] font-bold flex items-center gap-1.5 active:scale-95 transition-all shadow-sm group"
-            >
-              <Sparkles className="w-3.5 h-3.5 text-cyan-300 group-hover:rotate-12 transition-transform" />
-              <span>Unganisha Papo Hapo (Connect Now)</span>
-            </button>
+            <div className="mt-4 flex flex-col items-center gap-2 max-w-sm animate-in fade-in">
+              <span className="text-[11px] text-slate-300">
+                Simu inaita kwa <span className="text-cyan-300 font-bold">{remoteUserName}</span>...
+              </span>
+              <div className="flex items-center gap-2 flex-wrap justify-center">
+                <button
+                  onClick={() => {
+                    soundEffects.stopRingtone();
+                    soundEffects.playConnectedChime();
+                    const stream = webrtcService.simulateRemoteAnswer(effectiveCallId);
+                    if (remoteVideoRef.current) {
+                      remoteVideoRef.current.srcObject = stream;
+                      setHasRemoteVideo(true);
+                    }
+                    if (remoteAudioRef.current) {
+                      remoteAudioRef.current.srcObject = stream;
+                    }
+                    setCallStatus('connected');
+                  }}
+                  className="px-3.5 py-1.5 rounded-full bg-emerald-500/20 hover:bg-emerald-500/35 border border-emerald-400/40 text-emerald-300 text-[11px] font-bold flex items-center gap-1.5 active:scale-95 transition-all shadow-sm group"
+                  title="Jaribu kupokea simu hii mara moja"
+                >
+                  <Phone className="w-3.5 h-3.5 text-emerald-400 group-hover:scale-110 transition-transform" />
+                  <span>Pokea kama {remoteUserName}</span>
+                </button>
+                <button
+                  onClick={() => {
+                    soundEffects.stopRingtone();
+                    soundEffects.playHangupTone();
+                    setCallStatus('ended');
+                    logCallRecord(0, 'rejected');
+                    setTimeout(() => {
+                      onEndCall();
+                    }, 1000);
+                  }}
+                  className="px-3.5 py-1.5 rounded-full bg-rose-500/20 hover:bg-rose-500/35 border border-rose-400/40 text-rose-300 text-[11px] font-bold flex items-center gap-1.5 active:scale-95 transition-all shadow-sm"
+                  title="Jaribu kukataa simu hii"
+                >
+                  <PhoneOff className="w-3.5 h-3.5 text-rose-400" />
+                  <span>Kataa</span>
+                </button>
+              </div>
+            </div>
           )}
 
           {/* Audio Waveform Indicator */}

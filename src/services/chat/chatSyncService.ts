@@ -59,6 +59,36 @@ export const ChatSyncService = {
       }
     };
 
+    const handleNewMessageDirect = (incomingMsg: ChatMessage, targetConvId: string) => {
+      if (targetConvId !== conversationId) return;
+      if (!currentMsgs.some((m) => m.id === incomingMsg.id)) {
+        currentMsgs = [...currentMsgs, incomingMsg];
+        try {
+          localStorage.setItem(localKey, JSON.stringify(currentMsgs));
+        } catch (_) {}
+        onUpdate(currentMsgs);
+      }
+    };
+
+    const handleCustomMsgEvent = (e: any) => {
+      if (e.detail && e.detail.message && e.detail.conversationId === conversationId) {
+        handleNewMessageDirect(e.detail.message, e.detail.conversationId);
+      }
+    };
+    window.addEventListener('zenia_new_message_event', handleCustomMsgEvent);
+
+    const handleStorageMsg = (e: StorageEvent) => {
+      if (e.key === 'zenia_live_msg_signal' && e.newValue) {
+        try {
+          const parsed = JSON.parse(e.newValue);
+          if (parsed.conversationId === conversationId && parsed.message) {
+            handleNewMessageDirect(parsed.message, parsed.conversationId);
+          }
+        } catch (_) {}
+      }
+    };
+    window.addEventListener('storage', handleStorageMsg);
+
     if (chatChannel) {
       chatChannel.addEventListener('message', handleBroadcast);
     }
@@ -126,6 +156,8 @@ export const ChatSyncService = {
 
     // Return cleanup function
     return () => {
+      window.removeEventListener('zenia_new_message_event', handleCustomMsgEvent);
+      window.removeEventListener('storage', handleStorageMsg);
       if (chatChannel) {
         chatChannel.removeEventListener('message', handleBroadcast);
       }
@@ -149,7 +181,7 @@ export const ChatSyncService = {
       }
     } catch (_) {}
 
-    // 2. Broadcast to other open tabs in the browser
+    // 2. Broadcast to other open tabs in the browser & local storage event
     if (chatChannel) {
       try {
         chatChannel.postMessage({
@@ -159,6 +191,122 @@ export const ChatSyncService = {
         });
       } catch (_) {}
     }
+
+    try {
+      localStorage.setItem(
+        'zenia_live_msg_signal',
+        JSON.stringify({ conversationId, message, _sigTime: Date.now() })
+      );
+      window.dispatchEvent(
+        new CustomEvent('zenia_new_message_event', { detail: { conversationId, message } })
+      );
+    } catch (_) {}
+
+    // Update conversation previews across all stored user accounts and ensure participants have the conversation
+    try {
+      // 1. Locate the conversation object
+      let currentConvObj: Conversation | null = null;
+      const allKeys = Object.keys(localStorage).filter((k) =>
+        k.startsWith('zenia_user_conversations_')
+      );
+      for (const k of allKeys) {
+        try {
+          const list: Conversation[] = JSON.parse(localStorage.getItem(k) || '[]');
+          const found = list.find((c) => c.id === conversationId);
+          if (found) {
+            currentConvObj = found;
+            break;
+          }
+        } catch (_) {}
+      }
+
+      const lastMsgText =
+        message.text ||
+        (message.messageType === 'audio'
+          ? '🎙️ Ujumbe wa sauti'
+          : message.messageType === 'poll'
+          ? '📊 Kura ya Maoni'
+          : 'Ujumbe mpya');
+
+      // Update existing lists
+      for (const k of allKeys) {
+        const raw = localStorage.getItem(k);
+        if (raw) {
+          try {
+            const convs: Conversation[] = JSON.parse(raw);
+            let modified = false;
+            const userId = k.replace('zenia_user_conversations_', '');
+            const updatedList = convs.map((c) => {
+              if (c.id === conversationId) {
+                modified = true;
+                return {
+                  ...c,
+                  lastMessage: lastMsgText,
+                  lastMessageType: message.messageType,
+                  lastMessageSenderId: message.senderId,
+                  updatedAt: message.createdAt,
+                  unreadCount:
+                    message.senderId === userId
+                      ? 0
+                      : (c.unreadCount || 0) + 1,
+                };
+              }
+              return c;
+            });
+
+            // If this user is a participant but doesn't have this conversation in their list yet, add it!
+            if (
+              !modified &&
+              currentConvObj &&
+              currentConvObj.participants &&
+              currentConvObj.participants.includes(userId)
+            ) {
+              updatedList.unshift({
+                ...currentConvObj,
+                lastMessage: lastMsgText,
+                lastMessageType: message.messageType,
+                lastMessageSenderId: message.senderId,
+                updatedAt: message.createdAt,
+                unreadCount: message.senderId === userId ? 0 : 1,
+              });
+              modified = true;
+            }
+
+            if (modified) {
+              localStorage.setItem(k, JSON.stringify(updatedList));
+            }
+          } catch (_) {}
+        }
+      }
+
+      // If participants don't even have a zenia_user_conversations_ entry yet, create one for them!
+      if (currentConvObj && currentConvObj.participants) {
+        for (const pId of currentConvObj.participants) {
+          const pKey = `zenia_user_conversations_${pId}`;
+          if (!localStorage.getItem(pKey)) {
+            const initialList: Conversation[] = [
+              {
+                ...currentConvObj,
+                lastMessage: lastMsgText,
+                lastMessageType: message.messageType,
+                lastMessageSenderId: message.senderId,
+                updatedAt: message.createdAt,
+                unreadCount: message.senderId === pId ? 0 : 1,
+              },
+            ];
+            try {
+              localStorage.setItem(pKey, JSON.stringify(initialList));
+            } catch (_) {}
+          }
+        }
+      }
+
+      window.dispatchEvent(
+        new CustomEvent('zenia_conversations_updated', {
+          detail: { conversationId, message },
+        })
+      );
+    } catch (_) {}
 
     // 3. Write to Firestore so other devices & remote users receive it live
     try {
@@ -174,7 +322,9 @@ export const ChatSyncService = {
         convRef,
         {
           id: conversationId,
-          lastMessage: message.text || (message.messageType === 'audio' ? 'Ujumbe wa sauti' : 'Ujumbe mpya'),
+          lastMessage:
+            message.text ||
+            (message.messageType === 'audio' ? 'Ujumbe wa sauti' : 'Ujumbe mpya'),
           lastMessageType: message.messageType,
           lastMessageSenderId: message.senderId,
           updatedAt: message.createdAt,

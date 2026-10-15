@@ -12,6 +12,7 @@ import {
 } from 'firebase/firestore';
 import { db } from '../firebase/config';
 import { UserProfile } from '../../types';
+import { normalizeUserId } from '../user/friendshipService';
 
 export interface WebRTCCallData {
   id: string;
@@ -52,6 +53,8 @@ class WebRTCServiceImpl {
   private isCaller = false;
   private callDocUnsub: (() => void) | null = null;
   private candidatesUnsub: (() => void) | null = null;
+  private onRemoteStreamCallback: ((stream: MediaStream) => void) | null = null;
+  private onConnectedCallback: (() => void) | null = null;
 
   /**
    * Generates a smooth, synthetic canvas & audio stream for environments
@@ -290,6 +293,7 @@ class WebRTCServiceImpl {
     this.peerConnection = pc;
     this.activeCallId = callId;
     this.remoteStream = new MediaStream();
+    this.onRemoteStreamCallback = onRemoteStream;
 
     // Send local tracks
     if (this.localStream) {
@@ -361,13 +365,17 @@ class WebRTCServiceImpl {
       offerToReceiveVideo: callType === 'video',
     });
     await pc.setLocalDescription(offer);
+    this.onConnectedCallback = onConnected;
+
+    const normCallerId = normalizeUserId(caller.id);
+    const normReceiverId = normalizeUserId(receiver.id);
 
     const callData: WebRTCCallData = {
       id: callId,
-      callerId: caller.id,
+      callerId: normCallerId,
       callerName: caller.displayName,
       callerAvatar: caller.photoURL,
-      receiverId: receiver.id,
+      receiverId: normReceiverId,
       receiverName: receiver.displayName,
       receiverAvatar: receiver.photoURL,
       callType,
@@ -383,13 +391,24 @@ class WebRTCServiceImpl {
       console.warn('Firestore call session save notice:', e);
     }
 
-    // Broadcast across tabs
+    // Broadcast across tabs via BroadcastChannel
     if (callBroadcast) {
       callBroadcast.postMessage({
         type: 'INCOMING_CALL',
         call: callData,
       });
     }
+
+    // Save to localStorage so any other browser tab/window gets the call instantly
+    try {
+      localStorage.setItem(
+        'zenia_call_signal_incoming',
+        JSON.stringify({ ...callData, _sigTime: Date.now() })
+      );
+      window.dispatchEvent(
+        new CustomEvent('zenia_call_signal_incoming_event', { detail: callData })
+      );
+    } catch (_) {}
 
     // Listen to call doc for Answer or Rejection
     const callRef = doc(db, 'calls', callId);
@@ -427,7 +446,7 @@ class WebRTCServiceImpl {
       });
     });
 
-    // Also listen to broadcast channel candidates for same-machine tabs
+    // Also listen to broadcast channel & storage candidates for cross-tab calls
     const handleBroadcastMsg = async (event: MessageEvent) => {
       if (!event.data || event.data.callId !== callId) return;
       if (event.data.type === 'ANSWER' && !pc.currentRemoteDescription) {
@@ -447,6 +466,37 @@ class WebRTCServiceImpl {
     if (callBroadcast) {
       callBroadcast.addEventListener('message', handleBroadcastMsg);
     }
+
+    const handleStorageEvent = async (e: StorageEvent) => {
+      if (!e.newValue) return;
+      try {
+        if (e.key === 'zenia_call_signal_answer') {
+          const parsed = JSON.parse(e.newValue);
+          if (parsed.callId === callId && !pc.currentRemoteDescription && parsed.answer) {
+            await pc.setRemoteDescription(new RTCSessionDescription(parsed.answer));
+            onConnected();
+          }
+        } else if (e.key === 'zenia_call_signal_ended' || e.key === 'zenia_call_signal_rejected') {
+          const parsed = JSON.parse(e.newValue);
+          if (parsed.callId === callId) {
+            onEnd(e.key.includes('rejected') ? 'Simu imekataliwa' : 'Simu imekatika');
+            this.cleanup();
+          }
+        }
+      } catch (_) {}
+    };
+    window.addEventListener('storage', handleStorageEvent);
+
+    const handleLocalAnswerEvent = async (e: any) => {
+      const detail = e.detail;
+      if (detail && detail.callId === callId && !pc.currentRemoteDescription && detail.answer) {
+        try {
+          await pc.setRemoteDescription(new RTCSessionDescription(detail.answer));
+          onConnected();
+        } catch (_) {}
+      }
+    };
+    window.addEventListener('zenia_call_signal_answer_event', handleLocalAnswerEvent);
 
     return callData;
   }
@@ -494,6 +544,18 @@ class WebRTCServiceImpl {
         answer: answerPayload,
       });
     }
+
+    try {
+      localStorage.setItem(
+        'zenia_call_signal_answer',
+        JSON.stringify({ callId: callData.id, answer: answerPayload, _sigTime: Date.now() })
+      );
+      window.dispatchEvent(
+        new CustomEvent('zenia_call_signal_answer_event', {
+          detail: { callId: callData.id, answer: answerPayload },
+        })
+      );
+    } catch (_) {}
 
     onConnected();
 
@@ -675,6 +737,17 @@ class WebRTCServiceImpl {
       if (callBroadcast) {
         callBroadcast.postMessage({ type: 'CALL_ENDED', callId: id });
       }
+
+      try {
+        localStorage.setItem(
+          'zenia_call_signal_ended',
+          JSON.stringify({ callId: id, _sigTime: Date.now() })
+        );
+        localStorage.removeItem('zenia_call_signal_incoming');
+        window.dispatchEvent(
+          new CustomEvent('zenia_call_signal_ended_event', { detail: { callId: id } })
+        );
+      } catch (_) {}
     }
 
     this.cleanup();
@@ -695,6 +768,17 @@ class WebRTCServiceImpl {
       callBroadcast.postMessage({ type: 'CALL_REJECTED', callId });
     }
 
+    try {
+      localStorage.setItem(
+        'zenia_call_signal_rejected',
+        JSON.stringify({ callId, _sigTime: Date.now() })
+      );
+      localStorage.removeItem('zenia_call_signal_incoming');
+      window.dispatchEvent(
+        new CustomEvent('zenia_call_signal_rejected_event', { detail: { callId } })
+      );
+    } catch (_) {}
+
     this.cleanup();
   }
 
@@ -705,9 +789,35 @@ class WebRTCServiceImpl {
     userId: string,
     onIncoming: (callData: WebRTCCallData) => void
   ): () => void {
-    // 1. Firestore query - filter by receiverId without needing composite index
+    const normUser = normalizeUserId(userId);
+    const isTargetUser = (rId?: string) => {
+      if (!rId) return false;
+      return rId === userId || normalizeUserId(rId) === normUser;
+    };
+
+    // 1. Initial check: check if an active incoming call is already waiting in localStorage
+    try {
+      const stored = localStorage.getItem('zenia_call_signal_incoming');
+      if (stored) {
+        const callData = JSON.parse(stored) as WebRTCCallData & { _sigTime?: number };
+        if (
+          isTargetUser(callData.receiverId) &&
+          callData.status === 'calling' &&
+          callData._sigTime &&
+          Date.now() - callData._sigTime < 45000
+        ) {
+          onIncoming(callData);
+        }
+      }
+    } catch (_) {}
+
+    // 2. Firestore query - filter by receiverId with both variants if they differ
     const callsRef = collection(db, 'calls');
-    const q = query(callsRef, where('receiverId', '==', userId));
+    const validIds = Array.from(new Set([userId, normUser]));
+    const q =
+      validIds.length > 1
+        ? query(callsRef, where('receiverId', 'in', validIds))
+        : query(callsRef, where('receiverId', '==', validIds[0]));
 
     const firestoreUnsub = onSnapshot(
       q,
@@ -715,7 +825,7 @@ class WebRTCServiceImpl {
         snapshot.docChanges().forEach((change) => {
           if (change.type === 'added' || change.type === 'modified') {
             const data = { id: change.doc.id, ...change.doc.data() } as WebRTCCallData;
-            if (data.status === 'calling') {
+            if (data.status === 'calling' && isTargetUser(data.receiverId)) {
               onIncoming(data);
             }
           }
@@ -726,13 +836,13 @@ class WebRTCServiceImpl {
       }
     );
 
-    // 2. BroadcastChannel query for local cross-tab demo
+    // 3. BroadcastChannel query for local cross-tab demo
     const handleBroadcast = (event: MessageEvent) => {
       if (
         event.data &&
         event.data.type === 'INCOMING_CALL' &&
         event.data.call &&
-        event.data.call.receiverId === userId
+        isTargetUser(event.data.call.receiverId)
       ) {
         onIncoming(event.data.call);
       }
@@ -742,11 +852,39 @@ class WebRTCServiceImpl {
       callBroadcast.addEventListener('message', handleBroadcast);
     }
 
+    // 4. Storage event listener for rock-solid cross-tab/window incoming calls
+    const handleStorage = (e: StorageEvent) => {
+      if (e.key === 'zenia_call_signal_incoming' && e.newValue) {
+        try {
+          const callData = JSON.parse(e.newValue) as WebRTCCallData & { _sigTime?: number };
+          if (
+            isTargetUser(callData.receiverId) &&
+            callData.status === 'calling' &&
+            (!callData._sigTime || Date.now() - callData._sigTime < 45000)
+          ) {
+            onIncoming(callData);
+          }
+        } catch (_) {}
+      }
+    };
+    window.addEventListener('storage', handleStorage);
+
+    // 5. Local custom event for in-tab signaling
+    const handleLocalIncoming = (e: any) => {
+      const callData = e.detail as WebRTCCallData;
+      if (callData && isTargetUser(callData.receiverId) && callData.status === 'calling') {
+        onIncoming(callData);
+      }
+    };
+    window.addEventListener('zenia_call_signal_incoming_event', handleLocalIncoming);
+
     return () => {
       firestoreUnsub();
       if (callBroadcast) {
         callBroadcast.removeEventListener('message', handleBroadcast);
       }
+      window.removeEventListener('storage', handleStorage);
+      window.removeEventListener('zenia_call_signal_incoming_event', handleLocalIncoming);
     };
   }
 
@@ -777,7 +915,30 @@ class WebRTCServiceImpl {
       });
     }
 
-    return callData;
+  public simulateRemoteAnswer(callId: string): MediaStream {
+    const syntheticStream = this.createSyntheticMediaStream(true, true);
+    if (this.onRemoteStreamCallback) {
+      this.onRemoteStreamCallback(syntheticStream);
+    }
+    if (this.onConnectedCallback) {
+      this.onConnectedCallback();
+    }
+    try {
+      localStorage.setItem(
+        'zenia_call_signal_answer',
+        JSON.stringify({
+          callId,
+          answer: { type: 'answer', sdp: 'simulated_remote_sdp' },
+          _sigTime: Date.now(),
+        })
+      );
+      window.dispatchEvent(
+        new CustomEvent('zenia_call_signal_answer_event', {
+          detail: { callId, answer: { type: 'answer', sdp: 'simulated_remote_sdp' } },
+        })
+      );
+    } catch (_) {}
+    return syntheticStream;
   }
 
   private cleanup() {

@@ -26,9 +26,14 @@ import {
   Home,
   Radio,
   Megaphone,
+  Lock,
+  UserPlus,
+  UserCheck,
+  UserX,
 } from 'lucide-react';
 import { StatusItem, UserProfile } from '../../types';
 import { SafeImage } from '../../components/SafeImage';
+import { friendshipService } from '../../services/user/friendshipService';
 import { FoodOrderModal } from './components/FoodOrderModal';
 import { EventTicketModal } from './components/EventTicketModal';
 import { ProductPurchaseModal } from './components/ProductPurchaseModal';
@@ -422,6 +427,12 @@ export const StatusFeed: React.FC<StatusFeedProps> = ({
     };
   }, []);
 
+  const [, setFriendshipTick] = useState(0);
+  React.useEffect(() => {
+    const unsub = friendshipService.subscribe(() => setFriendshipTick((t) => t + 1));
+    return unsub;
+  }, []);
+
   // Poll voting state
   const [userVotedOption, setUserVotedOption] = useState<Record<string, string>>({});
 
@@ -481,6 +492,20 @@ export const StatusFeed: React.FC<StatusFeedProps> = ({
   ];
 
   const currentStatus = statusCards[activeStoryIndex] || statusCards[0];
+  const currentUid = currentUser?.id || 'current_user_id';
+  const isBusiness = [
+    'zebra_restaurant',
+    'fresh_store_dar',
+    'dar_food_fest',
+    'travelvibes',
+    'explore_af',
+  ].includes(currentStatus?.authorId || '');
+  const isPersonalStatus = !isBusiness && !!currentStatus?.authorId && currentStatus.authorId !== currentUid;
+  const currentRelStatus = isPersonalStatus
+    ? friendshipService.getFriendshipStatus(currentUid, currentStatus.authorId)
+    : 'friends';
+  const isFeedCardLocked = isPersonalStatus && currentRelStatus !== 'friends';
+
   const isLiked = !!likedStatusIds[currentStatus.id];
   const isSaved = !!savedStatusIds[currentStatus.id];
 
@@ -756,12 +781,103 @@ export const StatusFeed: React.FC<StatusFeedProps> = ({
                 src={currentStatus.mediaUrl}
                 fallbackGradient="from-amber-950 via-slate-900 to-indigo-950"
                 alt={currentStatus.text}
-                className="w-full h-full object-cover transition-transform duration-500 hover:scale-105"
+                className={`w-full h-full object-cover transition-all duration-500 ${
+                  isFeedCardLocked ? 'blur-2xl scale-110 opacity-35' : 'hover:scale-105'
+                }`}
               />
               <div className="absolute inset-0 bg-gradient-to-t from-slate-950 via-transparent to-black/20" />
 
+              {/* Locked Overlay if not friends */}
+              {isFeedCardLocked && (
+                <div className="absolute inset-0 z-20 backdrop-blur-md bg-black/60 flex flex-col items-center justify-center p-6 text-center">
+                  <div className="w-14 h-14 rounded-2xl bg-cyan-500/20 border border-cyan-400/40 flex items-center justify-center mb-3 shadow-xl">
+                    <Lock className="w-7 h-7 text-cyan-400" />
+                  </div>
+                  <span className="px-3 py-1 rounded-full bg-cyan-500/15 border border-cyan-400/30 text-cyan-300 text-[11px] font-bold mb-1.5">
+                    🔒 Status ya Marafiki Tu
+                  </span>
+                  <h4 className="text-sm font-extrabold text-white mb-1">
+                    {currentRelStatus === 'pending_received'
+                      ? `${currentStatus.authorName} amekuomba muwe marafiki!`
+                      : currentRelStatus === 'pending_sent'
+                      ? `Ombi la urafiki kwa ${currentStatus.authorName} limetumwa`
+                      : `Mnapaswa kuwa marafiki kwanza`}
+                  </h4>
+                  <p className="text-[11px] text-slate-300 max-w-xs mb-4">
+                    {currentRelStatus === 'pending_received'
+                      ? `Kubali ombi la urafiki ili uone stori zake, uanze kuchat na kumpigia simu.`
+                      : currentRelStatus === 'pending_sent'
+                      ? `Inasubiri ${currentStatus.authorName} athibitishe ombi lako.`
+                      : `Ili kuona picha, video na stori za ${currentStatus.authorName}, tuma ombi la urafiki (Follow) kwanza.`}
+                  </p>
+
+                  {currentRelStatus === 'pending_received' ? (
+                    <div className="flex items-center gap-2">
+                      <button
+                        type="button"
+                        onClick={() => {
+                          friendshipService.acceptFriendRequest(currentUid, currentStatus.authorId);
+                        }}
+                        className="py-2 px-4 rounded-xl bg-emerald-500 hover:bg-emerald-400 text-slate-950 font-bold text-xs flex items-center gap-1.5 shadow-md shadow-emerald-500/20 active:scale-95 transition-all"
+                      >
+                        <UserCheck className="w-3.5 h-3.5" />
+                        <span>Kubali Urafiki</span>
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => {
+                          friendshipService.declineFriendRequest(currentUid, currentStatus.authorId);
+                        }}
+                        className="py-2 px-3 rounded-xl bg-white/10 hover:bg-rose-500/20 text-slate-300 hover:text-rose-400 text-xs font-semibold active:scale-95 transition-all"
+                      >
+                        Kataa
+                      </button>
+                    </div>
+                  ) : currentRelStatus === 'pending_sent' ? (
+                    <div className="flex items-center gap-2">
+                      <span className="text-[11px] text-amber-300 font-medium px-3 py-1.5 rounded-xl bg-amber-500/15 border border-amber-400/30 flex items-center gap-1">
+                        <Clock className="w-3.5 h-3.5" />
+                        <span>Inasubiri jibu...</span>
+                      </span>
+                      <button
+                        type="button"
+                        onClick={() => {
+                          friendshipService.cancelFriendRequest(currentUid, currentStatus.authorId);
+                        }}
+                        className="text-[11px] text-slate-400 hover:text-rose-400 underline"
+                      >
+                        Ghairi
+                      </button>
+                    </div>
+                  ) : (
+                    <button
+                      type="button"
+                      onClick={() => {
+                        friendshipService.sendFriendRequest(
+                          currentUser || {
+                            id: currentUid,
+                            displayName: 'Amina Kaunga',
+                            username: 'amina_kaunga',
+                          },
+                          {
+                            id: currentStatus.authorId,
+                            displayName: currentStatus.authorName,
+                            photoURL: currentStatus.authorPhoto,
+                            username: currentStatus.authorUsername || currentStatus.authorId.replace('user_', ''),
+                          }
+                        );
+                      }}
+                      className="py-2.5 px-4 rounded-xl bg-gradient-to-r from-cyan-400 via-blue-500 to-indigo-600 hover:from-cyan-300 hover:to-indigo-500 text-slate-950 font-black text-xs flex items-center gap-1.5 shadow-lg shadow-cyan-500/20 active:scale-95 transition-all"
+                    >
+                      <UserPlus className="w-3.5 h-3.5" />
+                      <span>Omba Urafiki (Follow {currentStatus.authorName})</span>
+                    </button>
+                  )}
+                </div>
+              )}
+
               {/* Floating Culinary Pill Badges */}
-              {currentStatus.type === 'food' && (
+              {!isFeedCardLocked && currentStatus.type === 'food' && (
                 <div className="absolute top-3 left-3 flex items-center gap-2">
                   <span className="px-3 py-1 rounded-full bg-slate-950/80 backdrop-blur-md text-amber-300 font-black text-[11px] border border-amber-500/30 shadow-lg flex items-center gap-1.5">
                     <span>🔥 {currentStatus.metadata?.specialOfferLabel || 'TODAY ONLY'}</span>
@@ -773,7 +889,18 @@ export const StatusFeed: React.FC<StatusFeedProps> = ({
             </div>
 
             {/* Content Specific to Status Type */}
-            <div className="p-4 sm:p-5 space-y-3.5 bg-slate-950">
+            {isFeedCardLocked ? (
+              <div className="p-4 sm:p-5 text-center space-y-2 bg-slate-950/90 border-t border-white/5">
+                <p className="text-xs text-slate-400">
+                  Status hii inapatikana kwa marafiki wa {currentStatus.authorName} tu.
+                </p>
+                <div className="flex items-center justify-center gap-1.5 pt-1 text-[11px] text-cyan-400 font-semibold">
+                  <UserPlus className="w-3.5 h-3.5" />
+                  <span>Omba urafiki hapo juu ili kuona chapisho hili kamili na kuchat</span>
+                </div>
+              </div>
+            ) : (
+              <div className="p-4 sm:p-5 space-y-3.5 bg-slate-950">
               {/* ==================== 1. FOOD STORY CONTENT ==================== */}
               {currentStatus.type === 'food' && currentStatus.metadata && (
                 <div className="space-y-3.5">
@@ -1681,6 +1808,7 @@ export const StatusFeed: React.FC<StatusFeedProps> = ({
                 </div>
               )}
             </div>
+            )}
           </div>
 
           {/* ============================================================== */}

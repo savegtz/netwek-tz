@@ -10,6 +10,7 @@ import {
   Calendar,
   Utensils,
   Shapes,
+  Lock,
 } from 'lucide-react';
 import { StatusItem, UserProfile, AvatarShapeStyle } from '../../types';
 import { StatusStoryViewerModal } from './StatusStoryViewerModal';
@@ -17,6 +18,7 @@ import { SafeImage } from '../../components/SafeImage';
 import { DynamicAvatar } from '../../components/DynamicAvatar';
 import { AvatarStyleSelectorModal } from '../../components/AvatarStyleSelectorModal';
 import { Palette, Layers } from 'lucide-react';
+import { friendshipService } from '../../services/user/friendshipService';
 import {
   AVATAR_STYLES_LIST,
   getStoredAvatarStyle,
@@ -303,6 +305,12 @@ export const ChatListStatusRow: React.FC<ChatListStatusRowProps> = ({
     };
   }, []);
 
+  const [, setFriendshipTick] = useState(0);
+  React.useEffect(() => {
+    const unsub = friendshipService.subscribe(() => setFriendshipTick((t) => t + 1));
+    return unsub;
+  }, []);
+
   // Group stories by author to support multi-story status accounts
   const groupedAuthors = React.useMemo(() => {
     const map = new Map<
@@ -493,12 +501,24 @@ export const ChatListStatusRow: React.FC<ChatListStatusRowProps> = ({
               microEmoji = '🎟️';
             }
 
+            const isBusinessBrand = [
+              'zebra_restaurant',
+              'fresh_store_dar',
+              'dar_food_fest',
+              'travelvibes',
+              'explore_af',
+            ].includes(group.authorId);
+            const isPersonalStory = !isBusinessBrand && group.authorId !== (currentUser?.id || 'current_user_id');
+            const isFriend = isPersonalStory
+              ? friendshipService.areFriends(currentUser?.id || 'current_user_id', group.authorId)
+              : true;
+
             return (
               <button
                 key={group.authorId}
                 onClick={() => setViewerState({ isOpen: true, initialIndex: group.firstIndex })}
                 className="flex flex-col items-center gap-2 shrink-0 group focus:outline-none"
-                title={`Tazama ${group.stories.length} ${
+                title={`${!isFriend ? '🔒 Status ya Marafiki Tu • ' : ''}Tazama ${group.stories.length} ${
                   group.stories.length > 1 ? 'stori za' : 'story ya'
                 } ${group.authorName}`}
               >
@@ -515,6 +535,16 @@ export const ChatListStatusRow: React.FC<ChatListStatusRowProps> = ({
                     showStoryBadge={isMulti}
                     ringGradient={ringGradient}
                   />
+
+                  {/* Lock badge if personal story and not friends */}
+                  {!isFriend && (
+                    <span
+                      className="absolute -top-1 -right-1 w-5 h-5 rounded-full bg-slate-900 border border-amber-400/80 flex items-center justify-center text-[10px] shadow-lg ring-2 ring-[#080B16] z-25 text-amber-300"
+                      title="Status ya Marafiki Tu - Omba urafiki ili uone"
+                    >
+                      <Lock className="w-2.5 h-2.5 stroke-[2.5]" />
+                    </span>
+                  )}
 
                   {/* Micro Category Tag at bottom-right */}
                   <span className="absolute -bottom-1 -right-1 w-5 h-5 rounded-[8px] bg-[#0D1224] border border-white/25 flex items-center justify-center text-[10px] shadow-sm ring-2 ring-[#080B16] z-20">

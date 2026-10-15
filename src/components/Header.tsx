@@ -39,6 +39,7 @@ interface HeaderProps {
   onToggleFrameMode: () => void;
   unreadNotificationsCount: number;
   onTriggerSimulatedIncomingCall?: () => void;
+  onSwitchUser?: (user: UserProfile) => void;
 }
 
 export const Header: React.FC<HeaderProps> = ({
@@ -53,6 +54,7 @@ export const Header: React.FC<HeaderProps> = ({
   onToggleFrameMode,
   unreadNotificationsCount,
   onTriggerSimulatedIncomingCall,
+  onSwitchUser,
 }) => {
   const { isDark, toggleTheme } = useTheme();
   const { openPlayer } = useMusicPlayer();
@@ -337,23 +339,78 @@ export const Header: React.FC<HeaderProps> = ({
                   </span>
                 </button>
 
-                {/* Super Admin - strictly for the ONE admin only */}
-                {isUserAdmin(currentUser) && (
-                  <button
-                    onClick={() => {
-                      setIsMenuOpen(false);
-                      onOpenAdmin();
-                    }}
-                    className="w-full flex items-center justify-between px-3 py-2 rounded-xl text-xs text-slate-200 hover:text-white hover:bg-emerald-500/10 border border-emerald-500/20 transition-colors text-left mt-1"
-                  >
-                    <div className="flex items-center gap-2.5">
-                      <ShieldCheck className="w-3.5 h-3.5 text-emerald-400" />
-                      <span>Usimamizi wa Mfumo (Admin)</span>
+                {/* Quick Profile Switcher for Testing Calls and Friendship */}
+                {onSwitchUser && (
+                  <div className="pt-2 mt-2 border-t border-white/10">
+                    <div className="px-3 py-1 text-[10px] uppercase tracking-wider font-bold text-cyan-400 flex items-center justify-between">
+                      <span>Badili Mtumiaji (Jaribu Simu & Urafiki)</span>
                     </div>
-                    <span className="text-[9px] px-1.5 py-0.5 rounded bg-emerald-500/20 text-emerald-300 font-bold uppercase">
-                      Admin Mkuu
-                    </span>
-                  </button>
+                    <div className="grid grid-cols-2 gap-1 px-1 mt-1">
+                      {[
+                        {
+                          id: 'current_user_id',
+                          displayName: 'Amina Kaunga',
+                          username: 'amina_kaunga',
+                          email: 'savegamour@gmail.com',
+                          photoURL: '/assets/images/amina_avatar_1790280951312.jpg',
+                          role: 'superadmin',
+                          accountType: 'creator',
+                        },
+                        {
+                          id: 'user_fresh_kk',
+                          displayName: 'Fresh kk',
+                          username: 'fresh_kk',
+                          email: 'fresh_kk@zenia.app',
+                          photoURL: '/assets/images/fresh_kk_avatar_1791078365294.jpg',
+                          role: 'user',
+                          accountType: 'business',
+                        },
+                        {
+                          id: 'user_sarah_m',
+                          displayName: 'Sarah Mwangi',
+                          username: 'sarah_m',
+                          email: 'sarah_m@zenia.app',
+                          photoURL: '/assets/images/sarah_avatar_1790802224123.jpg',
+                          role: 'user',
+                          accountType: 'personal',
+                        },
+                        {
+                          id: 'user_alex_k',
+                          displayName: 'Alex Kanyama',
+                          username: 'alex_k',
+                          email: 'alex_k@zenia.app',
+                          photoURL: '/assets/images/alex_avatar_1790802235334.jpg',
+                          role: 'user',
+                          accountType: 'personal',
+                        },
+                      ].map((u) => {
+                        const isCurrent = currentUser?.id === u.id;
+                        return (
+                          <button
+                            key={u.id}
+                            onClick={() => {
+                              setIsMenuOpen(false);
+                              onSwitchUser({
+                                ...u,
+                                followersCount: 120,
+                                followingCount: 85,
+                                postsCount: 14,
+                                isOnline: true,
+                              } as any);
+                            }}
+                            className={`p-1.5 rounded-xl text-[11px] text-left flex items-center gap-1.5 transition-all ${
+                              isCurrent
+                                ? 'bg-cyan-500/25 border border-cyan-400 text-cyan-200 font-bold'
+                                : 'bg-white/5 hover:bg-white/10 text-slate-300'
+                            }`}
+                          >
+                            <span className="w-2 h-2 rounded-full shrink-0" style={{ backgroundColor: isCurrent ? '#22d3ee' : '#64748b' }} />
+                            <span className="truncate">{u.displayName.split(' ')[0]}</span>
+                          </button>
+                        );
+                      })}
+                    </div>
+                  </div>
                 )}
               </div>
             )}

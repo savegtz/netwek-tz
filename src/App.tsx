@@ -44,6 +44,7 @@ import { NotificationsView } from './features/notifications/NotificationsView';
 import { AdminDevPanel } from './features/admin/AdminDevPanel';
 import { BroadcastBanner } from './components/BroadcastBanner';
 import { userService } from './services/user/userService';
+import { friendshipService, normalizeUserId } from './services/user/friendshipService';
 import { ZeniaMiniPlayer } from './components/ZeniaMiniPlayer';
 import freshKkAvatar from './assets/images/fresh_kk_avatar_1791078365294.jpg';
 
@@ -123,17 +124,54 @@ export default function App() {
     } else {
       try {
         const userConvs = localStorage.getItem(`zenia_user_conversations_${currentUser.id}`);
-        setConversations(
-          userConvs
-            ? filterDeletedConversations(JSON.parse(userConvs))
-            : currentUser.id === INITIAL_USER.id
-            ? filterDeletedConversations(INITIAL_CONVERSATIONS)
-            : []
-        );
+        if (userConvs) {
+          setConversations(filterDeletedConversations(JSON.parse(userConvs)));
+        } else {
+          const normCurrent = normalizeUserId(currentUser.id);
+          const relevant = INITIAL_CONVERSATIONS.filter((c) =>
+            c.participants.some(
+              (p) => p === currentUser.id || normalizeUserId(p) === normCurrent
+            )
+          );
+          const fallback =
+            relevant.length > 0
+              ? relevant
+              : currentUser.id === INITIAL_USER.id
+              ? INITIAL_CONVERSATIONS
+              : [];
+          setConversations(filterDeletedConversations(fallback));
+        }
       } catch {
         setConversations(currentUser.id === INITIAL_USER.id ? filterDeletedConversations(INITIAL_CONVERSATIONS) : []);
       }
     }
+  }, [currentUser?.id]);
+
+  // Live real-time listener for conversation updates across browser tabs and user switches
+  useEffect(() => {
+    if (!currentUser) return;
+    const handleStorageUpdate = (e: StorageEvent) => {
+      if (e.key === `zenia_user_conversations_${currentUser.id}` && e.newValue) {
+        try {
+          setConversations(filterDeletedConversations(JSON.parse(e.newValue)));
+        } catch (_) {}
+      }
+    };
+    const handleCustomUpdate = () => {
+      try {
+        const userConvs = localStorage.getItem(`zenia_user_conversations_${currentUser.id}`);
+        if (userConvs) {
+          setConversations(filterDeletedConversations(JSON.parse(userConvs)));
+        }
+      } catch (_) {}
+    };
+
+    window.addEventListener('storage', handleStorageUpdate);
+    window.addEventListener('zenia_conversations_updated', handleCustomUpdate);
+    return () => {
+      window.removeEventListener('storage', handleStorageUpdate);
+      window.removeEventListener('zenia_conversations_updated', handleCustomUpdate);
+    };
   }, [currentUser?.id]);
 
   // Persist conversations for the current user
@@ -241,6 +279,22 @@ export default function App() {
         : conv?.participantDetails && otherParticipantId
         ? conv.participantDetails[otherParticipantId]?.photoURL
         : freshKkAvatar) || freshKkAvatar;
+
+    // Check friendship condition
+    if (!conv.isGroup && otherParticipantId) {
+      if (!friendshipService.areFriends(activeUser.id, otherParticipantId)) {
+        friendshipService.sendFriendRequest(activeUser as any, {
+          id: otherParticipantId,
+          displayName: rName,
+          photoURL: rAvatar,
+          username: otherParticipantId.replace('user_', ''),
+        });
+        setAppToast(
+          `Huwezi kumpigia simu ${rName} kabla hamjawa marafiki. Ombi la urafiki (Follow) limetumwa mara moja!`
+        );
+        return;
+      }
+    }
 
     const newCallId = `call_${Date.now()}_${Math.random().toString(36).substring(2, 7)}`;
 
@@ -504,6 +558,7 @@ export default function App() {
           isFrameMode={isFrameMode}
           onToggleFrameMode={() => setIsFrameMode(!isFrameMode)}
           unreadNotificationsCount={notifications.filter((n) => !n.read).length}
+          onSwitchUser={(u) => setCurrentUser(u)}
           onTriggerSimulatedIncomingCall={() => {
             webrtcService.triggerSimulatedIncomingCall(activeUser.id, 'Fresh kk', 'video');
           }}
@@ -707,6 +762,7 @@ export default function App() {
             {/* View: Shop / Marketplace */}
             {activeTab === 'shop' && (
               <ShopMarketplace
+                currentUser={currentUser}
                 onStartChatWithSeller={handleStartChatWithSeller}
                 onOpenCreateProduct={() => setIsCreateMenuOpen(true)}
                 onStartCallWithSeller={(name, avatar, type, subtitle) =>
@@ -752,6 +808,7 @@ export default function App() {
             {/* View: Discover */}
             {activeTab === 'discover' && (
               <DiscoverView
+                currentUser={currentUser}
                 onSelectCategory={(cat) => {
                   if (cat === 'products') setActiveTab('shop');
                   else if (cat === 'communities') setActiveTab('community');
@@ -765,6 +822,31 @@ export default function App() {
                   else setActiveTab('chats');
                 }}
                 onStartChatWithUser={handleSelectUserToChat}
+                onStartCallWithUser={(type, u) => {
+                  if (!currentUser) {
+                    requireAuthToChat('Ili kupiga simu ya WebRTC, tafadhali jisajili au ingia kwanza.');
+                    return;
+                  }
+                  if (!friendshipService.areFriends(activeUser.id, u.id)) {
+                    alert(`Huwezi kumpigia simu ${u.displayName}. Mnapaswa kuwa marafiki kwanza! Tuma ombi la urafiki.`);
+                    return;
+                  }
+                  handleStartCallFromConversation(type, {
+                    id: `conv_${[activeUser.id, u.id].sort().join('_')}`,
+                    participants: [activeUser.id, u.id],
+                    participantDetails: {
+                      [u.id]: {
+                        displayName: u.displayName,
+                        photoURL: u.photoURL,
+                        username: u.username,
+                        isOnline: true,
+                      },
+                    },
+                    isGroup: false,
+                    lastMessage: '',
+                    updatedAt: 'Sasa hivi',
+                  });
+                }}
               />
             )}
 

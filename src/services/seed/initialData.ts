@@ -42,6 +42,12 @@ export const INITIAL_CONVERSATIONS: Conversation[] = [
         username: 'fresh_kk',
         isOnline: true,
       },
+      current_user_id: {
+        displayName: 'Amina Kaunga',
+        photoURL: aminaAvatar,
+        username: 'amina_kaunga',
+        isOnline: true,
+      },
     },
     isGroup: false,
     lastMessage: 'Habari kiongozi! Mzigo uko tayari kutumwa 👊',

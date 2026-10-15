@@ -36,6 +36,7 @@ import { Conversation, ChatMessage, UserProfile } from '../../../types';
 import { SafeImage } from '../../../components/SafeImage';
 import { CHAT_THEMES } from './ChatRoomMoreMenu';
 import { userService } from '../../../services/user/userService';
+import { friendshipService } from '../../../services/user/friendshipService';
 
 export interface ContactInfoModalProps {
   isOpen: boolean;
@@ -280,11 +281,126 @@ export const ContactInfoModal: React.FC<ContactInfoModalProps> = ({
               <span>{isGroup ? `${groupMembers.length} members online` : 'Online'}</span>
             </span>
 
+            {/* Friendship Status Badge & Action for Direct Contacts */}
+            {!isGroup && (
+              <div className="mt-2.5 flex items-center justify-center gap-2">
+                {(() => {
+                  const otherId = conversation.participants.find((p) => p !== currentUser.id);
+                  const isFr = otherId ? friendshipService.areFriends(currentUser.id, otherId) : true;
+                  const st = otherId ? friendshipService.getFriendshipStatus(currentUser.id, otherId) : 'friends';
+
+                  if (isFr) {
+                    return (
+                      <div className="flex items-center gap-2">
+                        <span className="inline-flex items-center gap-1 px-3 py-1 rounded-full bg-emerald-500/15 text-emerald-300 border border-emerald-400/30 text-xs font-bold">
+                          <CheckCircle2 className="w-3.5 h-3.5 text-emerald-400" />
+                          <span>Marafiki (Friends)</span>
+                        </span>
+                        <button
+                          type="button"
+                          onClick={() => {
+                            if (otherId && window.confirm(`Una uhakika unataka kusitisha urafiki na ${displayName}?`)) {
+                              friendshipService.unfriend(currentUser.id, otherId);
+                              onShowToast(`Umesitisha urafiki na ${displayName}.`);
+                            }
+                          }}
+                          className="text-[11px] text-slate-400 hover:text-amber-400 underline"
+                        >
+                          Ondoa
+                        </button>
+                      </div>
+                    );
+                  }
+
+                  if (st === 'pending_received') {
+                    return (
+                      <div className="flex items-center gap-2">
+                        <span className="text-xs text-blue-300 font-bold">Amekuomba Urafiki!</span>
+                        <button
+                          type="button"
+                          onClick={() => {
+                            if (otherId) {
+                              friendshipService.acceptFriendRequest(currentUser.id, otherId);
+                              onShowToast(`Umethibitisha urafiki na ${displayName}!`);
+                            }
+                          }}
+                          className="px-3 py-1 rounded-xl bg-emerald-500 hover:bg-emerald-400 text-slate-950 font-bold text-xs"
+                        >
+                          Kubali
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => {
+                            if (otherId) {
+                              friendshipService.declineFriendRequest(currentUser.id, otherId);
+                              onShowToast(`Ombi limekataliwa.`);
+                            }
+                          }}
+                          className="px-2.5 py-1 rounded-xl bg-white/10 hover:bg-rose-500/20 text-slate-300 text-xs"
+                        >
+                          Kataa
+                        </button>
+                      </div>
+                    );
+                  }
+
+                  if (st === 'pending_sent') {
+                    return (
+                      <div className="flex items-center gap-2">
+                        <span className="px-3 py-1 rounded-full bg-amber-500/15 text-amber-300 border border-amber-400/30 text-xs font-bold flex items-center gap-1">
+                          <Clock className="w-3.5 h-3.5" />
+                          <span>Ombi Limetumwa</span>
+                        </span>
+                        <button
+                          type="button"
+                          onClick={() => {
+                            if (otherId) {
+                              friendshipService.cancelFriendRequest(currentUser.id, otherId);
+                              onShowToast(`Umeghairi ombi la urafiki.`);
+                            }
+                          }}
+                          className="text-[11px] text-slate-400 hover:text-rose-400 underline"
+                        >
+                          Ghairi
+                        </button>
+                      </div>
+                    );
+                  }
+
+                  return (
+                    <button
+                      type="button"
+                      onClick={() => {
+                        if (otherId) {
+                          friendshipService.sendFriendRequest(currentUser, {
+                            id: otherId,
+                            displayName,
+                            photoURL: avatarUrl,
+                            username,
+                          });
+                          onShowToast(`Ombi la urafiki limetumwa kwa ${displayName}!`);
+                        }
+                      }}
+                      className="px-4 py-1.5 rounded-xl bg-cyan-500/20 hover:bg-cyan-500 text-cyan-300 hover:text-slate-950 border border-cyan-400/40 text-xs font-bold flex items-center gap-1.5 transition-all shadow-sm active:scale-95"
+                    >
+                      <UserPlus className="w-3.5 h-3.5" />
+                      <span>Omba Urafiki (Follow)</span>
+                    </button>
+                  );
+                })()}
+              </div>
+            )}
+
             {/* Clean, Unified 4 Action Circles (Audio, Video, Search, Share) */}
             <div className="grid grid-cols-4 gap-2.5 sm:gap-3 w-full max-w-sm mt-5">
               {/* Audio Call */}
               <button
                 onClick={() => {
+                  const otherId = conversation.participants.find((p) => p !== currentUser.id);
+                  if (!isGroup && otherId && !friendshipService.areFriends(currentUser.id, otherId)) {
+                    onShowToast(`Huwezi kumpigia simu ${displayName}. Mnapaswa kuwa marafiki kwanza!`);
+                    return;
+                  }
                   onClose();
                   onStartCall('voice');
                 }}
@@ -299,6 +415,11 @@ export const ContactInfoModal: React.FC<ContactInfoModalProps> = ({
               {/* Video Call */}
               <button
                 onClick={() => {
+                  const otherId = conversation.participants.find((p) => p !== currentUser.id);
+                  if (!isGroup && otherId && !friendshipService.areFriends(currentUser.id, otherId)) {
+                    onShowToast(`Huwezi kumpigia simu ${displayName}. Mnapaswa kuwa marafiki kwanza!`);
+                    return;
+                  }
                   onClose();
                   onStartCall('video');
                 }}

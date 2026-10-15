@@ -112,12 +112,20 @@ export const AdminDevPanel: React.FC<AdminDevPanelProps> = ({
       const saved = localStorage.getItem('zenia_admin_users_list');
       if (saved) {
         const parsed: UserProfile[] = JSON.parse(saved);
-        return parsed.filter((u) => !userService.isUserDeleted(u));
+        return parsed
+          .map((u) => {
+            if (u.id === 'u_1') return { ...u, id: 'user_fresh_kk' };
+            if (u.id === 'u_2') return { ...u, id: 'user_alex_k' };
+            if (u.id === 'u_3') return { ...u, id: 'user_sarah_m' };
+            if (u.id === 'u_4') return { ...u, id: 'user_baraka_m' };
+            return u;
+          })
+          .filter((u) => !userService.isUserDeleted(u));
       }
     } catch {}
     const defaultList: UserProfile[] = [
       {
-        id: 'u_1',
+        id: 'user_fresh_kk',
         displayName: 'Fresh kk',
         username: 'fresh_kk',
         email: 'fresh.kk@zenia.app',
@@ -147,7 +155,7 @@ export const AdminDevPanel: React.FC<AdminDevPanelProps> = ({
         role: 'superadmin',
       },
       {
-        id: 'u_2',
+        id: 'user_alex_k',
         displayName: 'Alex Kanyama',
         username: 'alex_k',
         email: 'alex@example.com',
@@ -162,7 +170,7 @@ export const AdminDevPanel: React.FC<AdminDevPanelProps> = ({
         role: 'user',
       },
       {
-        id: 'u_3',
+        id: 'user_sarah_m',
         displayName: 'Sarah Mwangi',
         username: 'sarah_m',
         email: 'sarah@soundwave.tz',
@@ -177,7 +185,7 @@ export const AdminDevPanel: React.FC<AdminDevPanelProps> = ({
         role: 'user',
       },
       {
-        id: 'u_4',
+        id: 'user_baraka_m',
         displayName: 'Baraka Moto',
         username: 'baraka_moto',
         email: 'baraka@spam.xyz',

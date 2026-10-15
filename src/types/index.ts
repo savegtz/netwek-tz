@@ -563,3 +563,33 @@ export interface CallSession {
   isMuted: boolean;
   isVideoOff: boolean;
 }
+
+export type FriendshipStatus =
+  | 'none'
+  | 'pending_sent'
+  | 'pending_received'
+  | 'friends'
+  | 'blocked';
+
+export interface FriendRelationship {
+  id: string;
+  userA: string;
+  userB: string;
+  status: 'none' | 'pending' | 'friends' | 'declined';
+  requestedBy: string;
+  senderDetails?: {
+    id: string;
+    displayName: string;
+    photoURL?: string;
+    username?: string;
+  };
+  receiverDetails?: {
+    id: string;
+    displayName: string;
+    photoURL?: string;
+    username?: string;
+  };
+  createdAt: string;
+  updatedAt?: string;
+}
+

@@ -34,6 +34,10 @@ import {
   AlertCircle,
   Check,
   MoreVertical,
+  UserCheck,
+  UserX,
+  Clock,
+  Phone,
 } from 'lucide-react';
 import {
   signInWithEmailAndPassword,
@@ -50,6 +54,8 @@ import { AvatarShapeShowcaseStudio } from '../../components/AvatarShapeShowcaseS
 import { Palette, Shapes } from 'lucide-react';
 import { useTheme } from '../../context/ThemeContext';
 import { INITIAL_USER } from '../../services/seed/initialData';
+import { friendshipService } from '../../services/user/friendshipService';
+import { AVAILABLE_CONTACTS } from '../chat/components/StartNewChatModal';
 
 // Import local image assets
 import aminaAvatar from '../../assets/images/amina_avatar_1790280951312.jpg';
@@ -111,11 +117,57 @@ export const ProfileView: React.FC<ProfileViewProps> = ({
   const { isDark, toggleTheme } = useTheme();
 
   // State for logged-in user profile view
-  const [activeTab, setActiveTab] = useState<'posts' | 'status' | 'videos' | 'shop'>('posts');
+  const [activeTab, setActiveTab] = useState<'posts' | 'status' | 'videos' | 'shop' | 'friends'>('posts');
+  const [friendsSubTab, setFriendsSubTab] = useState<'friends' | 'received' | 'sent'>('friends');
   const [selectedPost, setSelectedPost] = useState<PostItem | null>(null);
   const [likedPosts, setLikedPosts] = useState<Record<string, boolean>>({});
   const [toastMessage, setToastMessage] = useState<string | null>(null);
   const [isAvatarStyleModalOpen, setIsAvatarStyleModalOpen] = useState(false);
+
+  const [, setFriendshipTick] = useState(0);
+  useEffect(() => {
+    const unsub = friendshipService.subscribe(() => setFriendshipTick((t) => t + 1));
+    return unsub;
+  }, []);
+
+  const currentUid = currentUser?.id || 'current_user_id';
+  const friendsList = friendshipService.getFriendsList(currentUid);
+  const pendingReceived = friendshipService.getPendingRequestsReceived(currentUid);
+  const pendingSent = friendshipService.getPendingRequestsSent(currentUid);
+  const friendsCount = friendshipService.getFriendsCount(currentUid);
+
+  const getContactInfo = (userId: string) => {
+    const contact = AVAILABLE_CONTACTS.find((c) => c.id === userId);
+    if (contact) return contact;
+    if (userId === 'user_fresh_kk') {
+      return {
+        id: 'user_fresh_kk',
+        displayName: 'Fresh kk',
+        username: 'fresh_kk',
+        photoURL: freshKkAvatar,
+        bio: 'Muuzaji & Mjasiriamali Kariakoo',
+        isOnline: true,
+      };
+    }
+    if (userId === 'current_user_id') {
+      return {
+        id: 'current_user_id',
+        displayName: 'Amina Kaunga',
+        username: 'amina_kaunga',
+        photoURL: aminaAvatar,
+        bio: 'Content Creator | Lifestyle',
+        isOnline: true,
+      };
+    }
+    return {
+      id: userId,
+      displayName: userId.replace('user_', '').replace('_', ' ').toUpperCase(),
+      username: userId.replace('user_', ''),
+      photoURL: freshKkAvatar,
+      bio: 'Mwanachama wa Zenia',
+      isOnline: true,
+    };
+  };
 
   const showToast = (msg: string) => {
     setToastMessage(msg);
@@ -971,6 +1023,15 @@ export const ProfileView: React.FC<ProfileViewProps> = ({
               </p>
               <p className={`text-[10px] sm:text-xs mt-0.5 font-medium ${isDark ? 'text-slate-400' : 'text-slate-500'}`}>
                 Machapisho
+              </p>
+            </div>
+            <div className={`h-5 w-px ${isDark ? 'bg-white/10' : 'bg-slate-200'}`} />
+            <div className="text-center flex-1">
+              <p className="font-black text-sm sm:text-base text-emerald-500 dark:text-emerald-400 font-mono leading-tight">
+                {friendshipService.getFriendsCount(currentUser.id)}
+              </p>
+              <p className={`text-[10px] sm:text-xs mt-0.5 font-medium ${isDark ? 'text-slate-400' : 'text-slate-500'}`}>
+                Marafiki
               </p>
             </div>
             <div className={`h-5 w-px ${isDark ? 'bg-white/10' : 'bg-slate-200'}`} />
