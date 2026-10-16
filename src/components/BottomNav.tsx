@@ -31,7 +31,7 @@ export const BottomNav: React.FC<BottomNavProps> = ({
   const isServicesActive = ['events', 'jobs', 'transport', 'community'].includes(activeTab);
 
   return (
-    <div className="shrink-0 z-40 bg-[#070A12]/95 backdrop-blur-md border-t border-white/[0.08] px-3 sm:px-6 py-2 transition-all relative">
+    <div className="shrink-0 z-40 bg-[#070A12]/95 backdrop-blur-md border-t border-white/[0.08] px-2 sm:px-6 pt-2 pb-[max(0.6rem,env(safe-area-inset-bottom))] transition-all relative">
       {/* Services Modal Sheet (Clean, native mobile bottom sheet) */}
       {servicesMenuOpen && (
         <div

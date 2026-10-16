@@ -19,6 +19,9 @@ import {
   Lock,
   UserPlus,
   Clock,
+  Camera,
+  Image as ImageIcon,
+  Trash2,
 } from 'lucide-react';
 import { ProductItem, CartItem, OrderItem } from '../../types';
 import { INITIAL_PRODUCTS } from '../../services/seed/initialData';
@@ -46,7 +49,13 @@ export const ShopMarketplace: React.FC<ShopMarketplaceProps> = ({
   onOpenCreateProduct,
   onStartCallWithSeller,
 }) => {
-  const [products, setProducts] = useState<ProductItem[]>(INITIAL_PRODUCTS);
+  const [products, setProducts] = useState<ProductItem[]>(() => {
+    try {
+      const saved = localStorage.getItem('zenia_marketplace_products');
+      if (saved) return JSON.parse(saved);
+    } catch {}
+    return INITIAL_PRODUCTS;
+  });
   const [selectedCategory, setSelectedCategory] = useState<string>('All');
   const [searchQuery, setSearchQuery] = useState('');
   const [cart, setCart] = useState<CartItem[]>([]);
@@ -55,6 +64,16 @@ export const ShopMarketplace: React.FC<ShopMarketplaceProps> = ({
   const [paymentProcessing, setPaymentProcessing] = useState(false);
   const [orderSuccess, setOrderSuccess] = useState<OrderItem | null>(null);
   const [shopToast, setShopToast] = useState<string | null>(null);
+
+  // New Product Listing state
+  const [isAddProductOpen, setIsAddProductOpen] = useState(false);
+  const [newProductName, setNewProductName] = useState('');
+  const [newProductCategory, setNewProductCategory] = useState('Electronics');
+  const [newProductPrice, setNewProductPrice] = useState<number>(45000);
+  const [newProductDesc, setNewProductDesc] = useState('');
+  const [newProductPhoto, setNewProductPhoto] = useState<string>(
+    'https://images.unsplash.com/photo-1542291026-7eec264c27ff?w=800&auto=format&fit=crop&q=80'
+  );
 
   const [, setFriendshipTick] = useState(0);
   React.useEffect(() => {
@@ -150,7 +169,7 @@ export const ShopMarketplace: React.FC<ShopMarketplaceProps> = ({
   };
 
   return (
-    <div className="w-full flex flex-col bg-[#070A12] text-white flex-1 pb-28 md:pb-12 select-none">
+    <div className="w-full flex flex-col bg-[#070A12] text-white flex-1 pb-[calc(env(safe-area-inset-bottom,0px)+6.5rem)] md:pb-12 select-none overflow-y-auto">
       <div className="max-w-7xl mx-auto w-full flex flex-col flex-1 relative">
         {/* In-UI Toast Notice */}
         {shopToast && (
@@ -258,12 +277,22 @@ export const ShopMarketplace: React.FC<ShopMarketplaceProps> = ({
       {/* Featured Products Section matching Screenshot 4 */}
       <div className="px-5 pt-3 pb-1 flex items-center justify-between">
         <h4 className="font-bold text-sm text-white">Featured Products</h4>
-        <button
-          onClick={() => setSelectedCategory('All')}
-          className="text-xs text-cyan-400 hover:underline font-semibold"
-        >
-          See All
-        </button>
+        <div className="flex items-center gap-2">
+          <button
+            onClick={() => setIsAddProductOpen(true)}
+            className="px-3 py-1.5 rounded-xl bg-gradient-to-r from-cyan-400 to-blue-500 text-slate-950 font-bold text-xs flex items-center gap-1.5 active:scale-95 transition-all shadow-md shadow-cyan-500/20"
+            title="Weka Bidhaa Mpya Sokoni"
+          >
+            <Plus className="w-3.5 h-3.5 stroke-[2.5]" />
+            <span>Weka Bidhaa</span>
+          </button>
+          <button
+            onClick={() => setSelectedCategory('All')}
+            className="text-xs text-slate-400 hover:text-white hover:underline font-semibold"
+          >
+            See All
+          </button>
+        </div>
       </div>
 
       {/* 2-Column Product Grid on mobile, up to 6 columns on desktop */}
@@ -629,6 +658,203 @@ export const ShopMarketplace: React.FC<ShopMarketplaceProps> = ({
             >
               Continue Shopping
             </button>
+          </div>
+        </div>
+      )}
+      {/* Weka Bidhaa Mpya Modal with Native Camera & Gallery Photo Upload */}
+      {isAddProductOpen && (
+        <div className="fixed inset-0 z-50 flex items-end sm:items-center justify-center p-3 sm:p-4 bg-black/85 backdrop-blur-md animate-in fade-in">
+          <div className="relative w-full max-w-lg bg-[#0F1424] border border-white/10 rounded-3xl p-4 sm:p-6 shadow-2xl flex flex-col max-h-[92vh] overflow-hidden">
+            <div className="flex items-center justify-between pb-3 border-b border-white/10 shrink-0">
+              <div className="flex items-center gap-2">
+                <ShoppingBag className="w-5 h-5 text-cyan-400" />
+                <h3 className="font-bold text-base text-white">Weka Bidhaa Sokoni</h3>
+              </div>
+              <button
+                type="button"
+                onClick={() => setIsAddProductOpen(false)}
+                className="p-1.5 rounded-full bg-white/5 hover:bg-white/10 text-slate-400 hover:text-white"
+              >
+                <X className="w-5 h-5" />
+              </button>
+            </div>
+
+            <form
+              onSubmit={(e) => {
+                e.preventDefault();
+                if (!newProductName.trim()) return;
+                const newProd: ProductItem = {
+                  id: `prod_${Date.now()}`,
+                  name: newProductName.trim(),
+                  price: Number(newProductPrice) || 10000,
+                  currency: 'TZS',
+                  category: newProductCategory,
+                  description: newProductDesc.trim() || 'Bidhaa mpya sokoni ya Zenia.',
+                  images: [newProductPhoto || 'https://images.unsplash.com/photo-1542291026-7eec264c27ff?w=800&auto=format&fit=crop&q=80'],
+                  sellerId: currentUser?.id || 'current_user_id',
+                  sellerName: currentUser?.displayName || 'Amina Kaunga',
+                  rating: 5.0,
+                  reviewsCount: 1,
+                  inStock: true,
+                };
+                const updatedList = [newProd, ...products];
+                setProducts(updatedList);
+                try {
+                  localStorage.setItem('zenia_marketplace_products', JSON.stringify(updatedList));
+                } catch (_) {}
+                setIsAddProductOpen(false);
+                setNewProductName('');
+                setNewProductDesc('');
+                setShopToast(`"${newProd.name}" imewekwa sokoni kikamilifu! 🛍️✨`);
+              }}
+              className="flex-1 overflow-y-auto py-3 space-y-4 pr-1"
+            >
+              {/* Product Photo Upload Section */}
+              <div className="p-3.5 rounded-2xl bg-[#141A30] border border-white/5 space-y-2.5">
+                <div className="flex items-center justify-between">
+                  <span className="text-xs font-bold text-white flex items-center gap-1.5">
+                    <Camera className="w-4 h-4 text-cyan-400" />
+                    <span>Picha ya Bidhaa</span>
+                  </span>
+                  <span className="text-[10px] text-cyan-300">Kamera / Simuni</span>
+                </div>
+
+                {newProductPhoto && (
+                  <div className="relative rounded-xl overflow-hidden bg-black/40 border border-white/10 max-h-44 flex items-center justify-center">
+                    <img
+                      src={newProductPhoto}
+                      alt="Product"
+                      className="w-full h-40 object-cover"
+                    />
+                    <button
+                      type="button"
+                      onClick={() => setNewProductPhoto('')}
+                      className="absolute top-2 right-2 p-1.5 rounded-full bg-rose-500/90 hover:bg-rose-600 text-white shadow-md"
+                    >
+                      <Trash2 className="w-3.5 h-3.5" />
+                    </button>
+                  </div>
+                )}
+
+                <div className="grid grid-cols-2 gap-2">
+                  <label className="p-2.5 rounded-xl bg-emerald-500/10 hover:bg-emerald-500/20 border border-emerald-500/30 text-emerald-300 text-xs font-semibold flex items-center justify-center gap-1.5 cursor-pointer active:scale-95 transition-all">
+                    <Camera className="w-4 h-4 text-emerald-400" />
+                    <span>📷 Piga Picha</span>
+                    <input
+                      type="file"
+                      accept="image/*"
+                      capture="environment"
+                      className="hidden"
+                      onChange={(e) => {
+                        const file = e.target.files?.[0];
+                        if (file) {
+                          const reader = new FileReader();
+                          reader.onload = () => {
+                            if (typeof reader.result === 'string') {
+                              setNewProductPhoto(reader.result);
+                            }
+                          };
+                          reader.readAsDataURL(file);
+                        }
+                      }}
+                    />
+                  </label>
+
+                  <label className="p-2.5 rounded-xl bg-cyan-500/10 hover:bg-cyan-500/20 border border-cyan-500/30 text-cyan-300 text-xs font-semibold flex items-center justify-center gap-1.5 cursor-pointer active:scale-95 transition-all">
+                    <ImageIcon className="w-4 h-4 text-cyan-400" />
+                    <span>🖼️ Chagua Simuni</span>
+                    <input
+                      type="file"
+                      accept="image/*"
+                      className="hidden"
+                      onChange={(e) => {
+                        const file = e.target.files?.[0];
+                        if (file) {
+                          const reader = new FileReader();
+                          reader.onload = () => {
+                            if (typeof reader.result === 'string') {
+                              setNewProductPhoto(reader.result);
+                            }
+                          };
+                          reader.readAsDataURL(file);
+                        }
+                      }}
+                    />
+                  </label>
+                </div>
+              </div>
+
+              {/* Jina la Bidhaa */}
+              <div className="space-y-1">
+                <label className="text-xs font-semibold text-slate-300">Jina la Bidhaa</label>
+                <input
+                  type="text"
+                  required
+                  value={newProductName}
+                  onChange={(e) => setNewProductName(e.target.value)}
+                  placeholder="Mfano: iPhone 15 Pro, Viatu vya Nike, Mkoba..."
+                  className="w-full bg-[#182038] border border-white/10 rounded-xl px-3.5 py-2.5 text-xs text-white placeholder-slate-500 focus:outline-none focus:border-cyan-400"
+                />
+              </div>
+
+              {/* Bei & Category */}
+              <div className="grid grid-cols-2 gap-2.5">
+                <div className="space-y-1">
+                  <label className="text-xs font-semibold text-slate-300">Bei (TZS)</label>
+                  <input
+                    type="number"
+                    required
+                    min={500}
+                    value={newProductPrice}
+                    onChange={(e) => setNewProductPrice(Number(e.target.value))}
+                    className="w-full bg-[#182038] border border-white/10 rounded-xl px-3.5 py-2.5 text-xs text-white focus:outline-none focus:border-cyan-400 font-mono font-bold"
+                  />
+                </div>
+                <div className="space-y-1">
+                  <label className="text-xs font-semibold text-slate-300">Kundi (Category)</label>
+                  <select
+                    value={newProductCategory}
+                    onChange={(e) => setNewProductCategory(e.target.value)}
+                    className="w-full bg-[#182038] border border-white/10 rounded-xl px-3 py-2.5 text-xs text-white focus:outline-none focus:border-cyan-400"
+                  >
+                    <option value="Electronics">Electronics</option>
+                    <option value="Fashion">Fashion</option>
+                    <option value="Home">Home</option>
+                    <option value="Beauty">Beauty</option>
+                    <option value="Sports">Sports</option>
+                  </select>
+                </div>
+              </div>
+
+              {/* Maelezo */}
+              <div className="space-y-1">
+                <label className="text-xs font-semibold text-slate-300">Maelezo ya Bidhaa</label>
+                <textarea
+                  rows={3}
+                  value={newProductDesc}
+                  onChange={(e) => setNewProductDesc(e.target.value)}
+                  placeholder="Weka sifa za bidhaa, hali yake (mpya/imetumika), eneo la kuchukulia..."
+                  className="w-full bg-[#182038] border border-white/10 rounded-xl p-3 text-xs text-white placeholder-slate-500 focus:outline-none focus:border-cyan-400"
+                />
+              </div>
+
+              <div className="flex items-center justify-end gap-2 pt-2 border-t border-white/10">
+                <button
+                  type="button"
+                  onClick={() => setIsAddProductOpen(false)}
+                  className="px-4 py-2 rounded-xl text-xs text-slate-300 hover:bg-white/5"
+                >
+                  Ghairi
+                </button>
+                <button
+                  type="submit"
+                  className="px-5 py-2.5 rounded-xl bg-gradient-to-r from-cyan-400 to-blue-500 text-slate-950 font-bold text-xs shadow-lg shadow-cyan-500/20 active:scale-95 transition-all flex items-center gap-1.5"
+                >
+                  <Plus className="w-4 h-4 stroke-[2.5]" />
+                  <span>Chapisha Sokoni</span>
+                </button>
+              </div>
+            </form>
           </div>
         </div>
       )}

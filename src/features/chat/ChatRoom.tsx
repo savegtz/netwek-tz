@@ -44,6 +44,7 @@ import {
   Eye,
   EyeOff,
   Camera,
+  Image as ImageIcon,
   Coins,
   Share2,
   LogIn,
@@ -289,6 +290,61 @@ export const ChatRoom: React.FC<ChatRoomProps> = ({
 
   // Attachments Menu Popover
   const [isAttachMenuOpen, setIsAttachMenuOpen] = useState(false);
+
+  // Photo & Image Attachment States
+  const [pendingImage, setPendingImage] = useState<{
+    dataUrl: string;
+    caption: string;
+    isViewOnce: boolean;
+  } | null>(null);
+  const [fullscreenImage, setFullscreenImage] = useState<string | null>(null);
+
+  const handleImageFileSelect = (e: React.ChangeEvent<HTMLInputElement>, forceViewOnce = false) => {
+    const file = e.target.files?.[0];
+    if (file) {
+      const reader = new FileReader();
+      reader.onload = () => {
+        if (typeof reader.result === 'string') {
+          setPendingImage({
+            dataUrl: reader.result,
+            caption: '',
+            isViewOnce: forceViewOnce,
+          });
+        }
+      };
+      reader.readAsDataURL(file);
+    }
+    e.target.value = '';
+    setIsAttachMenuOpen(false);
+  };
+
+  const handleSendPendingImage = () => {
+    if (!pendingImage) return;
+    const isVo = pendingImage.isViewOnce;
+    const newMsg: ChatMessage = {
+      id: `img_${Date.now()}`,
+      conversationId: conversation.id,
+      senderId: currentUser.id,
+      senderName: 'You',
+      text: pendingImage.caption.trim() || (isVo ? 'Picha ya siri 🔒' : 'Picha'),
+      messageType: isVo ? 'view_once_media' : 'image',
+      mediaUrl: pendingImage.dataUrl,
+      isViewOnce: isVo,
+      isViewedOnce: false,
+      createdAt: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
+    };
+    setMessages((prev) => [...prev, newMsg]);
+    ChatSyncService.sendMessage(conversation.id, newMsg);
+    if (onUpdateConversation) {
+      onUpdateConversation({
+        ...conversation,
+        lastMessage: isVo ? '🔒 Picha ya Siri (View Once)' : '📷 Picha',
+        updatedAt: 'Sasa hivi',
+      });
+    }
+    setPendingImage(null);
+    showToast(isVo ? 'Picha ya siri imetumwa!' : 'Picha imetumwa kikamilifu! 📸');
+  };
 
   // Invoicing & CRM State
   const [isInvoiceModalOpen, setIsInvoiceModalOpen] = useState(false);
@@ -1377,8 +1433,30 @@ export const ChatRoom: React.FC<ChatRoomProps> = ({
                       </div>
                     )}
                   </div>
+                ) : msg.messageType === 'image' || (msg.mediaUrl && msg.messageType !== 'video_note' && msg.messageType !== 'view_once_media') ? (
+                  <div className="py-1 space-y-1.5">
+                    <div
+                      onClick={() => setFullscreenImage(msg.mediaUrl || null)}
+                      className="rounded-xl overflow-hidden border border-white/10 bg-black/40 cursor-pointer max-h-60 sm:max-h-72 hover:opacity-95 transition-opacity group relative"
+                    >
+                      <img
+                        src={msg.mediaUrl}
+                        alt="Chat photo"
+                        className="w-full h-auto object-cover max-h-60 sm:max-h-72"
+                        loading="lazy"
+                      />
+                      <div className="absolute inset-0 bg-black/25 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center">
+                        <span className="px-2.5 py-1 rounded-full bg-black/75 text-white text-[10px] font-semibold backdrop-blur-sm shadow-md">
+                          🔍 Gusa kukuza picha
+                        </span>
+                      </div>
+                    </div>
+                    {msg.text && msg.text !== 'Picha' && (
+                      <p className="text-xs leading-relaxed text-slate-100">{msg.text}</p>
+                    )}
+                  </div>
                 ) : (
-                  <p>{msg.text}</p>
+                  <p className="text-xs leading-relaxed">{msg.text}</p>
                 )}
 
                 {/* 5. IN-CHAT TRANSLATION (Feature 5) */}
@@ -1502,10 +1580,56 @@ export const ChatRoom: React.FC<ChatRoomProps> = ({
         </div>
       )}
 
-      {/* Quick Attach Popover Menu */}
+      {/* Quick Attach Popover Menu with Real Camera & Gallery photo picker */}
       {isAttachMenuOpen && (
-        <div className="bg-[#0D1222] border-t border-white/10 p-3 grid grid-cols-5 gap-2 animate-in slide-in-from-bottom-2 z-20">
-          {/* Tip / Gift */}
+        <div className="bg-[#0D1222] border-t border-white/10 p-3 grid grid-cols-4 sm:grid-cols-7 gap-2 animate-in slide-in-from-bottom-2 z-20">
+          {/* 1. Gallery Photo Upload */}
+          <label
+            className="flex flex-col items-center gap-1.5 p-2 rounded-xl bg-cyan-500/10 hover:bg-cyan-500/20 text-cyan-300 border border-cyan-500/30 text-[11px] font-semibold transition-all active:scale-95 cursor-pointer text-center"
+            title="Weka Picha kutoka Simuni"
+          >
+            <ImageIcon className="w-5 h-5 text-cyan-400" />
+            <span>Picha</span>
+            <input
+              type="file"
+              accept="image/*"
+              className="hidden"
+              onChange={(e) => handleImageFileSelect(e, false)}
+            />
+          </label>
+
+          {/* 2. Mobile Camera Photo */}
+          <label
+            className="flex flex-col items-center gap-1.5 p-2 rounded-xl bg-emerald-500/10 hover:bg-emerald-500/20 text-emerald-300 border border-emerald-500/30 text-[11px] font-semibold transition-all active:scale-95 cursor-pointer text-center"
+            title="Piga Picha kwa Kamera ya Simu"
+          >
+            <Camera className="w-5 h-5 text-emerald-400" />
+            <span>Kamera</span>
+            <input
+              type="file"
+              accept="image/*"
+              capture="environment"
+              className="hidden"
+              onChange={(e) => handleImageFileSelect(e, false)}
+            />
+          </label>
+
+          {/* 3. View Once Photo */}
+          <label
+            className="flex flex-col items-center gap-1.5 p-2 rounded-xl bg-rose-500/10 hover:bg-rose-500/20 text-rose-300 border border-rose-500/30 text-[11px] font-semibold transition-all active:scale-95 cursor-pointer text-center"
+            title="Picha ya Siri (View Once)"
+          >
+            <Eye className="w-5 h-5 text-rose-400" />
+            <span>Siri (1x)</span>
+            <input
+              type="file"
+              accept="image/*"
+              className="hidden"
+              onChange={(e) => handleImageFileSelect(e, true)}
+            />
+          </label>
+
+          {/* 4. Tip / Gift */}
           <button
             type="button"
             onClick={() => {
@@ -1518,68 +1642,42 @@ export const ChatRoom: React.FC<ChatRoomProps> = ({
             <span>Pesa/Tip</span>
           </button>
 
-          {/* Poll */}
+          {/* 5. Poll */}
           <button
             type="button"
             onClick={() => {
               setIsPollModalOpen(true);
               setIsAttachMenuOpen(false);
             }}
-            className="flex flex-col items-center gap-1.5 p-2 rounded-xl bg-cyan-500/10 hover:bg-cyan-500/20 text-cyan-300 border border-cyan-500/30 text-[11px] font-semibold transition-all active:scale-95"
+            className="flex flex-col items-center gap-1.5 p-2 rounded-xl bg-indigo-500/10 hover:bg-indigo-500/20 text-indigo-300 border border-indigo-500/30 text-[11px] font-semibold transition-all active:scale-95"
           >
-            <BarChart2 className="w-5 h-5 text-cyan-400" />
+            <BarChart2 className="w-5 h-5 text-indigo-400" />
             <span>Kura</span>
           </button>
 
-          {/* Schedule */}
+          {/* 6. Schedule */}
           <button
             type="button"
             onClick={() => {
               setIsScheduleModalOpen(true);
               setIsAttachMenuOpen(false);
             }}
-            className="flex flex-col items-center gap-1.5 p-2 rounded-xl bg-indigo-500/10 hover:bg-indigo-500/20 text-indigo-300 border border-indigo-500/30 text-[11px] font-semibold transition-all active:scale-95"
+            className="flex flex-col items-center gap-1.5 p-2 rounded-xl bg-purple-500/10 hover:bg-purple-500/20 text-purple-300 border border-purple-500/30 text-[11px] font-semibold transition-all active:scale-95"
           >
-            <Calendar className="w-5 h-5 text-indigo-400" />
+            <Calendar className="w-5 h-5 text-purple-400" />
             <span>Panga</span>
           </button>
 
-          {/* View Once Photo */}
-          <button
-            type="button"
-            onClick={() => {
-              const viewOnceMsg: ChatMessage = {
-                id: `vo_${Date.now()}`,
-                conversationId: conversation.id,
-                senderId: currentUser.id,
-                senderName: 'You',
-                text: 'Picha ya siri ya mzigo 🔒',
-                messageType: 'view_once_media',
-                isViewOnce: true,
-                isViewedOnce: false,
-                mediaUrl: '/src/assets/images/wireless_earbuds_1790280984496.jpg',
-                createdAt: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
-              };
-              setMessages((prev) => [...prev, viewOnceMsg]);
-              setIsAttachMenuOpen(false);
-              showToast('Picha ya kuangalia mara 1 (View Once) imetumwa!');
-            }}
-            className="flex flex-col items-center gap-1.5 p-2 rounded-xl bg-rose-500/10 hover:bg-rose-500/20 text-rose-300 border border-rose-500/30 text-[11px] font-semibold transition-all active:scale-95"
-          >
-            <Eye className="w-5 h-5 text-rose-400" />
-            <span>Siri (1x)</span>
-          </button>
-
-          {/* Invoice */}
+          {/* 7. Invoice */}
           <button
             type="button"
             onClick={() => {
               setIsInvoiceModalOpen(true);
               setIsAttachMenuOpen(false);
             }}
-            className="flex flex-col items-center gap-1.5 p-2 rounded-xl bg-emerald-500/10 hover:bg-emerald-500/20 text-emerald-300 border border-emerald-500/30 text-[11px] font-semibold transition-all active:scale-95"
+            className="flex flex-col items-center gap-1.5 p-2 rounded-xl bg-teal-500/10 hover:bg-teal-500/20 text-teal-300 border border-teal-500/30 text-[11px] font-semibold transition-all active:scale-95"
           >
-            <Receipt className="w-5 h-5 text-emerald-400" />
+            <Receipt className="w-5 h-5 text-teal-400" />
             <span>Ankara</span>
           </button>
         </div>
@@ -1746,6 +1844,35 @@ export const ChatRoom: React.FC<ChatRoomProps> = ({
             >
               <Paperclip className="w-4 h-4" />
             </button>
+
+            {/* Direct Camera Button (1-tap mobile snap) */}
+            <label
+              className="p-2 rounded-xl bg-white/5 hover:bg-emerald-500/20 text-emerald-400 border border-white/5 transition-all shrink-0 active:scale-95 cursor-pointer flex items-center justify-center"
+              title="Piga Picha kwa Kamera"
+            >
+              <Camera className="w-4 h-4" />
+              <input
+                type="file"
+                accept="image/*"
+                capture="environment"
+                className="hidden"
+                onChange={(e) => handleImageFileSelect(e, false)}
+              />
+            </label>
+
+            {/* Direct Gallery Button (1-tap mobile photo picker) */}
+            <label
+              className="p-2 rounded-xl bg-white/5 hover:bg-cyan-500/20 text-cyan-400 border border-white/5 transition-all shrink-0 active:scale-95 cursor-pointer flex items-center justify-center"
+              title="Weka Picha kutoka Simuni"
+            >
+              <ImageIcon className="w-4 h-4" />
+              <input
+                type="file"
+                accept="image/*"
+                className="hidden"
+                onChange={(e) => handleImageFileSelect(e, false)}
+              />
+            </label>
 
             {/* Feature 6: Silent Message Toggle Button */}
             <button
@@ -2101,6 +2228,107 @@ export const ChatRoom: React.FC<ChatRoomProps> = ({
               </button>
             </div>
           </div>
+        </div>
+      )}
+
+      {/* Photo Attachment Preview & Caption Modal */}
+      {pendingImage && (
+        <div className="fixed inset-0 z-50 flex items-end sm:items-center justify-center bg-black/85 backdrop-blur-md p-3 sm:p-4 animate-in fade-in">
+          <div className="w-full max-w-lg bg-[#0E1424] border border-white/10 rounded-3xl p-4 sm:p-5 shadow-2xl flex flex-col max-h-[92vh] overflow-hidden">
+            <div className="flex items-center justify-between pb-3 border-b border-white/10 shrink-0">
+              <div className="flex items-center gap-2">
+                <Camera className="w-4 h-4 text-cyan-400" />
+                <h4 className="font-bold text-sm text-white">Hakiki Picha (Preview Photo)</h4>
+              </div>
+              <button
+                type="button"
+                onClick={() => setPendingImage(null)}
+                className="p-1.5 rounded-full bg-white/5 hover:bg-white/10 text-slate-400 hover:text-white"
+              >
+                <X className="w-4 h-4" />
+              </button>
+            </div>
+
+            <div className="flex-1 overflow-y-auto py-3 space-y-3">
+              <div className="relative rounded-2xl overflow-hidden bg-black/60 border border-white/10 flex items-center justify-center max-h-[46vh]">
+                <img
+                  src={pendingImage.dataUrl}
+                  alt="Preview"
+                  className="w-full h-full max-h-[46vh] object-contain"
+                />
+                {pendingImage.isViewOnce && (
+                  <span className="absolute top-2 right-2 px-2.5 py-1 rounded-full bg-rose-500/90 text-white text-[10px] font-bold flex items-center gap-1 shadow-md">
+                    <Eye className="w-3 h-3" />
+                    Siri (View Once)
+                  </span>
+                )}
+              </div>
+
+              <input
+                type="text"
+                value={pendingImage.caption}
+                onChange={(e) => setPendingImage({ ...pendingImage, caption: e.target.value })}
+                placeholder="Andika maelezo ya picha (caption)..."
+                className="w-full bg-[#182038] border border-white/10 rounded-xl px-3.5 py-2.5 text-xs text-white placeholder-slate-400 focus:outline-none focus:border-cyan-400"
+                autoFocus
+              />
+
+              <div className="flex items-center justify-between pt-1">
+                <button
+                  type="button"
+                  onClick={() => setPendingImage({ ...pendingImage, isViewOnce: !pendingImage.isViewOnce })}
+                  className={`px-3 py-1.5 rounded-xl text-xs font-semibold flex items-center gap-1.5 transition-all ${
+                    pendingImage.isViewOnce
+                      ? 'bg-rose-500/20 text-rose-300 border border-rose-500/40'
+                      : 'bg-white/5 text-slate-400 hover:text-white border border-white/5'
+                  }`}
+                >
+                  <Eye className="w-3.5 h-3.5" />
+                  <span>{pendingImage.isViewOnce ? '✓ Picha ya Siri (1x)' : 'Weka Siri (View Once)'}</span>
+                </button>
+              </div>
+            </div>
+
+            <div className="flex items-center justify-end gap-2 pt-3 border-t border-white/10 shrink-0">
+              <button
+                type="button"
+                onClick={() => setPendingImage(null)}
+                className="px-4 py-2 rounded-xl text-xs text-slate-300 hover:bg-white/5"
+              >
+                Ghairi
+              </button>
+              <button
+                type="button"
+                onClick={handleSendPendingImage}
+                className="px-5 py-2 rounded-xl bg-gradient-to-r from-cyan-400 to-blue-500 text-slate-950 font-bold text-xs flex items-center gap-1.5 shadow-lg shadow-cyan-500/20 hover:scale-105 active:scale-95 transition-all"
+              >
+                <Send className="w-3.5 h-3.5 stroke-[2.5]" />
+                <span>Tuma Picha</span>
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Fullscreen Photo Lightbox Modal */}
+      {fullscreenImage && (
+        <div
+          className="fixed inset-0 z-50 flex items-center justify-center bg-black/95 backdrop-blur-md p-2 sm:p-4 animate-in fade-in"
+          onClick={() => setFullscreenImage(null)}
+        >
+          <button
+            type="button"
+            onClick={() => setFullscreenImage(null)}
+            className="absolute top-4 right-4 p-2.5 rounded-full bg-white/10 hover:bg-white/20 text-white transition-all z-10"
+          >
+            <X className="w-6 h-6" />
+          </button>
+          <img
+            src={fullscreenImage}
+            alt="Full view"
+            className="max-w-full max-h-[90vh] object-contain rounded-2xl shadow-2xl"
+            onClick={(e) => e.stopPropagation()}
+          />
         </div>
       )}
     </div>

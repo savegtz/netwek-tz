@@ -582,7 +582,7 @@ export const StatusFeed: React.FC<StatusFeedProps> = ({
   };
 
   return (
-    <div className="w-full flex flex-col bg-[#070A12] text-white flex-1 pb-24 md:pb-10 select-none overflow-y-auto">
+    <div className="w-full flex flex-col bg-[#070A12] text-white flex-1 pb-[calc(env(safe-area-inset-bottom,0px)+6.5rem)] md:pb-12 select-none overflow-y-auto">
       <div className="max-w-4xl mx-auto w-full flex flex-col flex-1">
         {/* Top Status Story Avatars Carousel (Clean, Orderly & World-Class) */}
         <div className="px-3.5 pt-3 pb-3 border-b border-white/[0.06] bg-[#0A0D18]">

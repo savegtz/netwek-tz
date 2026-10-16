@@ -74,7 +74,10 @@ export const CreateStatusModal: React.FC<CreateStatusModalProps> = ({
     if (statusType) {
       const targetType = statusType === 'ai' ? 'ai_generated' : statusType;
       setActiveType(targetType);
-      if (targetType === 'giveaway') {
+      if (targetType === 'photo') {
+        setCaption('📸 Picha ya leo! ✨ #ZeniaMoments #GoodVibes #Tanzania');
+        setMediaUrl('https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=1200&auto=format&fit=crop&q=80');
+      } else if (targetType === 'giveaway') {
         setMediaUrl('https://images.unsplash.com/photo-1511707171634-5f897ff02aa9?w=1200&auto=format&fit=crop&q=80');
         setCaption('🎁 MEGA GIVEAWAY! Shinda iPhone 15 Pro Max mpya kabisa!\nFuata maelekezo hapo chini kujiunga na bahati nasibu sasa! 🔥✨\n#GiveawayDar #WinBig #FreshKK');
       } else if (targetType === 'quiz') {
@@ -932,6 +935,7 @@ export const CreateStatusModal: React.FC<CreateStatusModalProps> = ({
         {creationStep === 'details' && (
           <div className="px-4 py-2 bg-[#0B1020] border-b border-white/5 flex items-center gap-1.5 overflow-x-auto scrollbar-none shrink-0">
             {[
+              { id: 'photo', label: '📷 Picha (Photo)', color: 'text-emerald-400' },
               { id: 'job', label: '💼 Job Listing', color: 'text-amber-400' },
               { id: 'food', label: '🍕 Food Status', color: 'text-amber-400' },
               { id: 'poll', label: '📊 Poll', color: 'text-blue-400' },
@@ -945,6 +949,7 @@ export const CreateStatusModal: React.FC<CreateStatusModalProps> = ({
             ].map((tab) => (
               <button
                 key={tab.id}
+                type="button"
                 onClick={() => setActiveType(tab.id as any)}
                 className={`px-3.5 py-1.5 rounded-xl text-xs font-bold transition-all shrink-0 ${
                   activeType === tab.id
@@ -961,74 +966,158 @@ export const CreateStatusModal: React.FC<CreateStatusModalProps> = ({
         {/* Form Body (Step 1) or Shape Selection Studio (Step 2) */}
         {creationStep === 'details' ? (
           <form onSubmit={handleProceedToShapeSelection} className="flex-1 overflow-y-auto p-4 sm:p-5 space-y-4">
-          {/* SECTION 1: MEDIA UPLOAD BUTTONS */}
+          {/* SECTION 1: MEDIA UPLOAD BUTTONS WITH REAL CAMERA & GALLERY PICKER */}
           <div className="p-4 rounded-2xl bg-[#12192F] border border-white/5 space-y-3">
             <div className="flex items-center justify-between">
               <span className="text-xs font-bold text-white flex items-center gap-1.5">
                 <Camera className="w-4 h-4 text-cyan-400" />
-                <span>Add {activeType === 'job' ? 'Job / Company' : activeType === 'food' ? 'Food' : activeType === 'poll' ? 'Poll' : activeType === 'product' ? 'Product' : 'Event'} Media</span>
+                <span>Weka Picha / Media ({activeType === 'photo' ? 'Photo Status' : activeType})</span>
               </span>
-              <span className="text-[10px] text-slate-400">
-                • Photos: Max 10 • Video: Max 1
+              <span className="text-[10px] text-cyan-300 font-medium">
+                • Kamera & Simu Gallery
               </span>
             </div>
+
+            {/* Live Media Thumbnail Preview if present */}
+            {mediaUrl && (
+              <div className="relative rounded-2xl overflow-hidden border border-cyan-500/30 bg-black/40 max-h-48 flex items-center justify-center group">
+                <img
+                  src={mediaUrl}
+                  alt="Status Preview"
+                  className="w-full h-44 object-cover"
+                />
+                <div className="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center gap-2">
+                  <button
+                    type="button"
+                    onClick={() => setMediaUrl('')}
+                    className="px-3 py-1.5 rounded-xl bg-rose-500 text-white text-xs font-bold flex items-center gap-1 shadow-lg"
+                  >
+                    <Trash2 className="w-3.5 h-3.5" />
+                    <span>Ondoa Picha</span>
+                  </button>
+                </div>
+                <div className="absolute bottom-2 left-2 px-2 py-0.5 rounded-full bg-black/70 text-[10px] text-cyan-300 font-semibold border border-white/10">
+                  ✓ Picha imechaguliwa
+                </div>
+              </div>
+            )}
 
             <div className="grid grid-cols-3 gap-2">
-              <button
-                type="button"
-                onClick={() => {
-                  setMediaUrl(
-                    activeType === 'food'
-                      ? 'https://images.unsplash.com/photo-1568901346375-23c9450c58cd?w=1200&auto=format&fit=crop&q=80'
-                      : activeType === 'product'
-                      ? 'https://images.unsplash.com/photo-1542291026-7eec264c27ff?w=1200&auto=format&fit=crop&q=80'
-                      : 'https://images.unsplash.com/photo-1555396273-367ea4eb4db5?w=1200&auto=format&fit=crop&q=80'
-                  );
-                  setMediaCount((prev) => Math.min(10, prev + 1));
-                }}
-                className="p-3 rounded-xl bg-white/5 hover:bg-white/10 border border-white/5 text-center text-slate-200 text-xs font-semibold flex flex-col items-center justify-center gap-1 active:scale-95 transition-all"
-              >
+              {/* Native Mobile Camera Button */}
+              <label className="p-3 rounded-xl bg-emerald-500/10 hover:bg-emerald-500/20 border border-emerald-500/30 text-center text-emerald-300 text-xs font-semibold flex flex-col items-center justify-center gap-1 active:scale-95 transition-all cursor-pointer">
                 <Camera className="w-5 h-5 text-emerald-400" />
-                <span>📷 Take Photo</span>
-              </button>
+                <span>📷 Kamera</span>
+                <input
+                  type="file"
+                  accept="image/*"
+                  capture="environment"
+                  className="hidden"
+                  onChange={(e) => {
+                    const file = e.target.files?.[0];
+                    if (file) {
+                      const reader = new FileReader();
+                      reader.onload = () => {
+                        if (typeof reader.result === 'string') {
+                          setMediaUrl(reader.result);
+                        }
+                      };
+                      reader.readAsDataURL(file);
+                    }
+                  }}
+                />
+              </label>
 
-              <button
-                type="button"
-                onClick={() => {
-                  setMediaUrl(
-                    activeType === 'food'
-                      ? 'https://images.unsplash.com/photo-1586190848861-99aa4a171e90?w=1200&auto=format&fit=crop&q=80'
-                      : activeType === 'product'
-                      ? 'https://images.unsplash.com/photo-1610945415295-d9bbf067e59c?w=1200&auto=format&fit=crop&q=80'
-                      : 'https://images.unsplash.com/photo-1511795409834-ef04bbd61622?w=1200&auto=format&fit=crop&q=80'
-                  );
-                }}
-                className="p-3 rounded-xl bg-white/5 hover:bg-white/10 border border-white/5 text-center text-slate-200 text-xs font-semibold flex flex-col items-center justify-center gap-1 active:scale-95 transition-all"
-              >
+              {/* Native Mobile Gallery Button */}
+              <label className="p-3 rounded-xl bg-cyan-500/10 hover:bg-cyan-500/20 border border-cyan-500/30 text-center text-cyan-300 text-xs font-semibold flex flex-col items-center justify-center gap-1 active:scale-95 transition-all cursor-pointer">
                 <Image className="w-5 h-5 text-cyan-400" />
-                <span>🖼️ Choose from Gallery</span>
-              </button>
+                <span>🖼️ Gallery</span>
+                <input
+                  type="file"
+                  accept="image/*"
+                  className="hidden"
+                  onChange={(e) => {
+                    const file = e.target.files?.[0];
+                    if (file) {
+                      const reader = new FileReader();
+                      reader.onload = () => {
+                        if (typeof reader.result === 'string') {
+                          setMediaUrl(reader.result);
+                        }
+                      };
+                      reader.readAsDataURL(file);
+                    }
+                  }}
+                />
+              </label>
 
+              {/* Sample Photo Preset Button */}
               <button
                 type="button"
                 onClick={() => {
-                  setMediaUrl('https://images.unsplash.com/photo-1549399542-7e3f8b79c341?w=1200&auto=format&fit=crop&q=80');
+                  const samples = [
+                    'https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=1200&auto=format&fit=crop&q=80',
+                    'https://images.unsplash.com/photo-1507525428034-b723cf961d3e?w=1200&auto=format&fit=crop&q=80',
+                    'https://images.unsplash.com/photo-1517248135467-4c7edcad34c4?w=1200&auto=format&fit=crop&q=80',
+                    'https://images.unsplash.com/photo-1542291026-7eec264c27ff?w=1200&auto=format&fit=crop&q=80',
+                  ];
+                  const pick = samples[Math.floor(Math.random() * samples.length)];
+                  setMediaUrl(pick);
                 }}
-                className="p-3 rounded-xl bg-white/5 hover:bg-white/10 border border-white/5 text-center text-slate-200 text-xs font-semibold flex flex-col items-center justify-center gap-1 active:scale-95 transition-all"
+                className="p-3 rounded-xl bg-purple-500/10 hover:bg-purple-500/20 border border-purple-500/30 text-center text-purple-300 text-xs font-semibold flex flex-col items-center justify-center gap-1 active:scale-95 transition-all"
               >
-                <Video className="w-5 h-5 text-purple-400" />
-                <span>🎥 Add Video</span>
+                <Sparkles className="w-5 h-5 text-purple-400" />
+                <span>✨ Sampuli</span>
               </button>
             </div>
 
-            <input
-              type="text"
-              value={mediaUrl}
-              onChange={(e) => setMediaUrl(e.target.value)}
-              placeholder="Media URL..."
-              className="w-full bg-[#182038] border border-white/10 rounded-xl px-3 py-2 text-xs text-white placeholder-slate-500 font-mono"
-            />
+            <div className="flex items-center gap-2">
+              <input
+                type="text"
+                value={mediaUrl}
+                onChange={(e) => setMediaUrl(e.target.value)}
+                placeholder="Au weka link ya picha (URL)..."
+                className="w-full bg-[#182038] border border-white/10 rounded-xl px-3 py-2 text-xs text-white placeholder-slate-500 font-mono"
+              />
+            </div>
           </div>
+
+          {/* ============================================================== */}
+          {/* PHOTO STATUS FORM */}
+          {/* ============================================================== */}
+          {activeType === 'photo' && (
+            <div className="space-y-4 animate-in fade-in">
+              <div className="p-4 rounded-2xl bg-[#12192F] border border-emerald-500/20 space-y-3">
+                <span className="text-xs font-bold text-emerald-400 uppercase tracking-wider block">
+                  Maelezo ya Picha (Caption & Hashtags)
+                </span>
+                <textarea
+                  rows={3}
+                  required
+                  value={caption}
+                  onChange={(e) => setCaption(e.target.value)}
+                  placeholder="Andika maelezo ya picha yako hapa... #ZeniaMoments #DarEsSalaam"
+                  className="w-full bg-[#182038] border border-white/10 rounded-xl p-3 text-xs text-white placeholder-slate-500 focus:outline-none focus:border-emerald-400"
+                />
+
+                <div className="flex items-center gap-1.5 flex-wrap pt-1">
+                  {['#ZeniaMoments', '#GoodVibes', '#Tanzania', '#FreshKK', '#Weekend', '#DarLife'].map((tag) => (
+                    <button
+                      key={tag}
+                      type="button"
+                      onClick={() => {
+                        if (!caption.includes(tag)) {
+                          setCaption((prev) => `${prev} ${tag}`);
+                        }
+                      }}
+                      className="px-2.5 py-1 rounded-lg bg-white/5 hover:bg-white/10 text-[11px] text-cyan-300 font-medium border border-white/5 transition-all"
+                    >
+                      {tag}
+                    </button>
+                  ))}
+                </div>
+              </div>
+            </div>
+          )}
 
           {/* ============================================================== */}
           {/* JOB LISTING FORM */}

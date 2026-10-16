@@ -30,6 +30,7 @@ import {
   UserPlus,
   Phone,
   Video,
+  Camera,
 } from 'lucide-react';
 import { Conversation, ChatMessage, UserProfile } from '../../types';
 import { INITIAL_MESSAGES_CONV2, INITIAL_CONVERSATIONS } from '../../services/seed/initialData';
@@ -108,6 +109,55 @@ export const GroupChatRoom: React.FC<GroupChatRoomProps> = ({
   const showToast = (msg: string) => {
     setToastMessage(msg);
     setTimeout(() => setToastMessage(null), 3200);
+  };
+
+  // Photo & Image Attachment States
+  const [pendingImage, setPendingImage] = useState<{
+    dataUrl: string;
+    caption: string;
+  } | null>(null);
+  const [fullscreenImage, setFullscreenImage] = useState<string | null>(null);
+
+  const handleImageFileSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (file) {
+      const reader = new FileReader();
+      reader.onload = () => {
+        if (typeof reader.result === 'string') {
+          setPendingImage({
+            dataUrl: reader.result,
+            caption: '',
+          });
+        }
+      };
+      reader.readAsDataURL(file);
+    }
+    e.target.value = '';
+  };
+
+  const handleSendPendingImage = () => {
+    if (!pendingImage) return;
+    const newMsg: ChatMessage = {
+      id: `img_${Date.now()}`,
+      conversationId: conversation.id,
+      senderId: currentUser.id,
+      senderName: currentUser.displayName || 'You',
+      senderAvatar: currentUser.photoURL,
+      text: pendingImage.caption.trim() || 'Picha',
+      messageType: 'image',
+      mediaUrl: pendingImage.dataUrl,
+      createdAt: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
+    };
+    setMessages((prev) => [...prev, newMsg]);
+    if (onUpdateConversation) {
+      onUpdateConversation({
+        ...conversation,
+        lastMessage: '📷 Picha',
+        updatedAt: 'Sasa hivi',
+      });
+    }
+    setPendingImage(null);
+    showToast('Picha imetumwa kikamilifu kwenye kikundi! 📸');
   };
 
   useEffect(() => {
@@ -795,6 +845,28 @@ export const GroupChatRoom: React.FC<GroupChatRoomProps> = ({
                       <p className="text-[10px] text-slate-300 font-medium">{msg.fileSize}</p>
                     </div>
                   </div>
+                ) : msg.messageType === 'image' || (msg.mediaUrl && msg.messageType !== 'video_note' && msg.messageType !== 'view_once_media') ? (
+                  <div className="py-1 space-y-1.5">
+                    <div
+                      onClick={() => setFullscreenImage(msg.mediaUrl || null)}
+                      className="rounded-xl overflow-hidden border border-white/10 bg-black/40 cursor-pointer max-h-60 sm:max-h-72 hover:opacity-95 transition-opacity group relative"
+                    >
+                      <img
+                        src={msg.mediaUrl}
+                        alt="Group photo"
+                        className="w-full h-auto object-cover max-h-60 sm:max-h-72"
+                        loading="lazy"
+                      />
+                      <div className="absolute inset-0 bg-black/25 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center">
+                        <span className="px-2.5 py-1 rounded-full bg-black/75 text-white text-[10px] font-semibold backdrop-blur-sm shadow-md">
+                          🔍 Gusa kukuza picha
+                        </span>
+                      </div>
+                    </div>
+                    {msg.text && msg.text !== 'Picha' && (
+                      <p className="text-xs leading-relaxed text-slate-100">{msg.text}</p>
+                    )}
+                  </div>
                 ) : (
                   <p className="text-xs leading-relaxed">{msg.text}</p>
                 )}
@@ -915,14 +987,36 @@ export const GroupChatRoom: React.FC<GroupChatRoomProps> = ({
       ) : (
         <form
           onSubmit={handleSendMessage}
-          className="p-3 bg-[#0D1220] border-t border-white/[0.06] flex items-center gap-2"
+          className="p-2 sm:p-3 bg-[#0D1220] border-t border-white/[0.06] flex items-center gap-1.5 sm:gap-2"
         >
-          <button
-            type="button"
-            className="p-2 text-slate-400 hover:text-white"
+          {/* Direct Camera Button (1-tap mobile snap) */}
+          <label
+            className="p-1.5 sm:p-2 text-emerald-400 hover:text-emerald-300 transition-colors cursor-pointer rounded-xl bg-white/5 flex items-center justify-center shrink-0 active:scale-95"
+            title="Piga Picha kwa Kamera"
           >
-            <Smile className="w-5 h-5" />
-          </button>
+            <Camera className="w-4 h-4 sm:w-5 sm:h-5" />
+            <input
+              type="file"
+              accept="image/*"
+              capture="environment"
+              className="hidden"
+              onChange={handleImageFileSelect}
+            />
+          </label>
+
+          {/* Direct Gallery Button (1-tap mobile photo picker) */}
+          <label
+            className="p-1.5 sm:p-2 text-cyan-400 hover:text-cyan-300 transition-colors cursor-pointer rounded-xl bg-white/5 flex items-center justify-center shrink-0 active:scale-95"
+            title="Weka Picha kutoka Simuni"
+          >
+            <ImageIcon className="w-4 h-4 sm:w-5 sm:h-5" />
+            <input
+              type="file"
+              accept="image/*"
+              className="hidden"
+              onChange={handleImageFileSelect}
+            />
+          </label>
 
           <div className="flex-1 relative">
             <input
@@ -1081,6 +1175,84 @@ export const GroupChatRoom: React.FC<GroupChatRoomProps> = ({
               </button>
             </div>
           </div>
+        </div>
+      {/* Photo Attachment Preview & Caption Modal for Group Chat */}
+      {pendingImage && (
+        <div className="fixed inset-0 z-50 flex items-end sm:items-center justify-center bg-black/85 backdrop-blur-md p-3 sm:p-4 animate-in fade-in">
+          <div className="w-full max-w-lg bg-[#0E1424] border border-white/10 rounded-3xl p-4 sm:p-5 shadow-2xl flex flex-col max-h-[92vh] overflow-hidden">
+            <div className="flex items-center justify-between pb-3 border-b border-white/10 shrink-0">
+              <div className="flex items-center gap-2">
+                <Camera className="w-4 h-4 text-cyan-400" />
+                <h4 className="font-bold text-sm text-white">Tuma Picha Kwenye Kikundi</h4>
+              </div>
+              <button
+                type="button"
+                onClick={() => setPendingImage(null)}
+                className="p-1.5 rounded-full bg-white/5 hover:bg-white/10 text-slate-400 hover:text-white"
+              >
+                <X className="w-4 h-4" />
+              </button>
+            </div>
+
+            <div className="flex-1 overflow-y-auto py-3 space-y-3">
+              <div className="relative rounded-2xl overflow-hidden bg-black/60 border border-white/10 flex items-center justify-center max-h-[46vh]">
+                <img
+                  src={pendingImage.dataUrl}
+                  alt="Preview"
+                  className="w-full h-full max-h-[46vh] object-contain"
+                />
+              </div>
+
+              <input
+                type="text"
+                value={pendingImage.caption}
+                onChange={(e) => setPendingImage({ ...pendingImage, caption: e.target.value })}
+                placeholder="Andika maelezo ya picha (caption)..."
+                className="w-full bg-[#182038] border border-white/10 rounded-xl px-3.5 py-2.5 text-xs text-white placeholder-slate-400 focus:outline-none focus:border-cyan-400"
+                autoFocus
+              />
+            </div>
+
+            <div className="flex items-center justify-end gap-2 pt-3 border-t border-white/10 shrink-0">
+              <button
+                type="button"
+                onClick={() => setPendingImage(null)}
+                className="px-4 py-2 rounded-xl text-xs text-slate-300 hover:bg-white/5"
+              >
+                Ghairi
+              </button>
+              <button
+                type="button"
+                onClick={handleSendPendingImage}
+                className="px-5 py-2 rounded-xl bg-gradient-to-r from-cyan-400 to-blue-500 text-slate-950 font-bold text-xs flex items-center gap-1.5 shadow-lg shadow-cyan-500/20 hover:scale-105 active:scale-95 transition-all"
+              >
+                <Send className="w-3.5 h-3.5 stroke-[2.5]" />
+                <span>Tuma Picha</span>
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Fullscreen Photo Lightbox Modal for Group Chat */}
+      {fullscreenImage && (
+        <div
+          className="fixed inset-0 z-50 flex items-center justify-center bg-black/95 backdrop-blur-md p-2 sm:p-4 animate-in fade-in"
+          onClick={() => setFullscreenImage(null)}
+        >
+          <button
+            type="button"
+            onClick={() => setFullscreenImage(null)}
+            className="absolute top-4 right-4 p-2.5 rounded-full bg-white/10 hover:bg-white/20 text-white transition-all z-10"
+          >
+            <X className="w-6 h-6" />
+          </button>
+          <img
+            src={fullscreenImage}
+            alt="Full view"
+            className="max-w-full max-h-[90vh] object-contain rounded-2xl shadow-2xl"
+            onClick={(e) => e.stopPropagation()}
+          />
         </div>
       )}
     </div>

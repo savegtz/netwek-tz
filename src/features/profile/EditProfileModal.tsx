@@ -11,6 +11,7 @@ import {
   Save,
   Phone,
   Sparkles,
+  Upload,
 } from 'lucide-react';
 import { doc, updateDoc } from 'firebase/firestore';
 import { db } from '../../services/firebase/config';
@@ -185,8 +186,33 @@ export const EditProfileModal: React.FC<EditProfileModalProps> = ({
               </div>
             </div>
 
+            {/* Upload from device file input */}
+            <div className="mt-2.5 flex items-center gap-2">
+              <label className="flex-1 py-2 px-3 rounded-xl bg-cyan-500/15 hover:bg-cyan-500/25 border border-cyan-400/30 text-cyan-300 font-semibold text-xs flex items-center justify-center gap-2 cursor-pointer transition-colors active:scale-98">
+                <Upload className="w-3.5 h-3.5 shrink-0" />
+                <span>Pakia Picha kutoka Simuni (Gallery)</span>
+                <input
+                  type="file"
+                  accept="image/*"
+                  className="hidden"
+                  onChange={(e) => {
+                    const file = e.target.files?.[0];
+                    if (file) {
+                      const reader = new FileReader();
+                      reader.onload = () => {
+                        if (typeof reader.result === 'string') {
+                          setPhotoURL(reader.result);
+                        }
+                      };
+                      reader.readAsDataURL(file);
+                    }
+                  }}
+                />
+              </label>
+            </div>
+
             {/* Custom Photo URL Input */}
-            <div className="mt-2.5">
+            <div className="mt-2">
               <div className="relative">
                 <Camera className="w-4 h-4 text-slate-400 absolute left-3 top-2.5" />
                 <input

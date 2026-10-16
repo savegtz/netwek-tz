@@ -38,6 +38,9 @@ import {
   UserX,
   Clock,
   Phone,
+  Camera,
+  Upload,
+  Image as ImageIcon,
 } from 'lucide-react';
 import {
   signInWithEmailAndPassword,
@@ -768,11 +771,115 @@ export const ProfileView: React.FC<ProfileViewProps> = ({
     }
   };
 
-  const togglePostLike = (postId: string) => {
-    setLikedPosts((prev) => ({
-      ...prev,
-      [postId]: !prev[postId],
-    }));
+  // 1. Cover Photo State & Handlers
+  const [coverPhoto, setCoverPhoto] = useState<string>(() => {
+    try {
+      const saved = localStorage.getItem(`zenia_user_cover_${currentUser.id}`);
+      if (saved) return saved;
+    } catch {}
+    return zanzibarBeach;
+  });
+
+  const handleCoverUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    const reader = new FileReader();
+    reader.onload = () => {
+      if (typeof reader.result === 'string') {
+        const img = reader.result;
+        setCoverPhoto(img);
+        try {
+          localStorage.setItem(`zenia_user_cover_${currentUser.id}`, img);
+        } catch (_) {}
+        showToast('Picha ya jalada (Cover) imebadilishwa kikamilifu! 🏖️');
+      }
+    };
+    reader.readAsDataURL(file);
+  };
+
+  // 2. Avatar Photo Upload Handler
+  const handleAvatarUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    const reader = new FileReader();
+    reader.onload = () => {
+      if (typeof reader.result === 'string') {
+        const img = reader.result;
+        const updatedUser: UserProfile = {
+          ...currentUser,
+          photoURL: img,
+        };
+        try {
+          localStorage.setItem('zenia_active_user', JSON.stringify(updatedUser));
+          localStorage.setItem(`zenia_user_avatar_${currentUser.id}`, img);
+        } catch (_) {}
+        if (onLoginSuccess) {
+          onLoginSuccess(updatedUser);
+        }
+        showToast('Picha ya wasifu (Avatar) imesasishwa! 📸');
+      }
+    };
+    reader.readAsDataURL(file);
+  };
+
+  // 3. User Posts State & New Post Upload Modal
+  const [userPosts, setUserPosts] = useState<PostItem[]>(() => {
+    try {
+      const saved = localStorage.getItem(`zenia_user_posts_${currentUser.id}`);
+      if (saved) return JSON.parse(saved);
+    } catch {}
+    return defaultUserPosts;
+  });
+
+  const [isUploadPostModalOpen, setIsUploadPostModalOpen] = useState(false);
+  const [newPostImage, setNewPostImage] = useState<string | null>(null);
+  const [newPostCaption, setNewPostCaption] = useState('');
+  const [newPostLocation, setNewPostLocation] = useState('Dar es Salaam, Tanzania 🇹🇿');
+
+  const handleNewPostImageSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    const reader = new FileReader();
+    reader.onload = () => {
+      if (typeof reader.result === 'string') {
+        setNewPostImage(reader.result);
+      }
+    };
+    reader.readAsDataURL(file);
+  };
+
+  const handlePublishNewPost = (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!newPostImage) {
+      showToast('Tafadhali chagua picha ya kupakia!');
+      return;
+    }
+    const newPost: PostItem = {
+      id: `post_${Date.now()}`,
+      url: newPostImage,
+      caption: newPostCaption.trim() || 'Chapisho langu jipya kwenye Zenia ✨',
+      likes: '1',
+      comments: '0',
+      type: 'image',
+      gradient: 'from-cyan-900 via-indigo-950 to-slate-900',
+      date: 'Hivi punde',
+    };
+    const updated = [newPost, ...userPosts];
+    setUserPosts(updated);
+    try {
+      localStorage.setItem(`zenia_user_posts_${currentUser.id}`, JSON.stringify(updated));
+      const userToSave = {
+        ...currentUser,
+        postsCount: updated.length,
+      };
+      localStorage.setItem('zenia_active_user', JSON.stringify(userToSave));
+      if (onLoginSuccess) onLoginSuccess(userToSave);
+    } catch (_) {}
+
+    setIsUploadPostModalOpen(false);
+    setNewPostImage(null);
+    setNewPostCaption('');
+    showToast('Picha yako imechapishwa kikamilifu! 🎉');
   };
 
   return (
@@ -798,11 +905,11 @@ export const ProfileView: React.FC<ProfileViewProps> = ({
       )}
 
       {/* ============================================================== */}
-      {/* 1. COVER BANNER (CLEAN, ELEGANT BACKDROP WITHOUT OBSCURED PILLS) */}
+      {/* 1. COVER BANNER (CLEAN, ELEGANT BACKDROP WITH CAMERA ACTION)   */}
       {/* ============================================================== */}
       <div className="relative w-full h-32 sm:h-44 overflow-hidden bg-gradient-to-r from-cyan-950 via-slate-900 to-indigo-950 shrink-0">
         <SafeImage
-          src={zanzibarBeach}
+          src={coverPhoto}
           fallbackGradient="from-cyan-900 via-indigo-950 to-purple-950"
           fallbackText="Zenia Cover"
           className="w-full h-full object-cover opacity-80"
@@ -814,6 +921,20 @@ export const ProfileView: React.FC<ProfileViewProps> = ({
               : 'from-slate-50 via-slate-50/20 to-transparent'
           }`}
         />
+
+        {/* Cover Photo Upload Button on Top-Left */}
+        <div className="absolute top-2.5 left-3 z-20 flex items-center gap-1.5 pointer-events-auto">
+          <label className="px-2.5 py-1.5 rounded-full bg-black/60 hover:bg-black/80 backdrop-blur-md border border-white/20 text-white text-[11px] font-semibold flex items-center gap-1.5 cursor-pointer active:scale-95 transition-all shadow-md">
+            <Camera className="w-3.5 h-3.5 text-cyan-400" />
+            <span>Badili Jalada</span>
+            <input
+              type="file"
+              accept="image/*"
+              className="hidden"
+              onChange={handleCoverUpload}
+            />
+          </label>
+        </div>
 
         {/* Floating Controls at Top Right of Cover (Theme Toggle & 3-Dots Options) */}
         <div className="absolute top-2.5 right-3 flex items-center gap-2 z-20 pointer-events-auto">
