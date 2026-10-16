@@ -1026,14 +1026,17 @@ export const ProfileView: React.FC<ProfileViewProps> = ({
               </p>
             </div>
             <div className={`h-5 w-px ${isDark ? 'bg-white/10' : 'bg-slate-200'}`} />
-            <div className="text-center flex-1">
-              <p className="font-black text-sm sm:text-base text-emerald-500 dark:text-emerald-400 font-mono leading-tight">
+            <button
+              onClick={() => setActiveTab('friends')}
+              className="text-center flex-1 hover:opacity-80 active:scale-95 transition-all group cursor-pointer"
+            >
+              <p className="font-black text-sm sm:text-base text-emerald-500 dark:text-emerald-400 font-mono leading-tight group-hover:underline">
                 {friendshipService.getFriendsCount(currentUser.id)}
               </p>
               <p className={`text-[10px] sm:text-xs mt-0.5 font-medium ${isDark ? 'text-slate-400' : 'text-slate-500'}`}>
-                Marafiki
+                👥 Marafiki
               </p>
-            </div>
+            </button>
             <div className={`h-5 w-px ${isDark ? 'bg-white/10' : 'bg-slate-200'}`} />
             <div className="text-center flex-1">
               <p className="font-black text-sm sm:text-base text-cyan-600 dark:text-cyan-400 font-mono leading-tight">
@@ -1273,6 +1276,20 @@ export const ProfileView: React.FC<ProfileViewProps> = ({
               <ShoppingBag className="w-4 h-4" />
               <span>Duka</span>
             </button>
+
+            <button
+              onClick={() => setActiveTab('friends')}
+              className={`flex-1 flex items-center justify-center gap-1.5 py-2.5 sm:py-3 text-xs font-bold border-b-2 transition-all ${
+                activeTab === 'friends'
+                  ? 'border-cyan-500 text-cyan-600 dark:text-cyan-400'
+                  : isDark
+                  ? 'border-transparent text-slate-400 hover:text-white'
+                  : 'border-transparent text-slate-500 hover:text-slate-900'
+              }`}
+            >
+              <Users className="w-4 h-4" />
+              <span>Marafiki ({friendsCount})</span>
+            </button>
           </div>
         </div>
 
@@ -1439,6 +1456,235 @@ export const ProfileView: React.FC<ProfileViewProps> = ({
                 </div>
               ))}
             </div>
+          </div>
+        )}
+
+        {/* TAB 5: FRIENDS & FOLLOWERS MANAGEMENT */}
+        {activeTab === 'friends' && (
+          <div className="pt-2 space-y-4">
+            {/* Sub-tabs: Marafiki, Maombi Yaliyopokelewa, Maombi Yaliyotumwa */}
+            <div className={`flex items-center gap-2 p-1 rounded-2xl border ${isDark ? 'bg-white/5 border-white/10' : 'bg-slate-100 border-slate-200'}`}>
+              <button
+                onClick={() => setFriendsSubTab('friends')}
+                className={`flex-1 py-1.5 px-3 rounded-xl text-xs font-bold transition-all flex items-center justify-center gap-1.5 ${
+                  friendsSubTab === 'friends'
+                    ? 'bg-cyan-500 text-slate-950 shadow-md'
+                    : isDark ? 'text-slate-300 hover:text-white' : 'text-slate-600 hover:text-slate-900'
+                }`}
+              >
+                <span>Marafiki ({friendsList.length})</span>
+              </button>
+              <button
+                onClick={() => setFriendsSubTab('received')}
+                className={`flex-1 py-1.5 px-3 rounded-xl text-xs font-bold transition-all flex items-center justify-center gap-1.5 ${
+                  friendsSubTab === 'received'
+                    ? 'bg-cyan-500 text-slate-950 shadow-md'
+                    : isDark ? 'text-slate-300 hover:text-white' : 'text-slate-600 hover:text-slate-900'
+                }`}
+              >
+                <span>Maombi ({pendingReceived.length})</span>
+                {pendingReceived.length > 0 && (
+                  <span className="w-2 h-2 rounded-full bg-rose-500 animate-ping" />
+                )}
+              </button>
+              <button
+                onClick={() => setFriendsSubTab('sent')}
+                className={`flex-1 py-1.5 px-3 rounded-xl text-xs font-bold transition-all flex items-center justify-center gap-1.5 ${
+                  friendsSubTab === 'sent'
+                    ? 'bg-cyan-500 text-slate-950 shadow-md'
+                    : isDark ? 'text-slate-300 hover:text-white' : 'text-slate-600 hover:text-slate-900'
+                }`}
+              >
+                <span>Yaliyotumwa ({pendingSent.length})</span>
+              </button>
+            </div>
+
+            {/* List for Sub-tab: Marafiki */}
+            {friendsSubTab === 'friends' && (
+              <div className="space-y-2">
+                {friendsList.length === 0 ? (
+                  <div className={`p-8 text-center border rounded-3xl flex flex-col items-center ${isDark ? 'bg-white/5 border-white/10' : 'bg-slate-50 border-slate-200'}`}>
+                    <Users className="w-10 h-10 text-slate-400 mb-2 opacity-50" />
+                    <h5 className={`font-bold text-sm ${isDark ? 'text-white' : 'text-slate-900'}`}>Bado huna marafiki walioidhinishwa</h5>
+                    <p className={`text-xs mt-1 max-w-sm ${isDark ? 'text-slate-400' : 'text-slate-500'}`}>
+                      Nenda kwenye sehemu ya "Gundua (Discover)" au tafuta watumiaji ili kuwaomba urafiki.
+                    </p>
+                    <button
+                      onClick={() => onSelectService && onSelectService('discover')}
+                      className="mt-3 px-4 py-1.5 rounded-xl bg-cyan-500 hover:bg-cyan-400 text-slate-950 text-xs font-bold shadow-md active:scale-95 transition-all"
+                    >
+                      Tafuta Marafiki
+                    </button>
+                  </div>
+                ) : (
+                  friendsList.map((friendId) => {
+                    const cInfo = getContactInfo(friendId);
+                    return (
+                      <div
+                        key={friendId}
+                        className={`p-3 rounded-2xl border flex items-center justify-between gap-3 ${
+                          isDark ? 'bg-[#0E1528] border-white/10 text-white' : 'bg-white border-slate-200 text-slate-900'
+                        }`}
+                      >
+                        <div className="flex items-center gap-3 min-w-0">
+                          <div className="w-11 h-11 rounded-full overflow-hidden shrink-0 border border-white/10 bg-slate-800">
+                            <SafeImage src={cInfo.photoURL} alt={cInfo.displayName} className="w-full h-full object-cover" />
+                          </div>
+                          <div className="min-w-0">
+                            <p className="text-xs font-bold truncate">{cInfo.displayName}</p>
+                            <p className="text-[10px] text-slate-400 truncate">@{cInfo.username}</p>
+                            <span className="inline-flex items-center gap-1 text-[10px] text-emerald-500 dark:text-emerald-400 font-semibold mt-0.5">
+                              <span className="w-1.5 h-1.5 rounded-full bg-emerald-400" />
+                              Marafiki • Mnaweza Kuchati & Kupiga Simu
+                            </span>
+                          </div>
+                        </div>
+
+                        <div className="flex items-center gap-1.5 shrink-0">
+                          <button
+                            onClick={() => {
+                              if (onSelectService) {
+                                onSelectService('chats');
+                              }
+                            }}
+                            className="p-2 rounded-xl bg-cyan-500/15 hover:bg-cyan-500 text-cyan-600 dark:text-cyan-300 hover:text-slate-950 transition-all active:scale-95"
+                            title="Fungua Chat"
+                          >
+                            <MessageCircle className="w-4 h-4" />
+                          </button>
+                          <button
+                            onClick={() => {
+                              friendshipService.unfriend(currentUid, friendId);
+                              showToast(`Umesitisha urafiki na ${cInfo.displayName}.`);
+                            }}
+                            className="p-2 rounded-xl bg-rose-500/10 hover:bg-rose-500/25 text-rose-500 hover:text-rose-400 transition-all active:scale-95"
+                            title="Ondoa Urafiki"
+                          >
+                            <UserX className="w-4 h-4" />
+                          </button>
+                        </div>
+                      </div>
+                    );
+                  })
+                )}
+              </div>
+            )}
+
+            {/* List for Sub-tab: Received Requests */}
+            {friendsSubTab === 'received' && (
+              <div className="space-y-2">
+                {pendingReceived.length === 0 ? (
+                  <div className={`p-8 text-center border rounded-3xl flex flex-col items-center ${isDark ? 'bg-white/5 border-white/10' : 'bg-slate-50 border-slate-200'}`}>
+                    <UserCheck className="w-10 h-10 text-slate-400 mb-2 opacity-50" />
+                    <h5 className={`font-bold text-sm ${isDark ? 'text-white' : 'text-slate-900'}`}>Huna ombi jipya la urafiki</h5>
+                    <p className={`text-xs mt-1 max-w-sm ${isDark ? 'text-slate-400' : 'text-slate-500'}`}>
+                      Mtu akikutumia ombi la urafiki ili muweze kuchati na kupigiana simu, litaonekana hapa.
+                    </p>
+                  </div>
+                ) : (
+                  pendingReceived.map((req) => {
+                    const sender = req.senderDetails || {
+                      displayName: 'Mwanachama wa Zenia',
+                      username: 'user',
+                      photoURL: undefined,
+                    };
+                    const senderId = req.requestedBy;
+                    return (
+                      <div
+                        key={req.id}
+                        className={`p-3 rounded-2xl border flex items-center justify-between gap-3 ${
+                          isDark ? 'bg-[#0E1528] border-white/10 text-white' : 'bg-white border-slate-200 text-slate-900'
+                        }`}
+                      >
+                        <div className="flex items-center gap-3 min-w-0">
+                          <div className="w-11 h-11 rounded-full overflow-hidden shrink-0 border border-white/10 bg-slate-800">
+                            <SafeImage src={sender.photoURL} alt={sender.displayName} className="w-full h-full object-cover" />
+                          </div>
+                          <div className="min-w-0">
+                            <p className="text-xs font-bold truncate">{sender.displayName}</p>
+                            <p className="text-[10px] text-cyan-500 dark:text-cyan-400 font-medium">Anakuomba muwe marafiki</p>
+                          </div>
+                        </div>
+
+                        <div className="flex items-center gap-1.5 shrink-0">
+                          <button
+                            onClick={() => {
+                              friendshipService.acceptFriendRequest(currentUid, senderId);
+                              showToast(`Umethibitisha urafiki na ${sender.displayName}! Mnaweza kuchati sasa.`);
+                            }}
+                            className="px-3 py-1.5 rounded-xl bg-emerald-500 hover:bg-emerald-400 text-slate-950 font-bold text-xs flex items-center gap-1 shadow-md active:scale-95 transition-all"
+                          >
+                            <UserCheck className="w-3.5 h-3.5" />
+                            <span>Kubali</span>
+                          </button>
+                          <button
+                            onClick={() => {
+                              friendshipService.declineFriendRequest(currentUid, senderId);
+                              showToast(`Ombi limekataliwa.`);
+                            }}
+                            className="px-2.5 py-1.5 rounded-xl bg-white/10 hover:bg-rose-500/20 text-slate-300 hover:text-rose-400 text-xs font-semibold active:scale-95 transition-all"
+                          >
+                            Kataa
+                          </button>
+                        </div>
+                      </div>
+                    );
+                  })
+                )}
+              </div>
+            )}
+
+            {/* List for Sub-tab: Sent Requests */}
+            {friendsSubTab === 'sent' && (
+              <div className="space-y-2">
+                {pendingSent.length === 0 ? (
+                  <div className={`p-8 text-center border rounded-3xl flex flex-col items-center ${isDark ? 'bg-white/5 border-white/10' : 'bg-slate-50 border-slate-200'}`}>
+                    <UserPlus className="w-10 h-10 text-slate-400 mb-2 opacity-50" />
+                    <h5 className={`font-bold text-sm ${isDark ? 'text-white' : 'text-slate-900'}`}>Huna maombi uliyotuma yanayosubiri</h5>
+                    <p className={`text-xs mt-1 max-w-sm ${isDark ? 'text-slate-400' : 'text-slate-500'}`}>
+                      Ukiomba urafiki na mtu yeyote, ombi lako litaonekana hapa hadi atakapokubali.
+                    </p>
+                  </div>
+                ) : (
+                  pendingSent.map((req) => {
+                    const receiver = req.receiverDetails || {
+                      displayName: 'Mwanachama wa Zenia',
+                      username: 'user',
+                      photoURL: undefined,
+                    };
+                    const receiverId = req.userA === currentUid ? req.userB : req.userA;
+                    return (
+                      <div
+                        key={req.id}
+                        className={`p-3 rounded-2xl border flex items-center justify-between gap-3 ${
+                          isDark ? 'bg-[#0E1528] border-white/10 text-white' : 'bg-white border-slate-200 text-slate-900'
+                        }`}
+                      >
+                        <div className="flex items-center gap-3 min-w-0">
+                          <div className="w-11 h-11 rounded-full overflow-hidden shrink-0 border border-white/10 bg-slate-800">
+                            <SafeImage src={receiver.photoURL} alt={receiver.displayName} className="w-full h-full object-cover" />
+                          </div>
+                          <div className="min-w-0">
+                            <p className="text-xs font-bold truncate">{receiver.displayName}</p>
+                            <p className="text-[10px] text-amber-500 dark:text-amber-400 font-medium">Inasubiri jibu lake...</p>
+                          </div>
+                        </div>
+
+                        <button
+                          onClick={() => {
+                            friendshipService.cancelFriendRequest(currentUid, receiverId);
+                            showToast(`Umeghairi ombi la urafiki kwa ${receiver.displayName}.`);
+                          }}
+                          className="px-3 py-1.5 rounded-xl bg-white/5 hover:bg-rose-500/20 text-slate-400 hover:text-rose-400 text-xs font-semibold border border-white/10 transition-all active:scale-95"
+                        >
+                          Ghairi Ombi
+                        </button>
+                      </div>
+                    );
+                  })
+                )}
+              </div>
+            )}
           </div>
         )}
       </div>

@@ -447,10 +447,8 @@ export const DiscoverView: React.FC<DiscoverViewProps> = ({
                           <button
                             type="button"
                             onClick={() => {
-                              if (window.confirm(`Ungependa kusitisha urafiki na ${person.displayName}?`)) {
-                                friendshipService.unfriend(effectiveCurrentUserId, person.id);
-                                showToast(`Umesitisha urafiki na ${person.displayName}.`);
-                              }
+                              friendshipService.unfriend(effectiveCurrentUserId, person.id);
+                              showToast(`Umesitisha urafiki na ${person.displayName}.`);
                             }}
                             className="p-1.5 rounded-xl bg-white/5 hover:bg-amber-500/20 text-slate-400 hover:text-amber-400 border border-white/5 transition-all active:scale-90"
                             title="Ondoa Urafiki (Unfriend)"

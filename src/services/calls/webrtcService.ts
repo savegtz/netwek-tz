@@ -915,6 +915,9 @@ class WebRTCServiceImpl {
       });
     }
 
+    return callData;
+  }
+
   public simulateRemoteAnswer(callId: string): MediaStream {
     const syntheticStream = this.createSyntheticMediaStream(true, true);
     if (this.onRemoteStreamCallback) {

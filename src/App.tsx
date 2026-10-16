@@ -238,6 +238,13 @@ export default function App() {
   const [isAppLocked, setIsAppLocked] = useState<boolean>(false);
   const [authPromptReason, setAuthPromptReason] = useState<string | null>(null);
   const [authInitialMode, setAuthInitialMode] = useState<'signin' | 'signup'>('signup');
+  const [appToast, setAppToast] = useState<string | null>(null);
+
+  useEffect(() => {
+    if (!appToast) return;
+    const timer = setTimeout(() => setAppToast(null), 3800);
+    return () => clearTimeout(timer);
+  }, [appToast]);
 
   const requireAuthToChat = (
     actionDescription?: string,
@@ -1076,6 +1083,20 @@ export default function App() {
       {/* Full Screen WhatsApp App Lock Overlay */}
       {isAppLocked && (
         <AppLockScreen onUnlock={() => setIsAppLocked(false)} />
+      )}
+
+      {/* Sleek App Toast Notification */}
+      {appToast && (
+        <div className="fixed top-5 left-1/2 -translate-x-1/2 z-[100] max-w-md w-[92%] sm:w-auto px-4 py-2.5 rounded-2xl bg-[#0F172A]/95 text-white border border-cyan-400/40 shadow-2xl backdrop-blur-xl flex items-center gap-3 animate-in fade-in slide-in-from-top-3">
+          <div className="w-2 h-2 rounded-full bg-cyan-400 animate-ping shrink-0" />
+          <span className="text-xs sm:text-sm font-semibold text-slate-100 flex-1">{appToast}</span>
+          <button
+            onClick={() => setAppToast(null)}
+            className="text-slate-400 hover:text-white p-1 text-sm font-bold ml-1"
+          >
+            ✕
+          </button>
+        </div>
       )}
     </div>
   );
