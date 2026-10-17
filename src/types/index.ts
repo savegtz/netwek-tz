@@ -249,6 +249,17 @@ export interface StatusItem {
   sharesCount: number;
   createdAt: string;
   expiresAt: string;
+  isPaidBusiness?: boolean;
+  adminApproved?: boolean;
+  boostStatus?: 'none' | 'pending_approval' | 'approved' | 'rejected';
+  paymentDetails?: {
+    amount?: number;
+    phone?: string;
+    network?: 'M-Pesa' | 'Tigo Pesa' | 'Airtel Money' | 'Halopesa' | 'Wallet';
+    transactionRef?: string;
+    paidAt?: string;
+    plan?: 'standard_24h' | 'boost_3d' | 'sponsor_7d';
+  };
   metadata?: {
     pollQuestion?: string;
     pollOptions?: { id: string; text: string; votes: number }[];

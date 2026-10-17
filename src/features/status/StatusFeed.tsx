@@ -34,6 +34,7 @@ import {
 import { StatusItem, UserProfile } from '../../types';
 import { SafeImage } from '../../components/SafeImage';
 import { friendshipService } from '../../services/user/friendshipService';
+import { businessStatusService } from '../../services/status/businessStatusService';
 import { FoodOrderModal } from './components/FoodOrderModal';
 import { EventTicketModal } from './components/EventTicketModal';
 import { ProductPurchaseModal } from './components/ProductPurchaseModal';
@@ -427,10 +428,14 @@ export const StatusFeed: React.FC<StatusFeedProps> = ({
     };
   }, []);
 
-  const [, setFriendshipTick] = useState(0);
+  const [friendshipTick, setFriendshipTick] = useState(0);
   React.useEffect(() => {
-    const unsub = friendshipService.subscribe(() => setFriendshipTick((t) => t + 1));
-    return unsub;
+    const unsubFriendship = friendshipService.subscribe(() => setFriendshipTick((t) => t + 1));
+    const unsubBusiness = businessStatusService.subscribe(() => setFriendshipTick((t) => t + 1));
+    return () => {
+      unsubFriendship();
+      unsubBusiness();
+    };
   }, []);
 
   // Poll voting state
@@ -491,15 +496,30 @@ export const StatusFeed: React.FC<StatusFeedProps> = ({
     },
   ];
 
-  const currentStatus = statusCards[activeStoryIndex] || statusCards[0];
   const currentUid = currentUser?.id || 'current_user_id';
-  const isBusiness = [
-    'zebra_restaurant',
-    'fresh_store_dar',
-    'dar_food_fest',
-    'travelvibes',
-    'explore_af',
-  ].includes(currentStatus?.authorId || '');
+  // Rule: Non-friends only see status if paid & admin approved ("komfemu")
+  const canViewStatus = (st: StatusItem) => {
+    if (!st) return false;
+    if (
+      st.authorId === currentUid ||
+      st.authorId === currentUser?.username ||
+      (st.authorUsername && st.authorUsername === currentUser?.username)
+    ) {
+      return true;
+    }
+    if (friendshipService.areFriends(currentUid, st.authorId)) {
+      return true;
+    }
+    return businessStatusService.isStatusApprovedForPublic(st);
+  };
+
+  const visibleStatusCards = React.useMemo(() => {
+    return statusCards.filter((st) => canViewStatus(st));
+  }, [statusCards, currentUid, currentUser?.username, friendshipTick]);
+
+  const safeIndex = Math.min(activeStoryIndex, Math.max(0, visibleStatusCards.length - 1));
+  const currentStatus = visibleStatusCards[safeIndex] || visibleStatusCards[0] || statusCards[0];
+  const isBusiness = businessStatusService.isStatusApprovedForPublic(currentStatus);
   const isPersonalStatus = !isBusiness && !!currentStatus?.authorId && currentStatus.authorId !== currentUid;
   const currentRelStatus = isPersonalStatus
     ? friendshipService.getFriendshipStatus(currentUid, currentStatus.authorId)
@@ -592,7 +612,7 @@ export const StatusFeed: React.FC<StatusFeedProps> = ({
                 Hali (Story Status)
               </h3>
               <span className="text-[10px] px-2 py-0.5 rounded-full bg-cyan-500/15 text-cyan-300 font-bold border border-cyan-500/25">
-                {statusCards.length} Mpya
+                {visibleStatusCards.length} Mpya
               </span>
             </div>
             <div className="flex items-center gap-2">
@@ -648,8 +668,8 @@ export const StatusFeed: React.FC<StatusFeedProps> = ({
               </span>
             </div>
 
-            {/* 2. Friends & Community Story Avatars */}
-            {statusCards.map((item, idx) => {
+            {/* 2. Friends & Verified Stories (Non-friends are hidden) */}
+            {visibleStatusCards.map((item, idx) => {
               const isSelected = activeStoryIndex === idx;
               const isFood = item.type === 'food';
               const isMulti = isFood || item.authorId === 'zebra_restaurant' || idx === 1;

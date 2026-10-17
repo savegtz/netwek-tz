@@ -41,6 +41,9 @@ import {
   ArrowLeft,
   Palette,
   Layers,
+  CreditCard,
+  BadgeCheck,
+  ShieldCheck,
 } from 'lucide-react';
 import { StatusItem, StatusType, UserProfile, AvatarShapeStyle } from '../../types';
 import { doc, setDoc } from 'firebase/firestore';
@@ -48,6 +51,7 @@ import { db, auth } from '../../services/firebase/config';
 import { SafeImage } from '../../components/SafeImage';
 import { DynamicAvatar } from '../../components/DynamicAvatar';
 import { AVATAR_STYLES_LIST, getStoredAvatarStyle } from '../profile/avatarStyles';
+import { businessStatusService } from '../../services/status/businessStatusService';
 import freshKkAvatar from '../../assets/images/fresh_kk_avatar_1791078365294.jpg';
 
 interface CreateStatusModalProps {
@@ -122,6 +126,12 @@ export const CreateStatusModal: React.FC<CreateStatusModalProps> = ({
   const [scheduleTime, setScheduleTime] = useState('18:30');
   const [durationOption, setDurationOption] = useState<'24h' | 'day' | 'week' | 'month' | 'year' | 'custom'>('24h');
   const [audience, setAudience] = useState<'everyone' | 'followers' | 'nearby' | 'all'>('everyone');
+
+  // Business Promotion & Payment State ("alipie ili waone watu wote; asipolipia au admin hajakomfemu waone marafiki zake tu")
+  const [promoPlan, setPromoPlan] = useState<'free_friends' | 'standard_24h' | 'boost_3d' | 'sponsor_7d'>('free_friends');
+  const [promoNetwork, setPromoNetwork] = useState<'M-Pesa' | 'Tigo Pesa' | 'Airtel Money' | 'Halopesa' | 'Wallet'>('M-Pesa');
+  const [promoPhone, setPromoPhone] = useState('0754123456');
+  const [promoNoticeToast, setPromoNoticeToast] = useState<string | null>(null);
 
   // ==================== FOOD STATUS SPECIFIC ====================
   const [foodSearchQuery, setFoodSearchQuery] = useState('');
@@ -699,6 +709,19 @@ export const CreateStatusModal: React.FC<CreateStatusModalProps> = ({
       sharesCount: 0,
       createdAt: 'Just now',
       expiresAt: new Date(Date.now() + 24 * 3600 * 1000).toISOString(),
+      isPaidBusiness: promoPlan !== 'free_friends',
+      adminApproved: false, // Awaiting admin confirmation
+      boostStatus: promoPlan !== 'free_friends' ? 'pending_approval' : 'none',
+      paymentDetails:
+        promoPlan !== 'free_friends'
+          ? {
+              amount: promoPlan === 'standard_24h' ? 3000 : promoPlan === 'boost_3d' ? 7000 : 15000,
+              phone: promoPhone,
+              network: promoNetwork,
+              paidAt: new Date().toISOString(),
+              plan: promoPlan,
+            }
+          : undefined,
       metadata: {
         // Food metadata
         foodName: selectedFoodCategory,
@@ -823,6 +846,24 @@ export const CreateStatusModal: React.FC<CreateStatusModalProps> = ({
         lineup: eventLineup.split(',').map((s) => s.trim()),
       },
     };
+
+    if (promoPlan !== 'free_friends') {
+      const amount = promoPlan === 'standard_24h' ? 3000 : promoPlan === 'boost_3d' ? 7000 : 15000;
+      businessStatusService.requestBusinessPromotion({
+        statusId: newStatus.id,
+        authorId: newStatus.authorId,
+        authorName: newStatus.authorName,
+        authorUsername: newStatus.authorUsername,
+        authorPhoto: newStatus.authorPhoto,
+        mediaUrl: newStatus.mediaUrl,
+        text: newStatus.text,
+        type: newStatus.type,
+        plan: promoPlan,
+        amount,
+        paymentMethod: promoNetwork,
+        phoneNumber: promoPhone,
+      });
+    }
 
     try {
       if (auth.currentUser) {
@@ -3101,28 +3142,158 @@ export const CreateStatusModal: React.FC<CreateStatusModalProps> = ({
               </div>
             </div>
 
-            <div className="flex items-center justify-between pt-1 border-t border-white/5">
-              <span className="font-bold text-white">👀 Audience (Who can see this?):</span>
-              <div className="flex items-center gap-2">
-                {[
-                  { id: 'everyone', label: 'Everyone' },
-                  { id: 'followers', label: 'Followers' },
-                  { id: 'nearby', label: 'Nearby Customers' },
-                  { id: 'all', label: 'Kwazote' },
-                ].map((aud) => (
-                  <button
-                    type="button"
-                    key={aud.id}
-                    onClick={() => setAudience(aud.id as any)}
-                    className={`px-2 py-0.5 rounded text-[11px] font-semibold ${
-                      audience === aud.id ? 'text-cyan-300 font-extrabold' : 'text-slate-500'
-                    }`}
-                  >
-                    {audience === aud.id ? '● ' : '○ '}
-                    {aud.label}
-                  </button>
-                ))}
+            {/* Business Status Promotion & Payment Options (Strict Rule: Pay to make public; otherwise friends only) */}
+            <div className="pt-3 border-t border-white/10 space-y-3">
+              <div className="flex items-center justify-between">
+                <span className="font-extrabold text-xs text-white flex items-center gap-1.5">
+                  <BadgeCheck className="w-4 h-4 text-cyan-400" />
+                  <span>Ufikiaji wa Status (Nani aione?):</span>
+                </span>
+                <span className="text-[10px] px-2 py-0.5 rounded-full bg-cyan-500/15 text-cyan-300 font-bold">
+                  {promoPlan === 'free_friends' ? '👥 Marafiki Tu (Bure)' : '🚀 Watu Wote (Inalipiwa)'}
+                </span>
               </div>
+
+              {/* Plan Choice: Free (Friends only) vs Paid (Everyone upon admin confirmation) */}
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+                <button
+                  type="button"
+                  onClick={() => setPromoPlan('free_friends')}
+                  className={`p-3 rounded-2xl border text-left transition-all ${
+                    promoPlan === 'free_friends'
+                      ? 'bg-cyan-500/15 border-cyan-400 text-white shadow-md shadow-cyan-500/10'
+                      : 'bg-[#10162B] border-white/10 text-slate-300 hover:border-white/20'
+                  }`}
+                >
+                  <div className="flex items-center justify-between mb-1">
+                    <span className="font-bold text-xs flex items-center gap-1.5">
+                      <span>👥 Marafiki Tu</span>
+                    </span>
+                    <span className="text-[10px] font-extrabold text-emerald-400 px-1.5 py-0.5 bg-emerald-500/15 rounded-md">
+                      BURE
+                    </span>
+                  </div>
+                  <p className="text-[10.5px] text-slate-400 leading-snug">
+                    Status itaonekana kwa marafiki zako mliothibitishwa pekee. Watu baki hawataiona.
+                  </p>
+                </button>
+
+                <button
+                  type="button"
+                  onClick={() => setPromoPlan('standard_24h')}
+                  className={`p-3 rounded-2xl border text-left transition-all ${
+                    promoPlan !== 'free_friends'
+                      ? 'bg-gradient-to-br from-amber-500/20 via-cyan-500/10 to-indigo-500/20 border-amber-400 text-white shadow-md shadow-amber-500/10'
+                      : 'bg-[#10162B] border-white/10 text-slate-300 hover:border-white/20'
+                  }`}
+                >
+                  <div className="flex items-center justify-between mb-1">
+                    <span className="font-bold text-xs flex items-center gap-1.5 text-amber-300">
+                      <Flame className="w-3.5 h-3.5 text-amber-400" />
+                      <span>🚀 Watu Wote (Tangaza Biashara)</span>
+                    </span>
+                    <span className="text-[10px] font-extrabold text-amber-400 px-1.5 py-0.5 bg-amber-500/20 rounded-md">
+                      INALIPIWA
+                    </span>
+                  </div>
+                  <p className="text-[10.5px] text-slate-400 leading-snug">
+                    Ionekane kwa watumiaji wote wa Zenia (Public) baada ya Admin ku-confirm malipo.
+                  </p>
+                </button>
+              </div>
+
+              {/* Paid Plan Details & Payment Network if Promoted */}
+              {promoPlan !== 'free_friends' && (
+                <div className="p-3.5 rounded-2xl bg-[#0B0F20] border border-amber-500/30 space-y-3 animate-in fade-in">
+                  <div className="flex items-center justify-between text-xs">
+                    <span className="font-bold text-slate-200">Chagua Kifurushi cha Tangazo:</span>
+                    <span className="text-[10px] text-amber-400 font-extrabold">Itaonekana kwa wote</span>
+                  </div>
+
+                  <div className="grid grid-cols-3 gap-2">
+                    {[
+                      { id: 'standard_24h', label: 'Saa 24', price: 3000, tag: 'Standard' },
+                      { id: 'boost_3d', label: 'Siku 3', price: 7000, tag: 'Maarufu 🔥' },
+                      { id: 'sponsor_7d', label: 'Siku 7', price: 15000, tag: 'Bora 💎' },
+                    ].map((p) => {
+                      const isSel = promoPlan === p.id;
+                      return (
+                        <button
+                          key={p.id}
+                          type="button"
+                          onClick={() => setPromoPlan(p.id as any)}
+                          className={`p-2.5 rounded-xl border text-center transition-all ${
+                            isSel
+                              ? 'bg-amber-500/20 border-amber-400 text-white shadow-xs'
+                              : 'bg-white/5 border-white/10 text-slate-300 hover:bg-white/10'
+                          }`}
+                        >
+                          <span className="text-[10px] block text-slate-400">{p.label}</span>
+                          <span className="text-xs font-black text-amber-300 block my-0.5">
+                            TSh {p.price.toLocaleString()}
+                          </span>
+                          <span className="text-[9px] font-bold text-cyan-300 px-1 py-0.2 bg-cyan-500/10 rounded">
+                            {p.tag}
+                          </span>
+                        </button>
+                      );
+                    })}
+                  </div>
+
+                  {/* Payment Network */}
+                  <div className="space-y-1.5 pt-2 border-t border-white/5">
+                    <span className="text-[11px] font-bold text-slate-300 block">Njia ya Malipo:</span>
+                    <div className="grid grid-cols-3 sm:grid-cols-5 gap-1.5">
+                      {(['M-Pesa', 'Tigo Pesa', 'Airtel Money', 'Halopesa', 'Wallet'] as const).map((net) => (
+                        <button
+                          key={net}
+                          type="button"
+                          onClick={() => setPromoNetwork(net)}
+                          className={`py-1.5 px-2 rounded-xl text-[10px] font-bold text-center border transition-all ${
+                            promoNetwork === net
+                              ? 'bg-cyan-500 text-slate-950 border-cyan-400 shadow-xs'
+                              : 'bg-white/5 text-slate-300 border-white/10 hover:bg-white/10'
+                          }`}
+                        >
+                          {net}
+                        </button>
+                      ))}
+                    </div>
+                  </div>
+
+                  {/* Phone input if mobile money */}
+                  {promoNetwork !== 'Wallet' ? (
+                    <div className="space-y-1 pt-1">
+                      <label className="text-[10.5px] text-slate-400 block font-semibold">
+                        Namba ya Simu ya Malipo ({promoNetwork}):
+                      </label>
+                      <input
+                        type="tel"
+                        value={promoPhone}
+                        onChange={(e) => setPromoPhone(e.target.value)}
+                        placeholder="0754XXXXXX"
+                        className="w-full bg-[#141C34] border border-white/10 rounded-xl px-3 py-2 text-xs text-white focus:outline-none focus:border-amber-400"
+                      />
+                    </div>
+                  ) : (
+                    <div className="p-2.5 rounded-xl bg-cyan-500/10 border border-cyan-500/20 flex items-center justify-between text-xs">
+                      <span className="text-slate-300">Salio Lako la Zenia Wallet:</span>
+                      <span className="font-extrabold text-cyan-300">
+                        TSh {(currentUser.walletBalance || 320000).toLocaleString()}
+                      </span>
+                    </div>
+                  )}
+
+                  {/* Crucial Notice Explaining the Exact Rule */}
+                  <div className="p-3 rounded-xl bg-amber-500/10 border border-amber-500/30 flex items-start gap-2 text-[11px] text-amber-200/90 leading-relaxed">
+                    <ShieldCheck className="w-4 h-4 text-amber-400 shrink-0 mt-0.5" />
+                    <div>
+                      <span className="font-bold text-amber-300 block">Sheria ya Kuonekana kwa Watu Wote:</span>
+                      Ukishatuma status hii, inatumwa kwa Admin kwa uthibitisho (<span className="text-white font-semibold">komfemu</span>). Kabla Admin hajakomfemu, <span className="underline font-bold text-amber-200">wataiona marafiki zako tu</span>. Baada ya Admin ku-confirm, itaonekana kwa watu wote wa Zenia!
+                    </div>
+                  </div>
+                </div>
+              )}
             </div>
           </div>
 

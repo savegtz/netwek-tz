@@ -1433,7 +1433,7 @@ export const ChatRoom: React.FC<ChatRoomProps> = ({
                       </div>
                     )}
                   </div>
-                ) : msg.messageType === 'image' || (msg.mediaUrl && msg.messageType !== 'video_note' && msg.messageType !== 'view_once_media') ? (
+                ) : msg.messageType === 'image' || Boolean(msg.mediaUrl) ? (
                   <div className="py-1 space-y-1.5">
                     <div
                       onClick={() => setFullscreenImage(msg.mediaUrl || null)}

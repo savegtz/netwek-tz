@@ -25,10 +25,10 @@ import {
   UserCheck,
   UserX,
 } from 'lucide-react';
-import { StatusItem, UserProfile } from '../../types';
 import { SafeImage } from '../../components/SafeImage';
 import { DynamicAvatar } from '../../components/DynamicAvatar';
 import { friendshipService } from '../../services/user/friendshipService';
+import { businessStatusService } from '../../services/status/businessStatusService';
 import { FoodOrderModal } from './components/FoodOrderModal';
 import { ProductPurchaseModal } from './components/ProductPurchaseModal';
 import { EventTicketModal } from './components/EventTicketModal';
@@ -111,12 +111,45 @@ export const StatusStoryViewerModal: React.FC<StatusStoryViewerModalProps> = ({
     }
   }, [isOpen, initialIndex]);
 
+  const [friendshipTick, setFriendshipTick] = useState(0);
+  useEffect(() => {
+    const unsubFriendship = friendshipService.subscribe(() => setFriendshipTick((t) => t + 1));
+    const unsubBusiness = businessStatusService.subscribe(() => setFriendshipTick((t) => t + 1));
+    return () => {
+      unsubFriendship();
+      unsubBusiness();
+    };
+  }, []);
+
+  const currentUserId = currentUser?.id || 'current_user_id';
+
+  // Rule: Non-friends only see status if paid & admin approved ("komfemu")
+  const canViewStatus = (st: StatusItem) => {
+    if (!st) return false;
+    if (
+      st.authorId === currentUserId ||
+      st.authorId === currentUser?.username ||
+      (st.authorUsername && st.authorUsername === currentUser?.username)
+    ) {
+      return true;
+    }
+    if (friendshipService.areFriends(currentUserId, st.authorId)) {
+      return true;
+    }
+    return businessStatusService.isStatusApprovedForPublic(st);
+  };
+
+  const allowedStatuses = React.useMemo(() => {
+    const filtered = statuses.filter((st) => canViewStatus(st));
+    return filtered.length > 0 ? filtered : statuses;
+  }, [statuses, currentUserId, currentUser?.username, friendshipTick]);
+
   // Group all statuses into author groups to calculate individual progress bars
   const authorGroups = React.useMemo(() => {
     const list: Array<{ authorKey: string; authorName: string; stories: StatusItem[] }> = [];
     const indexMap = new Map<string, number>();
 
-    statuses.forEach((st) => {
+    allowedStatuses.forEach((st) => {
       const key = st.authorId || st.authorUsername || st.authorName || 'unknown';
       if (!indexMap.has(key)) {
         indexMap.set(key, list.length);
@@ -128,9 +161,9 @@ export const StatusStoryViewerModal: React.FC<StatusStoryViewerModalProps> = ({
     });
 
     return list;
-  }, [statuses]);
+  }, [allowedStatuses]);
 
-  const current = statuses[currentIndex] || statuses[0];
+  const current = allowedStatuses[currentIndex] || allowedStatuses[0];
   const currentAuthorKey = current?.authorId || current?.authorUsername || current?.authorName || 'unknown';
 
   // Find all stories for the currently displayed author
@@ -147,23 +180,8 @@ export const StatusStoryViewerModal: React.FC<StatusStoryViewerModalProps> = ({
     currentAuthorStories.findIndex((s) => s.id === current?.id)
   );
 
-  const [, setFriendshipTick] = useState(0);
-  useEffect(() => {
-    const unsub = friendshipService.subscribe(() => {
-      setFriendshipTick((t) => t + 1);
-    });
-    return unsub;
-  }, []);
-
-  const currentUserId = currentUser?.id || 'current_user_id';
-  const isBusinessBrand = [
-    'zebra_restaurant',
-    'fresh_store_dar',
-    'dar_food_fest',
-    'travelvibes',
-    'explore_af',
-  ].includes(current?.authorId || '');
-  const isPersonalStory = !isBusinessBrand && !!current?.authorId && current.authorId !== currentUserId;
+  const isCurrentBusiness = isBusinessBrand(current?.authorId);
+  const isPersonalStory = !isCurrentBusiness && !!current?.authorId && current.authorId !== currentUserId;
   const relStatus = isPersonalStory
     ? friendshipService.getFriendshipStatus(currentUserId, current.authorId)
     : 'friends';
@@ -253,12 +271,12 @@ export const StatusStoryViewerModal: React.FC<StatusStoryViewerModalProps> = ({
     }, 100);
 
     return () => clearInterval(interval);
-  }, [isOpen, currentIndex, isPaused, anyModalActive, statuses.length]);
+  }, [isOpen, currentIndex, isPaused, anyModalActive, allowedStatuses.length]);
 
   // Safely advance to next story or close when story finishes (runs safely in effect)
   useEffect(() => {
     if (progress >= 100 && !anyModalActive) {
-      if (currentIndex < statuses.length - 1) {
+      if (currentIndex < allowedStatuses.length - 1) {
         setCurrentIndex((prev) => prev + 1);
         setProgress(0);
         setVotedOption(null);
@@ -266,9 +284,9 @@ export const StatusStoryViewerModal: React.FC<StatusStoryViewerModalProps> = ({
         onCloseRef.current?.();
       }
     }
-  }, [progress, currentIndex, anyModalActive, statuses.length]);
+  }, [progress, currentIndex, anyModalActive, allowedStatuses.length]);
 
-  if (!isOpen || statuses.length === 0) return null;
+  if (!isOpen || allowedStatuses.length === 0) return null;
 
   const handlePrev = (e: React.MouseEvent) => {
     e.stopPropagation();
@@ -281,7 +299,7 @@ export const StatusStoryViewerModal: React.FC<StatusStoryViewerModalProps> = ({
 
   const handleNext = (e: React.MouseEvent) => {
     e.stopPropagation();
-    if (currentIndex < statuses.length - 1) {
+    if (currentIndex < allowedStatuses.length - 1) {
       setCurrentIndex(currentIndex + 1);
       setProgress(0);
       setVotedOption(null);

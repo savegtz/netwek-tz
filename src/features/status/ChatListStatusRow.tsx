@@ -19,6 +19,7 @@ import { DynamicAvatar } from '../../components/DynamicAvatar';
 import { AvatarStyleSelectorModal } from '../../components/AvatarStyleSelectorModal';
 import { Palette, Layers } from 'lucide-react';
 import { friendshipService } from '../../services/user/friendshipService';
+import { businessStatusService } from '../../services/status/businessStatusService';
 import {
   AVATAR_STYLES_LIST,
   getStoredAvatarStyle,
@@ -305,13 +306,45 @@ export const ChatListStatusRow: React.FC<ChatListStatusRowProps> = ({
     };
   }, []);
 
-  const [, setFriendshipTick] = useState(0);
+  const [friendshipTick, setFriendshipTick] = useState(0);
   React.useEffect(() => {
-    const unsub = friendshipService.subscribe(() => setFriendshipTick((t) => t + 1));
-    return unsub;
+    const unsubFriendship = friendshipService.subscribe(() => setFriendshipTick((t) => t + 1));
+    const unsubBusiness = businessStatusService.subscribe(() => setFriendshipTick((t) => t + 1));
+    return () => {
+      unsubFriendship();
+      unsubBusiness();
+    };
   }, []);
 
-  // Group stories by author to support multi-story status accounts
+  const currentUid = currentUser?.id || 'current_user_id';
+
+  // Core rule:
+  // "Kurasa zilizothibitishwa za kibiashara yani nataka mtu alipie ili waone watuwote Status yake
+  // kama hajalipia admin haja komfemu basi Status yake waone marafikizaketu"
+  const canViewStatus = (st: StatusItem) => {
+    if (!st) return false;
+    // 1. Current user's own status
+    if (
+      st.authorId === currentUid ||
+      st.authorId === currentUser?.username ||
+      (st.authorUsername && st.authorUsername === currentUser?.username)
+    ) {
+      return true;
+    }
+    // 2. Confirmed mutual friends can always see their friends' status
+    if (friendshipService.areFriends(currentUid, st.authorId)) {
+      return true;
+    }
+    // 3. For non-friends: ONLY visible if paid AND admin has confirmed ("komfemu")!
+    return businessStatusService.isStatusApprovedForPublic(st);
+  };
+
+  // Only allowed statuses are kept
+  const visibleStatuses = React.useMemo(() => {
+    return allStatuses.filter((st) => canViewStatus(st));
+  }, [allStatuses, currentUid, currentUser?.username, friendshipTick]);
+
+  // Group stories by author to support multi-story status accounts (excluding current user who has Hali Yangu slot)
   const groupedAuthors = React.useMemo(() => {
     const map = new Map<
       string,
@@ -326,7 +359,11 @@ export const ChatListStatusRow: React.FC<ChatListStatusRowProps> = ({
       }
     >();
 
-    allStatuses.forEach((st, idx) => {
+    visibleStatuses.forEach((st, idx) => {
+      // Exclude current user from contact avatar circles (has "Hali Yangu" slot)
+      if (st.authorId === currentUid || st.authorUsername === currentUser?.username) {
+        return;
+      }
       const key = st.authorId || st.authorUsername || st.authorName;
       if (!map.has(key)) {
         map.set(key, {
@@ -344,11 +381,14 @@ export const ChatListStatusRow: React.FC<ChatListStatusRowProps> = ({
     });
 
     return Array.from(map.values());
-  }, [allStatuses]);
+  }, [visibleStatuses, currentUid, currentUser?.username]);
 
   // Check if current user has any status posted
-  const myStories = customStatuses.filter(
-    (s) => s.authorId === currentUser?.id || s.authorUsername === currentUser?.username
+  const myStories = visibleStatuses.filter(
+    (s) => s.authorId === currentUid || s.authorUsername === currentUser?.username
+  );
+  const myFirstIndex = visibleStatuses.findIndex(
+    (s) => s.authorId === currentUid || s.authorUsername === currentUser?.username
   );
 
   const [viewerState, setViewerState] = useState<{
@@ -379,7 +419,7 @@ export const ChatListStatusRow: React.FC<ChatListStatusRowProps> = ({
             Hali (Story Status)
           </span>
           <span className="text-[9.5px] px-1.5 py-0.2 rounded-full font-bold bg-cyan-500/15 text-cyan-300 border border-cyan-400/25">
-            {allStatuses.length}
+            {visibleStatuses.length}
           </span>
         </div>
 
@@ -429,7 +469,7 @@ export const ChatListStatusRow: React.FC<ChatListStatusRowProps> = ({
               <button
                 onClick={
                   myStories.length > 0
-                    ? () => setViewerState({ isOpen: true, initialIndex: 0 })
+                    ? () => setViewerState({ isOpen: true, initialIndex: myFirstIndex >= 0 ? myFirstIndex : 0 })
                     : onOpenCreateStatus
                 }
                 className="focus:outline-none block active:scale-95 transition-transform"
@@ -461,7 +501,7 @@ export const ChatListStatusRow: React.FC<ChatListStatusRowProps> = ({
             <button
               onClick={
                 myStories.length > 0
-                  ? () => setViewerState({ isOpen: true, initialIndex: 0 })
+                  ? () => setViewerState({ isOpen: true, initialIndex: myFirstIndex >= 0 ? myFirstIndex : 0 })
                   : onOpenCreateStatus
               }
               className="text-[11px] sm:text-xs font-semibold text-slate-200 group-hover:text-cyan-300 transition-colors truncate max-w-[78px] sm:max-w-[88px] text-center leading-tight focus:outline-none"
@@ -471,7 +511,7 @@ export const ChatListStatusRow: React.FC<ChatListStatusRowProps> = ({
           </div>
 
           {/* ============================================================== */}
-          {/* 2. CONTACT / COMMUNITY STORY AVATARS                           */}
+          {/* 2. CONTACT / COMMUNITY STORY AVATARS (Friends & Verified only) */}
           {/* Grouped by Author: Uses exact chosen avatarStyle shape!        */}
           {/* ============================================================== */}
           {groupedAuthors.map((group) => {
@@ -501,24 +541,12 @@ export const ChatListStatusRow: React.FC<ChatListStatusRowProps> = ({
               microEmoji = '🎟️';
             }
 
-            const isBusinessBrand = [
-              'zebra_restaurant',
-              'fresh_store_dar',
-              'dar_food_fest',
-              'travelvibes',
-              'explore_af',
-            ].includes(group.authorId);
-            const isPersonalStory = !isBusinessBrand && group.authorId !== (currentUser?.id || 'current_user_id');
-            const isFriend = isPersonalStory
-              ? friendshipService.areFriends(currentUser?.id || 'current_user_id', group.authorId)
-              : true;
-
             return (
               <button
                 key={group.authorId}
                 onClick={() => setViewerState({ isOpen: true, initialIndex: group.firstIndex })}
                 className="flex flex-col items-center gap-2 shrink-0 group focus:outline-none"
-                title={`${!isFriend ? '🔒 Status ya Marafiki Tu • ' : ''}Tazama ${group.stories.length} ${
+                title={`Tazama ${group.stories.length} ${
                   group.stories.length > 1 ? 'stori za' : 'story ya'
                 } ${group.authorName}`}
               >
@@ -535,16 +563,6 @@ export const ChatListStatusRow: React.FC<ChatListStatusRowProps> = ({
                     showStoryBadge={isMulti}
                     ringGradient={ringGradient}
                   />
-
-                  {/* Lock badge if personal story and not friends */}
-                  {!isFriend && (
-                    <span
-                      className="absolute -top-1 -right-1 w-5 h-5 rounded-full bg-slate-900 border border-amber-400/80 flex items-center justify-center text-[10px] shadow-lg ring-2 ring-[#080B16] z-25 text-amber-300"
-                      title="Status ya Marafiki Tu - Omba urafiki ili uone"
-                    >
-                      <Lock className="w-2.5 h-2.5 stroke-[2.5]" />
-                    </span>
-                  )}
 
                   {/* Micro Category Tag at bottom-right */}
                   <span className="absolute -bottom-1 -right-1 w-5 h-5 rounded-[8px] bg-[#0D1224] border border-white/25 flex items-center justify-center text-[10px] shadow-sm ring-2 ring-[#080B16] z-20">
@@ -575,7 +593,7 @@ export const ChatListStatusRow: React.FC<ChatListStatusRowProps> = ({
       {viewerState.isOpen && (
         <StatusStoryViewerModal
           isOpen={viewerState.isOpen}
-          statuses={allStatuses}
+          statuses={visibleStatuses}
           initialIndex={viewerState.initialIndex}
           onClose={handleCloseViewer}
           onReply={onSendStatusReply}

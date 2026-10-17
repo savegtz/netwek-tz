@@ -124,6 +124,9 @@ export const ProfileView: React.FC<ProfileViewProps> = ({
   const [friendsSubTab, setFriendsSubTab] = useState<'friends' | 'received' | 'sent'>('friends');
   const [selectedPost, setSelectedPost] = useState<PostItem | null>(null);
   const [likedPosts, setLikedPosts] = useState<Record<string, boolean>>({});
+  const togglePostLike = (postId: string) => {
+    setLikedPosts((prev) => ({ ...prev, [postId]: !prev[postId] }));
+  };
   const [toastMessage, setToastMessage] = useState<string | null>(null);
   const [isAvatarStyleModalOpen, setIsAvatarStyleModalOpen] = useState(false);
 

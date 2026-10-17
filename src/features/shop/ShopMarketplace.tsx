@@ -68,7 +68,9 @@ export const ShopMarketplace: React.FC<ShopMarketplaceProps> = ({
   // New Product Listing state
   const [isAddProductOpen, setIsAddProductOpen] = useState(false);
   const [newProductName, setNewProductName] = useState('');
-  const [newProductCategory, setNewProductCategory] = useState('Electronics');
+  const [newProductCategory, setNewProductCategory] = useState<
+    'Beauty' | 'Electronics' | 'Fashion' | 'Home' | 'Other' | 'Sports'
+  >('Electronics');
   const [newProductPrice, setNewProductPrice] = useState<number>(45000);
   const [newProductDesc, setNewProductDesc] = useState('');
   const [newProductPhoto, setNewProductPhoto] = useState<string>(
@@ -695,7 +697,9 @@ export const ShopMarketplace: React.FC<ShopMarketplaceProps> = ({
                   sellerName: currentUser?.displayName || 'Amina Kaunga',
                   rating: 5.0,
                   reviewsCount: 1,
-                  inStock: true,
+                  stock: 12,
+                  status: 'active',
+                  createdAt: new Date().toISOString(),
                 };
                 const updatedList = [newProd, ...products];
                 setProducts(updatedList);
@@ -814,7 +818,7 @@ export const ShopMarketplace: React.FC<ShopMarketplaceProps> = ({
                   <label className="text-xs font-semibold text-slate-300">Kundi (Category)</label>
                   <select
                     value={newProductCategory}
-                    onChange={(e) => setNewProductCategory(e.target.value)}
+                    onChange={(e) => setNewProductCategory(e.target.value as any)}
                     className="w-full bg-[#182038] border border-white/10 rounded-xl px-3 py-2.5 text-xs text-white focus:outline-none focus:border-cyan-400"
                   >
                     <option value="Electronics">Electronics</option>

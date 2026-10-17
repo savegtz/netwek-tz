@@ -50,6 +50,7 @@ import {
 import { SafeImage } from '../../components/SafeImage';
 import { AdminVisualCharts } from './AdminVisualCharts';
 import { userService } from '../../services/user/userService';
+import { businessStatusService, BusinessPromotionRecord } from '../../services/status/businessStatusService';
 import freshKkAvatar from '../../assets/images/fresh_kk_avatar_1791078365294.jpg';
 
 interface AdminDevPanelProps {
@@ -86,8 +87,21 @@ export const AdminDevPanel: React.FC<AdminDevPanelProps> = ({
   currentUser,
 }) => {
   const [activeTab, setActiveTab] = useState<
-    'overview' | 'users' | 'products' | 'finance' | 'moderation' | 'spaces' | 'settings'
+    'overview' | 'users' | 'products' | 'finance' | 'moderation' | 'spaces' | 'statuses' | 'settings'
   >('overview');
+
+  // Business Status Promotions State
+  const [promotionsList, setPromotionsList] = useState<BusinessPromotionRecord[]>(() =>
+    businessStatusService.getPromotions()
+  );
+  const [promoFilter, setPromoFilter] = useState<'all' | 'pending' | 'approved' | 'rejected'>('all');
+
+  useEffect(() => {
+    const unsub = businessStatusService.subscribe(() => {
+      setPromotionsList(businessStatusService.getPromotions());
+    });
+    return unsub;
+  }, []);
 
   // Health Status
   const [dbStatus, setDbStatus] = useState<'checking' | 'connected' | 'error'>('checking');
@@ -559,6 +573,7 @@ export const AdminDevPanel: React.FC<AdminDevPanelProps> = ({
         <div className="px-4 py-2 bg-[#0C1020] border-b border-white/5 flex items-center gap-1.5 overflow-x-auto shrink-0 scrollbar-none">
           {[
             { id: 'overview', label: 'Dashibodi Kuu', icon: Activity },
+            { id: 'statuses', label: 'Status & Komfemu', icon: Award, badge: promotionsList.filter((p) => p.status === 'pending').length },
             { id: 'users', label: 'Watumiaji & KYC', icon: Users, badge: usersList.length },
             { id: 'products', label: 'Soko & Bidhaa', icon: ShoppingBag, badge: productsList.length },
             { id: 'finance', label: 'Fedha & Malipo', icon: DollarSign, badge: payoutRequests.filter(p => p.status === 'pending').length },
@@ -1136,6 +1151,222 @@ export const AdminDevPanel: React.FC<AdminDevPanelProps> = ({
                     </div>
                   ))}
                 </div>
+              </div>
+            </div>
+          )}
+
+          {/* TAB: STATUS ZA BIASHARA NA UTHIBITISHO WA MALIPO ("KOMFEMU") */}
+          {activeTab === 'statuses' && (
+            <div className="space-y-6">
+              {/* Header Banner */}
+              <div className="p-5 rounded-3xl bg-gradient-to-r from-cyan-950/60 via-[#101730] to-indigo-950/60 border border-cyan-500/30 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
+                <div>
+                  <div className="flex items-center gap-2 mb-1.5">
+                    <span className="p-1.5 rounded-xl bg-cyan-500/20 text-cyan-300">
+                      <Award className="w-5 h-5 text-cyan-400" />
+                    </span>
+                    <h4 className="font-extrabold text-base text-white">
+                      Status za Biashara & Komfemu ya Malipo
+                    </h4>
+                  </div>
+                  <p className="text-xs text-slate-300 max-w-xl leading-relaxed">
+                    Mtumiaji akilipia tangazo, inakuja hapa. <span className="text-cyan-300 font-bold">Admin ukithibitisha (Komfemu)</span>, status itaonekana kwa watu wote wa Zenia (Public). Kama hajalipia au ukikataa, <span className="text-amber-300 font-bold">wataiona marafiki zake tu</span>.
+                  </p>
+                </div>
+
+                <div className="flex items-center gap-2">
+                  <div className="px-3 py-2 rounded-2xl bg-[#090D1A] border border-cyan-500/20 text-center">
+                    <span className="text-[10px] text-slate-400 block font-bold">Zinasubiri</span>
+                    <span className="text-base font-black text-amber-400">
+                      {promotionsList.filter((p) => p.status === 'pending').length}
+                    </span>
+                  </div>
+                  <div className="px-3 py-2 rounded-2xl bg-[#090D1A] border border-cyan-500/20 text-center">
+                    <span className="text-[10px] text-slate-400 block font-bold">Zilizo Hewani</span>
+                    <span className="text-base font-black text-emerald-400">
+                      {promotionsList.filter((p) => p.status === 'approved').length}
+                    </span>
+                  </div>
+                </div>
+              </div>
+
+              {/* Filter Tabs */}
+              <div className="flex items-center gap-2 overflow-x-auto pb-1">
+                {[
+                  { id: 'all', label: `Zote (${promotionsList.length})` },
+                  {
+                    id: 'pending',
+                    label: `Zinasubiri Komfemu (${promotionsList.filter((p) => p.status === 'pending').length})`,
+                  },
+                  {
+                    id: 'approved',
+                    label: `Zilizothibitishwa (${promotionsList.filter((p) => p.status === 'approved').length})`,
+                  },
+                  {
+                    id: 'rejected',
+                    label: `Marafiki Tu (${promotionsList.filter((p) => p.status === 'rejected').length})`,
+                  },
+                ].map((f) => (
+                  <button
+                    key={f.id}
+                    onClick={() => setPromoFilter(f.id as any)}
+                    className={`px-3.5 py-1.5 rounded-xl text-xs font-bold transition-all shrink-0 ${
+                      promoFilter === f.id
+                        ? 'bg-cyan-500 text-slate-950 shadow-md shadow-cyan-500/20'
+                        : 'bg-white/5 hover:bg-white/10 text-slate-300'
+                    }`}
+                  >
+                    {f.label}
+                  </button>
+                ))}
+              </div>
+
+              {/* Promotions Cards List */}
+              <div className="space-y-3.5">
+                {promotionsList
+                  .filter((p) => (promoFilter === 'all' ? true : p.status === promoFilter))
+                  .map((promo) => {
+                    const isPending = promo.status === 'pending';
+                    const isApproved = promo.status === 'approved';
+
+                    return (
+                      <div
+                        key={promo.id}
+                        className={`p-4 sm:p-5 rounded-3xl bg-[#0F1428] border transition-all ${
+                          isPending
+                            ? 'border-amber-400/40 shadow-lg shadow-amber-500/5'
+                            : isApproved
+                            ? 'border-emerald-500/30'
+                            : 'border-white/10 opacity-75'
+                        }`}
+                      >
+                        <div className="flex flex-col md:flex-row items-start md:items-center justify-between gap-4">
+                          {/* Left: Author & Story Preview */}
+                          <div className="flex items-start gap-3.5 flex-1 min-w-0">
+                            {promo.mediaUrl && (
+                              <div className="w-16 h-20 rounded-2xl overflow-hidden bg-black shrink-0 border border-white/10 relative">
+                                <img
+                                  src={promo.mediaUrl}
+                                  alt="Promo Preview"
+                                  className="w-full h-full object-cover"
+                                />
+                                <span className="absolute bottom-1 right-1 text-[9px] px-1 bg-black/80 rounded text-cyan-300 font-bold uppercase">
+                                  {promo.type}
+                                </span>
+                              </div>
+                            )}
+
+                            <div className="flex-1 min-w-0">
+                              <div className="flex items-center gap-2 flex-wrap">
+                                <h5 className="font-bold text-sm text-white">{promo.authorName}</h5>
+                                <span className="text-xs text-slate-400">@{promo.authorUsername}</span>
+                                {isPending && (
+                                  <span className="px-2 py-0.5 rounded-full text-[10px] font-extrabold bg-amber-500/20 text-amber-300 border border-amber-400/30">
+                                    🟡 Inasubiri Komfemu
+                                  </span>
+                                )}
+                                {isApproved && (
+                                  <span className="px-2 py-0.5 rounded-full text-[10px] font-extrabold bg-emerald-500/20 text-emerald-300 border border-emerald-400/30">
+                                    🟢 Imethibitishwa (Watu Wote)
+                                  </span>
+                                )}
+                                {promo.status === 'rejected' && (
+                                  <span className="px-2 py-0.5 rounded-full text-[10px] font-extrabold bg-slate-500/20 text-slate-300 border border-white/10">
+                                    🔒 Marafiki Tu
+                                  </span>
+                                )}
+                              </div>
+
+                              <p className="text-xs text-slate-300 mt-1 line-clamp-2 leading-relaxed">
+                                {promo.text || 'Hakuna maelezo'}
+                              </p>
+
+                              {/* Payment details pill */}
+                              <div className="flex items-center gap-3 mt-2 text-[11px] text-slate-400 flex-wrap">
+                                <span className="font-bold text-cyan-300 bg-cyan-950/60 px-2 py-0.5 rounded-lg border border-cyan-500/20">
+                                  Kifurushi: {promo.plan === 'standard_24h' ? 'Saa 24' : promo.plan === 'boost_3d' ? 'Siku 3' : 'Siku 7'}
+                                </span>
+                                <span className="font-bold text-emerald-300 bg-emerald-950/60 px-2 py-0.5 rounded-lg border border-emerald-500/20">
+                                  TSh {promo.amount.toLocaleString()} ({promo.paymentMethod})
+                                </span>
+                                <span>Simu: {promo.phoneNumber}</span>
+                                <span>Ref: {promo.transactionRef}</span>
+                              </div>
+                            </div>
+                          </div>
+
+                          {/* Right: Admin Action Buttons */}
+                          <div className="flex items-center gap-2 shrink-0 w-full sm:w-auto justify-end pt-2 sm:pt-0 border-t sm:border-t-0 border-white/5">
+                            {isPending && (
+                              <>
+                                <button
+                                  type="button"
+                                  onClick={() => {
+                                    businessStatusService.approvePromotion(
+                                      promo.id,
+                                      currentUser.email || 'savegamour@gmail.com'
+                                    );
+                                    showToast(`Status ya ${promo.authorName} imethibitishwa (Komfemu)! Sasa inaonekana kwa watu wote wa Zenia ✅`);
+                                  }}
+                                  className="px-4 py-2 rounded-xl bg-gradient-to-r from-emerald-500 to-teal-500 hover:from-emerald-400 hover:to-teal-400 text-slate-950 font-extrabold text-xs flex items-center gap-1.5 shadow-lg shadow-emerald-500/20 active:scale-95 transition-all"
+                                >
+                                  <Check className="w-4 h-4 stroke-[3]" />
+                                  <span>Komfemu (Ruhusu Watu Wote)</span>
+                                </button>
+
+                                <button
+                                  type="button"
+                                  onClick={() => {
+                                    businessStatusService.rejectPromotion(promo.id);
+                                    showToast(`Status imezuiliwa; wataiona marafiki zake tu.`);
+                                  }}
+                                  className="px-3.5 py-2 rounded-xl bg-white/5 hover:bg-rose-500/20 text-slate-300 hover:text-rose-400 font-bold text-xs flex items-center gap-1 transition-all"
+                                >
+                                  <X className="w-3.5 h-3.5" />
+                                  <span>Marafiki Tu</span>
+                                </button>
+                              </>
+                            )}
+
+                            {isApproved && (
+                              <button
+                                type="button"
+                                onClick={() => {
+                                  businessStatusService.rejectPromotion(promo.id);
+                                  showToast(`Status imeondolewa kwenye watu wote; sasa wanaiona marafiki zake tu.`);
+                                }}
+                                className="px-3 py-1.5 rounded-xl bg-rose-500/15 hover:bg-rose-500/25 text-rose-300 border border-rose-500/30 text-xs font-bold transition-all"
+                              >
+                                Ondoa kwenye Watu Wote (Fanya Marafiki Tu)
+                              </button>
+                            )}
+
+                            {promo.status === 'rejected' && (
+                              <button
+                                type="button"
+                                onClick={() => {
+                                  businessStatusService.approvePromotion(
+                                    promo.id,
+                                    currentUser.email || 'savegamour@gmail.com'
+                                  );
+                                  showToast(`Status ya ${promo.authorName} imethibitishwa! Sasa inaonekana kwa watu wote wa Zenia ✅`);
+                                }}
+                                className="px-3 py-1.5 rounded-xl bg-emerald-500/20 hover:bg-emerald-500/30 text-emerald-300 border border-emerald-500/40 text-xs font-bold transition-all"
+                              >
+                                Komfemu Tena (Ruhusu Watu Wote)
+                              </button>
+                            )}
+                          </div>
+                        </div>
+                      </div>
+                    );
+                  })}
+
+                {promotionsList.filter((p) => (promoFilter === 'all' ? true : p.status === promoFilter)).length === 0 && (
+                  <div className="p-8 rounded-3xl bg-[#0F1428] border border-white/5 text-center text-slate-400 text-xs">
+                    Hakuna status zilizopatikana kwenye kundi hili.
+                  </div>
+                )}
               </div>
             </div>
           )}

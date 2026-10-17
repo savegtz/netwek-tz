@@ -1176,6 +1176,8 @@ export const GroupChatRoom: React.FC<GroupChatRoomProps> = ({
             </div>
           </div>
         </div>
+      )}
+
       {/* Photo Attachment Preview & Caption Modal for Group Chat */}
       {pendingImage && (
         <div className="fixed inset-0 z-50 flex items-end sm:items-center justify-center bg-black/85 backdrop-blur-md p-3 sm:p-4 animate-in fade-in">
