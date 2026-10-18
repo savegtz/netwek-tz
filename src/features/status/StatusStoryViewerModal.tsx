@@ -25,6 +25,7 @@ import {
   UserCheck,
   UserX,
 } from 'lucide-react';
+import { StatusItem, UserProfile } from '../../types';
 import { SafeImage } from '../../components/SafeImage';
 import { DynamicAvatar } from '../../components/DynamicAvatar';
 import { friendshipService } from '../../services/user/friendshipService';
@@ -180,7 +181,7 @@ export const StatusStoryViewerModal: React.FC<StatusStoryViewerModalProps> = ({
     currentAuthorStories.findIndex((s) => s.id === current?.id)
   );
 
-  const isCurrentBusiness = isBusinessBrand(current?.authorId);
+  const isCurrentBusiness = businessStatusService.isStatusApprovedForPublic(current);
   const isPersonalStory = !isCurrentBusiness && !!current?.authorId && current.authorId !== currentUserId;
   const relStatus = isPersonalStory
     ? friendshipService.getFriendshipStatus(currentUserId, current.authorId)
