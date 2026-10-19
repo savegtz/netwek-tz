@@ -11,7 +11,6 @@ import {
   X,
   Layers,
 } from 'lucide-react';
-import { StatusIcon } from './StatusIcon';
 
 interface BottomNavProps {
   activeTab: string;
@@ -219,32 +218,6 @@ export const BottomNav: React.FC<BottomNavProps> = ({
           </span>
         </button>
 
-        {/* 2. Status Tab */}
-        <button
-          onClick={() => {
-            onSelectTab('status');
-            setServicesMenuOpen(false);
-          }}
-          className="flex-1 flex flex-col items-center justify-center gap-1 py-1 transition-all active:scale-95 group"
-          aria-label="Status"
-        >
-          <div className="relative">
-            <StatusIcon
-              className={`w-5 h-5 transition-transform duration-150 ${
-                activeTab === 'status'
-                  ? 'text-cyan-400 scale-105 stroke-[2.2]'
-                  : 'text-slate-400 group-hover:text-slate-200'
-              }`}
-            />
-          </div>
-          <span
-            className={`text-[10px] font-medium transition-colors ${
-              activeTab === 'status' ? 'text-cyan-400 font-semibold' : 'text-slate-400'
-            }`}
-          >
-            Hali
-          </span>
-        </button>
 
         {/* 3. Marketplace (Soko) Tab */}
         <button

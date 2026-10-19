@@ -25,7 +25,6 @@ import { GroupChatRoom } from './features/chat/GroupChatRoom';
 import { StartNewChatModal } from './features/chat/components/StartNewChatModal';
 import { AppLockScreen } from './features/chat/components/AppLockScreen';
 import { CreateStatusModal } from './features/status/CreateStatusModal';
-import { StatusFeed } from './features/status/StatusFeed';
 import { ShopMarketplace } from './features/shop/ShopMarketplace';
 import { ProfileView } from './features/profile/ProfileView';
 import { DiscoverView } from './features/discover/DiscoverView';
@@ -756,15 +755,6 @@ export default function App() {
               </div>
             )}
 
-            {/* View: Status Stories (Updates) */}
-            {activeTab === 'status' && (
-              <StatusFeed
-                currentUser={activeUser}
-                onOpenCreateMenu={() => setIsCreateMenuOpen(true)}
-                onStartChatWithBusiness={handleStartChatWithBusiness}
-                customStatuses={customStatuses}
-              />
-            )}
 
             {/* View: Shop / Marketplace */}
             {activeTab === 'shop' && (
@@ -914,7 +904,7 @@ export default function App() {
         currentUser={activeUser}
         onStatusCreated={(newStatus) => {
           setCustomStatuses((prev) => [newStatus, ...prev]);
-          setActiveTab('status');
+          setActiveTab('chats');
         }}
       />
 
@@ -977,7 +967,7 @@ export default function App() {
                 else if (type === 'event') setActiveTab('events');
                 else if (type === 'order') setActiveTab('shop');
                 else if (type === 'job') setActiveTab('jobs');
-                else setActiveTab('status');
+                else setActiveTab('chats');
               }}
             />
           </div>

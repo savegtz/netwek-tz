@@ -23,7 +23,6 @@ import {
 } from 'lucide-react';
 import { UserProfile, isUserAdmin } from '../types';
 import { SafeImage } from './SafeImage';
-import { StatusIcon } from './StatusIcon';
 import { useTheme } from '../context/ThemeContext';
 import { useMusicPlayer } from '../context/MusicPlayerContext';
 
@@ -78,7 +77,6 @@ export const Header: React.FC<HeaderProps> = ({
 
   const mainTabs = [
     { id: 'chats', label: 'Chats', icon: MessageCircle },
-    { id: 'status', label: 'Status', icon: StatusIcon },
     { id: 'discover', label: 'Discover', icon: Compass },
     { id: 'shop', label: 'Marketplace', icon: ShoppingBag },
     { id: 'profile', label: 'Profile', icon: Users },
