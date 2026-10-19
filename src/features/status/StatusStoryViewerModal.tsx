@@ -141,8 +141,7 @@ export const StatusStoryViewerModal: React.FC<StatusStoryViewerModalProps> = ({
   };
 
   const allowedStatuses = React.useMemo(() => {
-    const filtered = statuses.filter((st) => canViewStatus(st));
-    return filtered.length > 0 ? filtered : statuses;
+    return statuses.filter((st) => canViewStatus(st));
   }, [statuses, currentUserId, currentUser?.username, friendshipTick]);
 
   // Group all statuses into author groups to calculate individual progress bars
@@ -171,7 +170,7 @@ export const StatusStoryViewerModal: React.FC<StatusStoryViewerModalProps> = ({
   const currentAuthorGroup = authorGroups.find((g) => g.authorKey === currentAuthorKey) || {
     authorKey: currentAuthorKey,
     authorName: current?.authorName || '',
-    stories: [current],
+    stories: current ? [current] : [],
   };
 
   const currentAuthorStories = currentAuthorGroup.stories;
@@ -182,11 +181,7 @@ export const StatusStoryViewerModal: React.FC<StatusStoryViewerModalProps> = ({
   );
 
   const isCurrentBusiness = businessStatusService.isStatusApprovedForPublic(current);
-  const isPersonalStory = !isCurrentBusiness && !!current?.authorId && current.authorId !== currentUserId;
-  const relStatus = isPersonalStory
-    ? friendshipService.getFriendshipStatus(currentUserId, current.authorId)
-    : 'friends';
-  const isStoryLocked = isPersonalStory && relStatus !== 'friends';
+
 
   // Likes & comments calculations (ensures 0 is explicitly shown if count is 0)
   const baseLikes = typeof current?.likesCount === 'number' ? current.likesCount : 0;
@@ -257,8 +252,8 @@ export const StatusStoryViewerModal: React.FC<StatusStoryViewerModalProps> = ({
     onReplyRef.current?.(current, emoji);
   };
 
-  // Pause timer when a submodal or comment drawer or lock screen is active
-  const anyModalActive = isFoodOrderOpen || isProductPurchaseOpen || isEventTicketOpen || showComments || isStoryLocked;
+  // Pause timer when a submodal or comment drawer is active
+  const anyModalActive = isFoodOrderOpen || isProductPurchaseOpen || isEventTicketOpen || showComments;
 
   // Story progression timer (advances progress every 100ms) - Pure updater
   useEffect(() => {
@@ -345,6 +340,8 @@ export const StatusStoryViewerModal: React.FC<StatusStoryViewerModalProps> = ({
     onCloseRef.current?.();
   };
 
+  if (!isOpen || !current || allowedStatuses.length === 0) return null;
+
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/95 backdrop-blur-md animate-in fade-in duration-200 select-none p-0 sm:p-4">
       <div
@@ -360,108 +357,11 @@ export const StatusStoryViewerModal: React.FC<StatusStoryViewerModalProps> = ({
             src={current.mediaUrl}
             fallbackGradient="from-cyan-900 via-slate-900 to-indigo-950"
             alt={current.text}
-            className={`w-full h-full object-cover transition-all duration-300 ${
-              isStoryLocked ? 'blur-2xl scale-110 opacity-35' : ''
-            }`}
+            className="w-full h-full object-cover transition-all duration-300"
           />
           <div className="absolute inset-0 bg-gradient-to-b from-black/60 via-transparent to-black/85 pointer-events-none" />
         </div>
 
-        {/* Friends-Only Story Lock Screen */}
-        {isStoryLocked && (
-          <div className="absolute inset-0 z-30 backdrop-blur-xl bg-black/80 flex flex-col items-center justify-center p-6 text-center animate-in fade-in duration-300">
-            <div className="w-16 h-16 rounded-3xl bg-cyan-500/20 border border-cyan-400/40 flex items-center justify-center mb-4 shadow-xl shadow-cyan-500/10">
-              <Lock className="w-8 h-8 text-cyan-400" />
-            </div>
-
-            <span className="px-3 py-1 rounded-full bg-cyan-500/15 border border-cyan-400/30 text-cyan-300 text-[11px] font-bold mb-2">
-              🔒 Status ya Marafiki Tu (Friends Only)
-            </span>
-
-            <h3 className="text-base sm:text-lg font-black text-white mb-2 leading-snug">
-              {relStatus === 'pending_received'
-                ? `${current.authorName} amekuomba muwe marafiki!`
-                : relStatus === 'pending_sent'
-                ? `Ombi la urafiki kwa ${current.authorName} limetumwa`
-                : `Mnapaswa kuwa marafiki kwanza`}
-            </h3>
-
-            <p className="text-xs text-slate-300 max-w-xs mb-6 leading-relaxed">
-              {relStatus === 'pending_received'
-                ? `Kubali ombi la urafiki hapa chini ili uweze kuona status ya ${current.authorName}, kuchat na kupigiana simu.`
-                : relStatus === 'pending_sent'
-                ? `Inasubiri ${current.authorName} athibitishe ombi lako kabla ya kufungua status zake zote.`
-                : `Huwezi kuona status ya ${current.authorName} kwa sababu si rafiki yako bado. Tuma ombi la urafiki sasa ili muweze kuchat, kuona status na kupigiana simu!`}
-            </p>
-
-            {relStatus === 'pending_received' ? (
-              <div className="flex items-center gap-2.5 w-full max-w-xs">
-                <button
-                  type="button"
-                  onClick={(e) => {
-                    e.stopPropagation();
-                    friendshipService.acceptFriendRequest(currentUserId, current.authorId);
-                  }}
-                  className="flex-1 py-3 px-4 rounded-2xl bg-emerald-500 hover:bg-emerald-400 text-slate-950 font-black text-xs flex items-center justify-center gap-2 shadow-lg shadow-emerald-500/20 active:scale-95 transition-all"
-                >
-                  <UserCheck className="w-4 h-4" />
-                  <span>Kubali Urafiki</span>
-                </button>
-                <button
-                  type="button"
-                  onClick={(e) => {
-                    e.stopPropagation();
-                    friendshipService.declineFriendRequest(currentUserId, current.authorId);
-                  }}
-                  className="py-3 px-4 rounded-2xl bg-white/10 hover:bg-rose-500/20 text-slate-300 hover:text-rose-400 border border-white/10 text-xs font-bold active:scale-95 transition-all"
-                >
-                  Kataa
-                </button>
-              </div>
-            ) : relStatus === 'pending_sent' ? (
-              <div className="flex flex-col items-center gap-2.5">
-                <div className="px-4 py-2.5 rounded-2xl bg-amber-500/20 border border-amber-400/30 text-amber-300 font-bold text-xs flex items-center gap-2 shadow-md">
-                  <Clock className="w-4 h-4" />
-                  <span>Ombi Limetumwa (Inasubiri jibu)</span>
-                </div>
-                <button
-                  type="button"
-                  onClick={(e) => {
-                    e.stopPropagation();
-                    friendshipService.cancelFriendRequest(currentUserId, current.authorId);
-                  }}
-                  className="text-xs text-slate-400 hover:text-rose-400 underline pt-1"
-                >
-                  Ghairi Ombi
-                </button>
-              </div>
-            ) : (
-              <button
-                type="button"
-                onClick={(e) => {
-                  e.stopPropagation();
-                  friendshipService.sendFriendRequest(
-                    currentUser || {
-                      id: currentUserId,
-                      displayName: 'Amina Kaunga',
-                      username: 'amina_kaunga',
-                    },
-                    {
-                      id: current.authorId,
-                      displayName: current.authorName,
-                      photoURL: current.authorPhoto,
-                      username: current.authorUsername || current.authorId.replace('user_', ''),
-                    }
-                  );
-                }}
-                className="w-full max-w-xs py-3.5 px-4 rounded-2xl bg-gradient-to-r from-cyan-400 via-blue-500 to-indigo-600 hover:from-cyan-300 hover:to-indigo-500 text-slate-950 font-black text-xs flex items-center justify-center gap-2 shadow-xl shadow-cyan-500/25 active:scale-95 transition-all"
-              >
-                <UserPlus className="w-4 h-4" />
-                <span>Omba Urafiki (Follow {current.authorName})</span>
-              </button>
-            )}
-          </div>
-        )}
 
         {/* Top Progress Bars & Header */}
         <div className="relative z-20 p-4 pt-3 space-y-3">
@@ -597,8 +497,7 @@ export const StatusStoryViewerModal: React.FC<StatusStoryViewerModalProps> = ({
         {/* ============================================================== */}
         {/* BOTTOM RICH STORY DETAILS (FOOD, POLL, PRODUCT, EVENT) */}
         {/* ============================================================== */}
-        {!isStoryLocked && (
-          <div className="relative z-20 p-4 pt-2 space-y-2.5 bg-gradient-to-t from-black/95 via-black/70 to-transparent">
+        <div className="relative z-20 p-4 pt-2 space-y-2.5 bg-gradient-to-t from-black/95 via-black/70 to-transparent">
 
           {/* ==================== 1. FOOD STORY CONTENT ==================== */}
           {current.type === 'food' && (
@@ -1005,7 +904,6 @@ export const StatusStoryViewerModal: React.FC<StatusStoryViewerModalProps> = ({
             </button>
           </form>
         </div>
-        )}
 
         {/* Interactive Comments Drawer */}
         {showComments && (
