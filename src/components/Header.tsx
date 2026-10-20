@@ -77,6 +77,7 @@ export const Header: React.FC<HeaderProps> = ({
 
   const mainTabs = [
     { id: 'chats', label: 'Chats', icon: MessageCircle },
+    { id: 'community', label: 'Vikundi', icon: Users },
     { id: 'discover', label: 'Discover', icon: Compass },
     { id: 'shop', label: 'Marketplace', icon: ShoppingBag },
     { id: 'profile', label: 'Profile', icon: Users },
@@ -88,8 +89,8 @@ export const Header: React.FC<HeaderProps> = ({
     switch (tab) {
       case 'chats':
         return 'Chats';
-      case 'status':
-        return 'Status';
+      case 'community':
+        return 'Vikundi';
       case 'discover':
         return 'Discover';
       case 'shop':
@@ -104,8 +105,6 @@ export const Header: React.FC<HeaderProps> = ({
         return 'Rides';
       case 'wallet':
         return 'Wallet';
-      case 'community':
-        return 'Community';
       default:
         return 'Zenia';
     }

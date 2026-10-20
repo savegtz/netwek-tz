@@ -27,7 +27,7 @@ export const BottomNav: React.FC<BottomNavProps> = ({
 }) => {
   const [servicesMenuOpen, setServicesMenuOpen] = useState(false);
 
-  const isServicesActive = ['events', 'jobs', 'transport', 'community'].includes(activeTab);
+  const isServicesActive = ['events', 'jobs', 'transport', 'wallet'].includes(activeTab);
 
   return (
     <div className="shrink-0 z-40 bg-[#070A12]/95 backdrop-blur-md border-t border-white/[0.08] px-2 sm:px-6 pt-2 pb-[max(0.6rem,env(safe-area-inset-bottom))] transition-all relative">
@@ -219,6 +219,33 @@ export const BottomNav: React.FC<BottomNavProps> = ({
         </button>
 
 
+        {/* 2. Vikundi (Community) Tab */}
+        <button
+          onClick={() => {
+            onSelectTab('community');
+            setServicesMenuOpen(false);
+          }}
+          className="flex-1 flex flex-col items-center justify-center gap-1 py-1 transition-all active:scale-95 group"
+          aria-label="Vikundi"
+        >
+          <div className="relative">
+            <Users
+              className={`w-5 h-5 transition-transform duration-150 ${
+                activeTab === 'community'
+                  ? 'text-cyan-400 scale-105 stroke-[2.2]'
+                  : 'text-slate-400 group-hover:text-slate-200 stroke-[1.8]'
+              }`}
+            />
+          </div>
+          <span
+            className={`text-[10px] font-medium transition-colors ${
+              activeTab === 'community' ? 'text-cyan-400 font-semibold' : 'text-slate-400'
+            }`}
+          >
+            Vikundi
+          </span>
+        </button>
+
         {/* 3. Marketplace (Soko) Tab */}
         <button
           onClick={() => {
@@ -251,11 +278,11 @@ export const BottomNav: React.FC<BottomNavProps> = ({
           onClick={() => setServicesMenuOpen(!servicesMenuOpen)}
           className="flex-1 flex flex-col items-center justify-center gap-1 py-1 transition-all active:scale-95 group"
           aria-label="Huduma (Services)"
-          title="Huduma: Teksi, Tiketi, Kazi, Jamii, Pochi"
+          title="Huduma: Teksi, Tiketi, Kazi, Pochi"
         >
           <div
             className={`w-7 h-7 rounded-lg flex items-center justify-center transition-all ${
-              servicesMenuOpen || ['events', 'jobs', 'transport', 'wallet', 'community'].includes(activeTab)
+              servicesMenuOpen || ['events', 'jobs', 'transport', 'wallet'].includes(activeTab)
                 ? 'bg-cyan-500/20 text-cyan-300 border border-cyan-400/40 shadow-sm'
                 : 'text-slate-400 group-hover:text-slate-200'
             }`}
@@ -264,7 +291,7 @@ export const BottomNav: React.FC<BottomNavProps> = ({
           </div>
           <span
             className={`text-[10px] font-medium transition-colors ${
-              servicesMenuOpen || ['events', 'jobs', 'transport', 'wallet', 'community'].includes(activeTab)
+              servicesMenuOpen || ['events', 'jobs', 'transport', 'wallet'].includes(activeTab)
                 ? 'text-cyan-400 font-semibold'
                 : 'text-slate-400'
             }`}

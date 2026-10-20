@@ -869,7 +869,7 @@ export default function App() {
             {activeTab === 'wallet' && <WalletView onBack={() => setActiveTab('chats')} />}
 
             {activeTab === 'community' && (
-              <CommunityView currentUser={activeUser} onBack={() => setActiveTab('discover')} />
+              <CommunityView currentUser={activeUser} onBack={() => setActiveTab('chats')} />
             )}
           </div>
 

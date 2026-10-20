@@ -130,6 +130,111 @@ export const ProfileView: React.FC<ProfileViewProps> = ({
   const [toastMessage, setToastMessage] = useState<string | null>(null);
   const [isAvatarStyleModalOpen, setIsAvatarStyleModalOpen] = useState(false);
 
+  // Dynamic posts catalog (If user is Amina, show full rich catalog; if another user, customized)
+  const isAmina = currentUser?.username === 'amina_kaunga';
+
+  const defaultUserPosts: PostItem[] = isAmina
+    ? [
+        {
+          id: 'post_1',
+          url: aminaAvatar,
+          caption: '✨ New season, new energy! Asante kwa wote mnaosapoti safari yangu ya urembo na fashion. #ZeniaCreator #FashionDar',
+          likes: '1,420',
+          comments: '142',
+          type: 'image',
+          gradient: 'from-purple-800 to-indigo-900',
+          date: 'Masaa 2 yaliyopita',
+        },
+        {
+          id: 'post_2',
+          url: zanzibarBeach,
+          caption: '🏖️ Weekend getaway in Nungwi, Zanzibar. Hakuna sehemu tulivu kama hapa baharini! 🌊☀️',
+          likes: '2,890',
+          comments: '310',
+          type: 'image',
+          gradient: 'from-cyan-800 to-blue-900',
+          date: 'Jana',
+        },
+        {
+          id: 'post_3',
+          url: concertFestival,
+          caption: '🔥 Dar Live Fest vibes jana usiku! Nishati ilikuwa moto sana jukwaani! 🎶🕺',
+          likes: '3,210',
+          comments: '428',
+          type: 'video',
+          gradient: 'from-pink-800 to-rose-900',
+          date: 'Siku 2 zilizopita',
+        },
+        {
+          id: 'post_4',
+          url: wirelessEarbuds,
+          caption: '🎧 Sound that moves you. Muziki wa hali ya juu na utulivu wa pekee. 🎵',
+          likes: '1,120',
+          comments: '98',
+          type: 'image',
+          gradient: 'from-emerald-800 to-teal-900',
+          date: 'Siku 4 zilizopita',
+        },
+        {
+          id: 'post_5',
+          url: techCommunity,
+          caption: '💡 Networking & Innovation meetup Dar es Salaam! Tech future in East Africa is bright. 🚀',
+          likes: '2,450',
+          comments: '190',
+          type: 'image',
+          gradient: 'from-blue-800 to-indigo-900',
+          date: 'Wiki iliyopita',
+        },
+      ]
+    : [];
+
+  // 1. Cover Photo State
+  const [coverPhoto, setCoverPhoto] = useState<string>(() => {
+    if (currentUser?.id) {
+      try {
+        const saved = localStorage.getItem(`zenia_user_cover_${currentUser.id}`);
+        if (saved) return saved;
+      } catch {}
+    }
+    return zanzibarBeach;
+  });
+
+  // 2. User Posts State & New Post Upload Modal State
+  const [userPosts, setUserPosts] = useState<PostItem[]>(() => {
+    if (currentUser?.id) {
+      try {
+        const saved = localStorage.getItem(`zenia_user_posts_${currentUser.id}`);
+        if (saved) return JSON.parse(saved);
+      } catch {}
+    }
+    return defaultUserPosts;
+  });
+
+  const [isUploadPostModalOpen, setIsUploadPostModalOpen] = useState(false);
+  const [newPostImage, setNewPostImage] = useState<string | null>(null);
+  const [newPostCaption, setNewPostCaption] = useState('');
+  const [newPostLocation, setNewPostLocation] = useState('Dar es Salaam, Tanzania 🇹🇿');
+
+  // Synchronize cover photo and posts when user changes / logs in
+  useEffect(() => {
+    if (currentUser?.id) {
+      try {
+        const savedCover = localStorage.getItem(`zenia_user_cover_${currentUser.id}`);
+        setCoverPhoto(savedCover || zanzibarBeach);
+      } catch {}
+
+      try {
+        const savedPosts = localStorage.getItem(`zenia_user_posts_${currentUser.id}`);
+        if (savedPosts) {
+          setUserPosts(JSON.parse(savedPosts));
+        } else {
+          setUserPosts(currentUser.username === 'amina_kaunga' ? defaultUserPosts : []);
+        }
+      } catch {}
+    }
+  }, [currentUser?.id, currentUser?.username]);
+
+
   const [, setFriendshipTick] = useState(0);
   useEffect(() => {
     const unsub = friendshipService.subscribe(() => setFriendshipTick((t) => t + 1));
@@ -664,63 +769,6 @@ export const ProfileView: React.FC<ProfileViewProps> = ({
   // Displays THAT user's exact profile details!
   // ==============================================================
 
-  // Dynamic posts catalog (If user is Amina, show full rich catalog; if another user, customized)
-  const isAmina = currentUser.username === 'amina_kaunga';
-
-  const defaultUserPosts: PostItem[] = isAmina
-    ? [
-        {
-          id: 'post_1',
-          url: aminaAvatar,
-          caption: '✨ New season, new energy! Asante kwa wote mnaosapoti safari yangu ya urembo na fashion. #ZeniaCreator #FashionDar',
-          likes: '1,420',
-          comments: '142',
-          type: 'image',
-          gradient: 'from-purple-800 to-indigo-900',
-          date: 'Masaa 2 yaliyopita',
-        },
-        {
-          id: 'post_2',
-          url: zanzibarBeach,
-          caption: '🏖️ Weekend getaway in Nungwi, Zanzibar. Hakuna sehemu tulivu kama hapa baharini! 🌊☀️',
-          likes: '2,890',
-          comments: '310',
-          type: 'image',
-          gradient: 'from-cyan-800 to-blue-900',
-          date: 'Jana',
-        },
-        {
-          id: 'post_3',
-          url: concertFestival,
-          caption: '🔥 Dar Live Fest vibes jana usiku! Nishati ilikuwa moto sana jukwaani! 🎶🕺',
-          likes: '3,210',
-          comments: '428',
-          type: 'video',
-          gradient: 'from-pink-800 to-rose-900',
-          date: 'Siku 2 zilizopita',
-        },
-        {
-          id: 'post_4',
-          url: wirelessEarbuds,
-          caption: '🎧 Sound that moves you. Muziki wa hali ya juu na utulivu wa pekee. 🎵',
-          likes: '1,120',
-          comments: '98',
-          type: 'image',
-          gradient: 'from-emerald-800 to-teal-900',
-          date: 'Siku 4 zilizopita',
-        },
-        {
-          id: 'post_5',
-          url: techCommunity,
-          caption: '💡 Networking & Innovation meetup Dar es Salaam! Tech future in East Africa is bright. 🚀',
-          likes: '2,450',
-          comments: '190',
-          type: 'image',
-          gradient: 'from-blue-800 to-indigo-900',
-          date: 'Wiki iliyopita',
-        },
-      ]
-    : [];
 
   const highlights: HighlightItem[] = [
     {
@@ -774,14 +822,7 @@ export const ProfileView: React.FC<ProfileViewProps> = ({
     }
   };
 
-  // 1. Cover Photo State & Handlers
-  const [coverPhoto, setCoverPhoto] = useState<string>(() => {
-    try {
-      const saved = localStorage.getItem(`zenia_user_cover_${currentUser.id}`);
-      if (saved) return saved;
-    } catch {}
-    return zanzibarBeach;
-  });
+  // 1. Cover Photo Handlers
 
   const handleCoverUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
@@ -825,19 +866,7 @@ export const ProfileView: React.FC<ProfileViewProps> = ({
     reader.readAsDataURL(file);
   };
 
-  // 3. User Posts State & New Post Upload Modal
-  const [userPosts, setUserPosts] = useState<PostItem[]>(() => {
-    try {
-      const saved = localStorage.getItem(`zenia_user_posts_${currentUser.id}`);
-      if (saved) return JSON.parse(saved);
-    } catch {}
-    return defaultUserPosts;
-  });
-
-  const [isUploadPostModalOpen, setIsUploadPostModalOpen] = useState(false);
-  const [newPostImage, setNewPostImage] = useState<string | null>(null);
-  const [newPostCaption, setNewPostCaption] = useState('');
-  const [newPostLocation, setNewPostLocation] = useState('Dar es Salaam, Tanzania 🇹🇿');
+  // 3. New Post Upload Handlers
 
   const handleNewPostImageSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
