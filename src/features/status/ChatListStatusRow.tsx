@@ -411,29 +411,7 @@ export const ChatListStatusRow: React.FC<ChatListStatusRowProps> = ({
   };
 
   return (
-    <div className="pt-2 pb-2.5 px-3 border-b border-white/[0.06] select-none bg-[#080B16]">
-      {/* Clean & Orderly Header with Studio Button */}
-      <div className="flex items-center justify-between mb-2 px-1">
-        <div className="flex items-center gap-1.5">
-          <span className="text-[11px] font-black uppercase tracking-wider text-slate-300">
-            Hali (Story Status)
-          </span>
-          <span className="text-[9.5px] px-1.5 py-0.2 rounded-full font-bold bg-cyan-500/15 text-cyan-300 border border-cyan-400/25">
-            {visibleStatuses.length}
-          </span>
-        </div>
-
-        <button
-          type="button"
-          onClick={() => setIsStyleModalOpen(true)}
-          className="px-2.5 py-1 rounded-xl text-[10.5px] font-bold text-cyan-300 hover:text-white bg-cyan-950/60 hover:bg-cyan-900/60 border border-cyan-500/30 whitespace-nowrap shadow-xs flex items-center gap-1.5 active:scale-95 transition-all"
-          title="Badili mtindo wa Avatar & Story (Organic Blob, Squircle, Rounded Rectangle n.k.)"
-        >
-          <Palette className="w-3.5 h-3.5 text-cyan-400" />
-          <span>Mtindo wa Avatar (10)</span>
-        </button>
-      </div>
-
+    <div className="pt-1.5 pb-2 px-3 border-b border-white/[0.06] select-none bg-transparent">
       {/* Stories Carousel with smooth touch scrolling */}
       <div className="relative group/carousel">
         {/* Left Scroll Arrow (Desktop only) */}

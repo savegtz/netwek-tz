@@ -837,33 +837,6 @@ export const ChatList: React.FC<ChatListProps> = ({
         </div>
       )}
 
-      {/* WhatsApp Modern Status Icons Carousel (Placed ABOVE search as requested) */}
-      <ChatListStatusRow
-        currentUser={currentUser}
-        customStatuses={customStatuses}
-        onStartChatWithBusiness={onStartChatWithBusiness}
-        onOpenCreateStatus={() => {
-          if (!currentUser) {
-            onOpenAuth?.('signup');
-            showToast('Ili kuweka status, tafadhali jisajili au ingia kwanza!');
-            return;
-          }
-          if (onOpenCreateStatus) {
-            onOpenCreateStatus();
-          } else {
-            showToast('Gusa kuweka Status');
-          }
-        }}
-        onSendStatusReply={(status, reply) => {
-          if (!currentUser) {
-            onOpenAuth?.('signup');
-            showToast('Ili kujibu stori au kuchati, tafadhali jisajili au ingia kwanza!');
-            return;
-          }
-          showToast(`Ujumbe umetumwa kwa ${status.authorName}: "${reply}"`);
-        }}
-      />
-
       {/* Guest Mode Banner */}
       {!currentUser && (
         <div className="mx-3.5 mt-2 mb-1 p-2.5 rounded-2xl bg-gradient-to-r from-cyan-950/70 via-[#0E1528] to-indigo-950/70 border border-cyan-500/25 flex items-center justify-between gap-2 shadow-sm animate-in fade-in">
@@ -893,33 +866,32 @@ export const ChatList: React.FC<ChatListProps> = ({
         </div>
       )}
 
-      {/* WebRTC Live Calls Bar */}
-      <div className="mx-3.5 mt-2 mb-1 p-2 rounded-2xl bg-[#0B1020] border border-cyan-500/20 flex items-center justify-between gap-2 text-xs shadow-xs">
-        <div className="flex items-center gap-2 min-w-0">
-          <div className="w-7 h-7 rounded-xl bg-gradient-to-tr from-cyan-500 to-blue-600 text-slate-950 flex items-center justify-center shrink-0 shadow-xs">
-            <PhoneCall className="w-3.5 h-3.5" />
-          </div>
-          <div className="min-w-0">
-            <p className="text-[11px] font-bold text-white truncate flex items-center gap-1.5">
-              <span>Simu za WebRTC na Firebase</span>
-              <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse" />
-            </p>
-            <p className="text-[9.5px] text-slate-400 truncate">Video/Audio, Screen Sharing na Live Chat</p>
-          </div>
-        </div>
-        <div className="flex items-center gap-1.5 shrink-0">
-          {onSimulateIncomingCall && (
-            <button
-              onClick={onSimulateIncomingCall}
-              className="px-2.5 py-1 rounded-xl bg-cyan-500/15 hover:bg-cyan-500/25 border border-cyan-400/30 text-cyan-300 text-[10px] font-bold transition-all active:scale-95 flex items-center gap-1 shadow-xs"
-              title="Pima kupokea simu ya WebRTC yenye mlio wa simu"
-            >
-              <Phone className="w-3 h-3 text-cyan-400" />
-              <span>Pima Simu</span>
-            </button>
-          )}
-        </div>
-      </div>
+      {/* WhatsApp / Instagram Modern Story Status Carousel (Positioned cleanly right ABOVE search input) */}
+      <ChatListStatusRow
+        currentUser={currentUser}
+        customStatuses={customStatuses}
+        onStartChatWithBusiness={onStartChatWithBusiness}
+        onOpenCreateStatus={() => {
+          if (!currentUser) {
+            onOpenAuth?.('signup');
+            showToast('Ili kuweka status, tafadhali jisajili au ingia kwanza!');
+            return;
+          }
+          if (onOpenCreateStatus) {
+            onOpenCreateStatus();
+          } else {
+            showToast('Gusa kuweka Status');
+          }
+        }}
+        onSendStatusReply={(status, reply) => {
+          if (!currentUser) {
+            onOpenAuth?.('signup');
+            showToast('Ili kujibu stori au kuchati, tafadhali jisajili au ingia kwanza!');
+            return;
+          }
+          showToast(`Ujumbe umetumwa kwa ${status.authorName}: "${reply}"`);
+        }}
+      />
 
       {/* Search Input Bar or Selection Mode Header */}
       {isSelectionMode ? (
