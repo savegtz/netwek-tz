@@ -7,6 +7,7 @@ import {
   Plus,
   Send,
   Eye,
+  EyeOff,
   Bookmark,
   Utensils,
   BarChart2,
@@ -441,6 +442,9 @@ export const StatusFeed: React.FC<StatusFeedProps> = ({
   // Poll voting state
   const [userVotedOption, setUserVotedOption] = useState<Record<string, string>>({});
 
+  // Hidden cards state per status item (viewer hide/unhide)
+  const [hiddenFeedCards, setHiddenFeedCards] = useState<Record<string, boolean>>({});
+
   // Quiz live answer state
   const [userQuizAnswers, setUserQuizAnswers] = useState<Record<string, { answeredIdx: number; isCorrect: boolean }>>({});
 
@@ -817,24 +821,35 @@ export const StatusFeed: React.FC<StatusFeedProps> = ({
             <div className="p-4 sm:p-5 space-y-3.5 bg-slate-950">
               {/* ==================== 1. FOOD STORY CONTENT ==================== */}
               {currentStatus.type === 'food' && currentStatus.metadata && (
-                <div className="space-y-3.5">
-                  <div className="flex items-center justify-between gap-2">
-                    <div className="min-w-0">
-                      <h3 className="text-base sm:text-lg font-black text-white flex items-center gap-2 truncate">
-                        <span>🍔 {currentStatus.metadata.foodName || 'Chicken Burger'}</span>
-                      </h3>
-                      <p className="text-xs text-amber-300 font-bold truncate flex items-center gap-1 mt-0.5">
-                        <span>{currentStatus.metadata.restaurantName || 'ZEBRA RESTAURANT'}</span>
-                        <span className="text-cyan-400 text-xs">✓</span>
-                        <span className="text-slate-400 font-normal">• Masaki, Dar es Salaam</span>
-                      </p>
-                    </div>
+                !hiddenFeedCards[currentStatus.id] ? (
+                  <div className="space-y-3.5 animate-in fade-in duration-200">
+                    <div className="flex items-center justify-between gap-2">
+                      <div className="min-w-0">
+                        <h3 className="text-base sm:text-lg font-black text-white flex items-center gap-2 truncate">
+                          <span>🍔 {currentStatus.metadata.foodName || 'Chicken Burger'}</span>
+                        </h3>
+                        <p className="text-xs text-amber-300 font-bold truncate flex items-center gap-1 mt-0.5">
+                          <span>{currentStatus.metadata.restaurantName || 'ZEBRA RESTAURANT'}</span>
+                          <span className="text-cyan-400 text-xs">✓</span>
+                          <span className="text-slate-400 font-normal">• Masaki, Dar es Salaam</span>
+                        </p>
+                      </div>
 
-                    <div className="flex items-center gap-1 px-3 py-1.5 rounded-2xl bg-amber-500/20 border border-amber-500/30 text-amber-300 font-black text-xs shrink-0 shadow-sm">
-                      <span>⭐ {currentStatus.metadata.rating || 4.8}</span>
-                      <span className="text-[10px] text-amber-400/80 font-normal">/ 5.0</span>
+                      <div className="flex items-center gap-1.5 shrink-0">
+                        <div className="flex items-center gap-1 px-2.5 py-1 rounded-xl bg-amber-500/20 border border-amber-500/30 text-amber-300 font-black text-xs shadow-sm">
+                          <span>⭐ {currentStatus.metadata.rating || 4.8}</span>
+                        </div>
+                        <button
+                          type="button"
+                          onClick={() => setHiddenFeedCards((prev) => ({ ...prev, [currentStatus.id]: true }))}
+                          className="flex items-center gap-1 px-2 py-1 rounded-xl bg-white/10 hover:bg-white/20 active:scale-95 text-slate-200 hover:text-white text-[11px] font-bold border border-white/15 transition-all shadow-sm shrink-0"
+                          title="Ficha kadi ya chakula (Hide)"
+                        >
+                          <EyeOff className="w-3.5 h-3.5 text-amber-300 stroke-[2.2]" />
+                          <span>Ficha</span>
+                        </button>
+                      </div>
                     </div>
-                  </div>
 
                   {/* Price Banner */}
                   <div className="p-3 sm:p-3.5 rounded-2xl bg-gradient-to-r from-amber-500/15 via-orange-500/10 to-amber-500/15 border border-amber-500/30 flex items-center justify-between">
@@ -940,7 +955,36 @@ export const StatusFeed: React.FC<StatusFeedProps> = ({
                     </button>
                   </div>
                 </div>
-              )}
+              ) : (
+                /* Unhide pill for Food in feed */
+                <div className="flex items-center justify-between p-2 px-3 rounded-2xl bg-[#0E1426] border border-amber-500/35 shadow-lg animate-in fade-in duration-200 gap-2">
+                  <div className="flex items-center gap-2 min-w-0 flex-1">
+                    <span className="text-lg shrink-0">🍔</span>
+                    <div className="min-w-0 flex-1">
+                      <div className="flex items-center gap-1.5 truncate">
+                        <span className="text-xs sm:text-sm font-black text-white truncate">
+                          {currentStatus.metadata.foodName || 'Chicken Burger'}
+                        </span>
+                        <span className="text-amber-400 font-mono text-xs font-bold shrink-0">
+                          TSh {(currentStatus.metadata.offerPrice || 12000).toLocaleString()}
+                        </span>
+                      </div>
+                      <p className="text-[10px] text-amber-300/80 font-medium truncate">
+                        Kadi imefichwa • Gusa kuonyesha
+                      </p>
+                    </div>
+                  </div>
+                  <button
+                    type="button"
+                    onClick={() => setHiddenFeedCards((prev) => ({ ...prev, [currentStatus.id]: false }))}
+                    className="flex items-center gap-1.5 px-2.5 py-1.5 rounded-xl bg-gradient-to-r from-amber-500 to-orange-500 text-slate-950 font-bold text-xs shadow-md active:scale-95 transition-all shrink-0"
+                    title="Onyesha kadi tena (Unhide)"
+                  >
+                    <Eye className="w-3.5 h-3.5 stroke-[2.5]" />
+                    <span>Onyesha</span>
+                  </button>
+                </div>
+              ))}
 
               {/* ==================== 2. POLL STORY CONTENT ==================== */}
               {currentStatus.type === 'poll' && currentStatus.metadata && (
@@ -1003,55 +1047,97 @@ export const StatusFeed: React.FC<StatusFeedProps> = ({
 
               {/* ==================== 3. PRODUCT STORY CONTENT ==================== */}
               {currentStatus.type === 'product' && currentStatus.metadata && (
-                <div className="space-y-3">
-                  <div className="flex items-center justify-between">
-                    <div>
-                      <h3 className="text-base sm:text-lg font-black text-white flex items-center gap-1.5">
-                        <span>🛍️ {currentStatus.metadata.productName || 'Nike Air Max'}</span>
-                      </h3>
-                      <p className="text-[11px] text-emerald-400 font-semibold">
-                        {currentStatus.authorName} ✓
-                      </p>
+                !hiddenFeedCards[currentStatus.id] ? (
+                  <div className="space-y-3 animate-in fade-in duration-200">
+                    <div className="flex items-center justify-between">
+                      <div>
+                        <h3 className="text-base sm:text-lg font-black text-white flex items-center gap-1.5">
+                          <span>🛍️ {currentStatus.metadata.productName || 'Nike Air Max'}</span>
+                        </h3>
+                        <p className="text-[11px] text-emerald-400 font-semibold">
+                          {currentStatus.authorName} ✓
+                        </p>
+                      </div>
+                      <div className="flex items-center gap-1.5 shrink-0">
+                        <span className="text-xs px-2.5 py-1 rounded-xl bg-emerald-500/20 text-emerald-400 font-bold border border-emerald-500/30">
+                          ⭐ 4.9
+                        </span>
+                        <button
+                          type="button"
+                          onClick={() => setHiddenFeedCards((prev) => ({ ...prev, [currentStatus.id]: true }))}
+                          className="flex items-center gap-1 px-2 py-1 rounded-xl bg-white/10 hover:bg-white/20 active:scale-95 text-slate-200 hover:text-white text-[11px] font-bold border border-white/15 transition-all shadow-sm shrink-0"
+                          title="Ficha kadi ya bidhaa (Hide)"
+                        >
+                          <EyeOff className="w-3.5 h-3.5 text-emerald-400 stroke-[2.2]" />
+                          <span>Ficha</span>
+                        </button>
+                      </div>
                     </div>
-                    <span className="text-xs px-2.5 py-1 rounded-xl bg-emerald-500/20 text-emerald-400 font-bold border border-emerald-500/30">
-                      ⭐ 4.9
-                    </span>
-                  </div>
 
-                  <div className="p-3 rounded-2xl bg-gradient-to-r from-emerald-500/15 via-teal-500/15 to-emerald-500/15 border border-emerald-500/30 flex items-center justify-between">
-                    <div className="flex items-center gap-2">
-                      <span className="text-emerald-300 font-black text-base font-mono">
-                        TSh {(currentStatus.metadata.salePrice || 175000).toLocaleString()}
-                      </span>
-                      <span className="text-slate-500 line-through text-xs font-mono">
-                        TSh {(currentStatus.metadata.regularPrice || 200000).toLocaleString()}
+                    <div className="p-3 rounded-2xl bg-gradient-to-r from-emerald-500/15 via-teal-500/15 to-emerald-500/15 border border-emerald-500/30 flex items-center justify-between">
+                      <div className="flex items-center gap-2">
+                        <span className="text-emerald-300 font-black text-base font-mono">
+                          TSh {(currentStatus.metadata.salePrice || 175000).toLocaleString()}
+                        </span>
+                        <span className="text-slate-500 line-through text-xs font-mono">
+                          TSh {(currentStatus.metadata.regularPrice || 200000).toLocaleString()}
+                        </span>
+                      </div>
+                      <span className="text-[10px] px-2 py-0.5 rounded bg-emerald-500 text-slate-950 font-black">
+                        {currentStatus.metadata.discountBadge || '12.5% OFF - NEW ARRIVAL'}
                       </span>
                     </div>
-                    <span className="text-[10px] px-2 py-0.5 rounded bg-emerald-500 text-slate-950 font-black">
-                      {currentStatus.metadata.discountBadge || '12.5% OFF - NEW ARRIVAL'}
-                    </span>
+
+                    <p className="text-xs text-slate-200">{currentStatus.text}</p>
+
+                    <div className="grid grid-cols-2 gap-2.5 pt-1">
+                      <button
+                        onClick={() => setIsProductPurchaseOpen(true)}
+                        className="py-3 px-4 rounded-2xl bg-emerald-500 hover:bg-emerald-400 text-slate-950 font-black text-xs sm:text-sm flex items-center justify-center gap-1.5 shadow-lg shadow-emerald-500/25 active:scale-95 transition-all"
+                      >
+                        <ShoppingBag className="w-4 h-4 stroke-[2.5]" />
+                        <span>🛍️ Buy Now</span>
+                      </button>
+
+                      <button
+                        onClick={handleStartChatWithStatusAuthor}
+                        className="py-3 px-4 rounded-2xl bg-white/10 hover:bg-white/15 text-white font-bold text-xs sm:text-sm flex items-center justify-center gap-1.5 active:scale-95 transition-all"
+                      >
+                        <MessageCircle className="w-4 h-4" />
+                        <span>💬 Chat Now</span>
+                      </button>
+                    </div>
                   </div>
-
-                  <p className="text-xs text-slate-200">{currentStatus.text}</p>
-
-                  <div className="grid grid-cols-2 gap-2.5 pt-1">
+                ) : (
+                  /* Unhide pill for Product in feed */
+                  <div className="flex items-center justify-between p-2 px-3 rounded-2xl bg-[#0E1426] border border-emerald-500/35 shadow-lg animate-in fade-in duration-200 gap-2">
+                    <div className="flex items-center gap-2 min-w-0 flex-1">
+                      <span className="text-lg shrink-0">🛍️</span>
+                      <div className="min-w-0 flex-1">
+                        <div className="flex items-center gap-1.5 truncate">
+                          <span className="text-xs sm:text-sm font-black text-white truncate">
+                            {currentStatus.metadata.productName || 'Nike Air Max'}
+                          </span>
+                          <span className="text-emerald-400 font-mono text-xs font-bold shrink-0">
+                            TSh {(currentStatus.metadata.salePrice || 175000).toLocaleString()}
+                          </span>
+                        </div>
+                        <p className="text-[10px] text-emerald-300/80 font-medium truncate">
+                          Kadi imefichwa • Gusa kuonyesha
+                        </p>
+                      </div>
+                    </div>
                     <button
-                      onClick={() => setIsProductPurchaseOpen(true)}
-                      className="py-3 px-4 rounded-2xl bg-emerald-500 hover:bg-emerald-400 text-slate-950 font-black text-xs sm:text-sm flex items-center justify-center gap-1.5 shadow-lg shadow-emerald-500/25 active:scale-95 transition-all"
+                      type="button"
+                      onClick={() => setHiddenFeedCards((prev) => ({ ...prev, [currentStatus.id]: false }))}
+                      className="flex items-center gap-1.5 px-2.5 py-1.5 rounded-xl bg-emerald-500 hover:bg-emerald-400 text-slate-950 font-bold text-xs shadow-md active:scale-95 transition-all shrink-0"
+                      title="Onyesha kadi tena (Unhide)"
                     >
-                      <ShoppingBag className="w-4 h-4 stroke-[2.5]" />
-                      <span>🛍️ Buy Now</span>
-                    </button>
-
-                    <button
-                      onClick={handleStartChatWithStatusAuthor}
-                      className="py-3 px-4 rounded-2xl bg-white/10 hover:bg-white/15 text-white font-bold text-xs sm:text-sm flex items-center justify-center gap-1.5 active:scale-95 transition-all"
-                    >
-                      <MessageCircle className="w-4 h-4" />
-                      <span>💬 Chat Now</span>
+                      <Eye className="w-3.5 h-3.5 stroke-[2.5]" />
+                      <span>Onyesha</span>
                     </button>
                   </div>
-                </div>
+                )
               )}
 
               {/* ==================== 4. EVENT STORY CONTENT ==================== */}

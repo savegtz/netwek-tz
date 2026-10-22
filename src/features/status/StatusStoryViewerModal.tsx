@@ -24,6 +24,10 @@ import {
   UserPlus,
   UserCheck,
   UserX,
+  Eye,
+  EyeOff,
+  ChevronUp,
+  ChevronDown,
 } from 'lucide-react';
 import { StatusItem, UserProfile } from '../../types';
 import { SafeImage } from '../../components/SafeImage';
@@ -85,6 +89,9 @@ export const StatusStoryViewerModal: React.FC<StatusStoryViewerModalProps> = ({
   const [isEventTicketOpen, setIsEventTicketOpen] = useState(false);
   const [isJobApplicationOpen, setIsJobApplicationOpen] = useState(false);
 
+  // Viewer hide / unhide state for interactive card overlay
+  const [isCardHidden, setIsCardHidden] = useState(false);
+
   // Stable refs for callbacks
   const onCloseRef = useRef(onClose);
   useEffect(() => {
@@ -109,8 +116,14 @@ export const StatusStoryViewerModal: React.FC<StatusStoryViewerModalProps> = ({
       setVotedOption(null);
       setFloatingEmojis([]);
       setShowFoodReviewDetails(false);
+      setIsCardHidden(false);
     }
   }, [isOpen, initialIndex]);
+
+  // Reset card hidden state on slide change
+  useEffect(() => {
+    setIsCardHidden(false);
+  }, [currentIndex]);
 
   const [friendshipTick, setFriendshipTick] = useState(0);
   useEffect(() => {
@@ -397,63 +410,84 @@ export const StatusStoryViewerModal: React.FC<StatusStoryViewerModalProps> = ({
           </div>
 
           {/* Author Details and Close */}
-          <div className="flex items-center justify-between">
-            <div className="flex items-center gap-2.5">
+          <div className="flex items-center justify-between gap-2">
+            <div className="flex items-center gap-2.5 min-w-0 flex-1">
               <DynamicAvatar
                 src={current.authorPhoto}
                 fallbackText={current.authorName}
                 alt={current.authorName}
-                size={42}
+                size={40}
                 styleVariant={current.avatarStyle}
                 hasStory={false}
               />
-              <div>
-                <h4 className="font-extrabold text-sm text-white drop-shadow leading-tight flex items-center gap-1">
-                  <span>{current.authorName}</span>
-                  <span className="text-cyan-400 text-xs">✓</span>
+              <div className="min-w-0 flex-1">
+                <h4 className="font-extrabold text-sm text-white drop-shadow leading-tight flex items-center gap-1 truncate">
+                  <span className="truncate">{current.authorName}</span>
+                  <span className="text-cyan-400 text-xs shrink-0">✓</span>
                 </h4>
-                <p className="text-[11px] text-slate-300 drop-shadow flex items-center gap-1.5 mt-0.5 flex-wrap">
-                  <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 inline-block" />
-                  <span>{current.createdAt}</span>
+                <div className="text-[11px] text-slate-300 drop-shadow flex items-center gap-1.5 mt-0.5 truncate">
+                  <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 shrink-0 inline-block" />
+                  <span className="shrink-0">{current.createdAt}</span>
                   {current.location && (
                     <>
-                      <span>•</span>
-                      <span className="text-amber-300 flex items-center gap-0.5">
-                        <MapPin className="w-3 h-3 text-amber-400 inline" />
-                        <span>{current.location}</span>
+                      <span className="shrink-0">•</span>
+                      <span className="text-amber-300 flex items-center gap-0.5 truncate">
+                        <MapPin className="w-3 h-3 text-amber-400 shrink-0 inline" />
+                        <span className="truncate">{current.location}</span>
                       </span>
                     </>
                   )}
                   {current.type === 'job' && (
-                    <span className="px-1.5 py-0.2 rounded bg-amber-500 text-slate-950 text-[9px] font-black">
+                    <span className="px-1.5 py-0.2 rounded bg-amber-500 text-slate-950 text-[9px] font-black shrink-0">
                       💼 Job
                     </span>
                   )}
                   {current.type === 'food' && (
-                    <span className="px-1.5 py-0.2 rounded bg-amber-500 text-slate-950 text-[9px] font-black">
-                      🍽️ Food & Drinks
+                    <span className="px-1.5 py-0.2 rounded bg-amber-500 text-slate-950 text-[9px] font-black shrink-0">
+                      🍽️ Food
                     </span>
                   )}
                   {current.type === 'poll' && (
-                    <span className="px-1.5 py-0.2 rounded bg-blue-500 text-white text-[9px] font-bold">
+                    <span className="px-1.5 py-0.2 rounded bg-blue-500 text-white text-[9px] font-bold shrink-0">
                       📊 Poll
                     </span>
                   )}
                   {current.type === 'product' && (
-                    <span className="px-1.5 py-0.2 rounded bg-emerald-500 text-slate-950 text-[9px] font-bold">
+                    <span className="px-1.5 py-0.2 rounded bg-emerald-500 text-slate-950 text-[9px] font-bold shrink-0">
                       🛍️ Shop
                     </span>
                   )}
                   {current.type === 'event' && (
-                    <span className="px-1.5 py-0.2 rounded bg-purple-500 text-white text-[9px] font-bold">
+                    <span className="px-1.5 py-0.2 rounded bg-purple-500 text-white text-[9px] font-bold shrink-0">
                       🎪 Event
                     </span>
                   )}
-                </p>
+                </div>
               </div>
             </div>
 
-            <div className="flex items-center gap-1.5 relative">
+            <div className="flex items-center gap-1.5 shrink-0 relative">
+              {/* Compact Sleek Hide/Unhide Toggle Button */}
+              {['food', 'product', 'poll', 'event', 'job'].includes(current.type) && (
+                <button
+                  type="button"
+                  onClick={() => setIsCardHidden((prev) => !prev)}
+                  className={`p-2 rounded-full transition-all flex items-center justify-center active:scale-95 ${
+                    isCardHidden
+                      ? 'bg-amber-400 text-slate-950 ring-2 ring-amber-400/50 shadow-md'
+                      : 'bg-black/40 hover:bg-black/60 text-slate-200 hover:text-white border border-white/20'
+                  }`}
+                  title={isCardHidden ? 'Onyesha kadi (Unhide card)' : 'Ficha kadi (Hide card)'}
+                  aria-label={isCardHidden ? 'Onyesha kadi' : 'Ficha kadi'}
+                >
+                  {isCardHidden ? (
+                    <Eye className="w-4 h-4 stroke-[2.5]" />
+                  ) : (
+                    <EyeOff className="w-4 h-4 stroke-[2.2] text-amber-300" />
+                  )}
+                </button>
+              )}
+
               <button
                 onClick={() => {
                   navigator.clipboard?.writeText(window.location.href);
@@ -501,318 +535,557 @@ export const StatusStoryViewerModal: React.FC<StatusStoryViewerModalProps> = ({
 
           {/* ==================== 1. FOOD STORY CONTENT ==================== */}
           {current.type === 'food' && (
-            <div className="p-3.5 rounded-3xl bg-slate-950/85 backdrop-blur-xl border border-amber-500/25 space-y-2.5 shadow-2xl">
-              <div className="flex items-center justify-between gap-2">
-                <div className="min-w-0">
-                  <h4 className="font-black text-sm sm:text-base text-white flex items-center gap-1.5 truncate">
-                    <span>🍔 {current.metadata?.foodName || 'Chicken Burger'}</span>
-                  </h4>
-                  <p className="text-[11px] text-amber-300 font-bold truncate flex items-center gap-1 mt-0.5">
-                    <span>{current.metadata?.restaurantName || 'ZEBRA RESTAURANT'}</span>
-                    <span className="text-cyan-400 text-xs">✓</span>
-                    <span className="text-slate-400 font-normal">• Masaki, Dar es Salaam</span>
-                  </p>
+            !isCardHidden ? (
+              <div className="p-3.5 rounded-3xl bg-slate-950/85 backdrop-blur-xl border border-amber-500/25 space-y-2.5 shadow-2xl transition-all animate-in fade-in duration-200">
+                <div className="flex items-center justify-between gap-2">
+                  <div className="min-w-0">
+                    <h4 className="font-black text-sm sm:text-base text-white flex items-center gap-1.5 truncate">
+                      <span>🍔 {current.metadata?.foodName || 'Chicken Burger'}</span>
+                    </h4>
+                    <p className="text-[11px] text-amber-300 font-bold truncate flex items-center gap-1 mt-0.5">
+                      <span>{current.metadata?.restaurantName || 'ZEBRA RESTAURANT'}</span>
+                      <span className="text-cyan-400 text-xs">✓</span>
+                      <span className="text-slate-400 font-normal">• Masaki, Dar es Salaam</span>
+                    </p>
+                  </div>
+
+                  <div className="flex items-center gap-1.5 shrink-0">
+                    <div className="flex items-center gap-1 px-2 py-0.5 rounded-lg bg-amber-500/20 text-amber-300 font-black text-xs border border-amber-500/30">
+                      <span>⭐ {current.metadata?.rating || 4.8}</span>
+                    </div>
+
+                    {/* Ficha (Hide) Button on Card Header */}
+                    <button
+                      type="button"
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        setIsCardHidden(true);
+                      }}
+                      className="flex items-center gap-1 px-2 py-1 rounded-xl bg-white/10 hover:bg-white/20 active:scale-95 text-slate-200 hover:text-white text-[11px] font-bold border border-white/15 transition-all shadow-sm shrink-0"
+                      title="Ficha kadi hii ya chakula (Hide)"
+                    >
+                      <EyeOff className="w-3.5 h-3.5 text-amber-300 stroke-[2.2]" />
+                      <span>Ficha</span>
+                    </button>
+                  </div>
                 </div>
 
-                <div className="flex items-center gap-1 px-2.5 py-1 rounded-xl bg-amber-500/20 text-amber-300 font-black text-xs border border-amber-500/30 shrink-0">
-                  <span>⭐ {current.metadata?.rating || 4.8}</span>
+                {/* Price & Offer Banner */}
+                <div className="flex items-center justify-between text-xs p-2 rounded-xl bg-white/5 border border-white/10">
+                  <div className="flex items-center gap-2">
+                    <span className="px-2 py-0.5 rounded-md bg-gradient-to-r from-amber-500 to-orange-500 text-slate-950 text-[10px] font-black tracking-wide shadow-sm">
+                      {current.metadata?.specialOfferLabel || '🔥 TODAY ONLY'}
+                    </span>
+                    <span className="text-amber-300 font-black font-mono text-sm">
+                      TSh {(current.metadata?.offerPrice || 12000).toLocaleString()}
+                    </span>
+                    <span className="line-through text-slate-400 font-mono text-[11px]">
+                      TSh {(current.metadata?.regularPrice || 15000).toLocaleString()}
+                    </span>
+                  </div>
+                  <span className="text-amber-400 text-[10px] font-extrabold">
+                    {current.metadata?.discount || '20% OFF — Today Only'}
+                  </span>
                 </div>
-              </div>
 
-              {/* Price & Offer Banner */}
-              <div className="flex items-center justify-between text-xs p-2 rounded-xl bg-white/5 border border-white/10">
-                <div className="flex items-center gap-2">
-                  <span className="px-2 py-0.5 rounded-md bg-gradient-to-r from-amber-500 to-orange-500 text-slate-950 text-[10px] font-black tracking-wide shadow-sm">
-                    {current.metadata?.specialOfferLabel || '🔥 TODAY ONLY'}
-                  </span>
-                  <span className="text-amber-300 font-black font-mono text-sm">
-                    TSh {(current.metadata?.offerPrice || 12000).toLocaleString()}
-                  </span>
-                  <span className="line-through text-slate-400 font-mono text-[11px]">
-                    TSh {(current.metadata?.regularPrice || 15000).toLocaleString()}
-                  </span>
-                </div>
-                <span className="text-amber-400 text-[10px] font-extrabold">
-                  {current.metadata?.discount || '20% OFF — Today Only'}
-                </span>
-              </div>
+                {/* Optional Culinary Breakdown Accordion */}
+                <div className="pt-0.5">
+                  <button
+                    type="button"
+                    onClick={() => setShowFoodReviewDetails(!showFoodReviewDetails)}
+                    className="w-full flex items-center justify-between text-[11px] text-slate-300 hover:text-amber-300 transition-colors py-0.5 px-1 font-medium"
+                  >
+                    <span className="flex items-center gap-1.5">
+                      <span>⭐ Mapitio ya Chakula (Taste & Presentation)</span>
+                    </span>
+                    <span className="text-[10px] text-amber-400 font-bold">
+                      {showFoodReviewDetails ? 'Ficha ▲' : 'Tazama 5.0/5.0 ▼'}
+                    </span>
+                  </button>
 
-              {/* Optional Culinary Breakdown Accordion */}
-              <div className="pt-0.5">
-                <button
-                  type="button"
-                  onClick={() => setShowFoodReviewDetails(!showFoodReviewDetails)}
-                  className="w-full flex items-center justify-between text-[11px] text-slate-300 hover:text-amber-300 transition-colors py-0.5 px-1 font-medium"
-                >
-                  <span className="flex items-center gap-1.5">
-                    <span>⭐ Mapitio ya Chakula (Taste & Presentation)</span>
-                  </span>
-                  <span className="text-[10px] text-amber-400 font-bold">
-                    {showFoodReviewDetails ? 'Ficha ▲' : 'Tazama 5.0/5.0 ▼'}
-                  </span>
-                </button>
-
-                {showFoodReviewDetails && (
-                  <div className="mt-1.5 p-2.5 rounded-2xl bg-black/60 border border-white/10 space-y-2 animate-in fade-in duration-150">
-                    <div className="grid grid-cols-2 gap-2 text-[10px]">
-                      <div>
-                        <div className="flex justify-between text-slate-300 mb-0.5 font-medium">
-                          <span>Ladha (Taste)</span>
-                          <span className="font-bold text-amber-400 font-mono">5.0</span>
+                  {showFoodReviewDetails && (
+                    <div className="mt-1.5 p-2.5 rounded-2xl bg-black/60 border border-white/10 space-y-2 animate-in fade-in duration-150">
+                      <div className="grid grid-cols-2 gap-2 text-[10px]">
+                        <div>
+                          <div className="flex justify-between text-slate-300 mb-0.5 font-medium">
+                            <span>Ladha (Taste)</span>
+                            <span className="font-bold text-amber-400 font-mono">5.0</span>
+                          </div>
+                          <div className="h-1 rounded-full bg-white/10 overflow-hidden">
+                            <div className="h-full bg-gradient-to-r from-amber-500 to-orange-400 rounded-full w-full" />
+                          </div>
                         </div>
-                        <div className="h-1 rounded-full bg-white/10 overflow-hidden">
-                          <div className="h-full bg-gradient-to-r from-amber-500 to-orange-400 rounded-full w-full" />
+                        <div>
+                          <div className="flex justify-between text-slate-300 mb-0.5 font-medium">
+                            <span>Mwonekano</span>
+                            <span className="font-bold text-amber-400 font-mono">4.8</span>
+                          </div>
+                          <div className="h-1 rounded-full bg-white/10 overflow-hidden">
+                            <div className="h-full bg-gradient-to-r from-amber-500 to-orange-400 rounded-full w-[96%]" />
+                          </div>
                         </div>
-                      </div>
-                      <div>
-                        <div className="flex justify-between text-slate-300 mb-0.5 font-medium">
-                          <span>Mwonekano</span>
-                          <span className="font-bold text-amber-400 font-mono">4.8</span>
+                        <div>
+                          <div className="flex justify-between text-slate-300 mb-0.5 font-medium">
+                            <span>Huduma (Service)</span>
+                            <span className="font-bold text-amber-400 font-mono">4.7</span>
+                          </div>
+                          <div className="h-1 rounded-full bg-white/10 overflow-hidden">
+                            <div className="h-full bg-gradient-to-r from-amber-500 to-orange-400 rounded-full w-[94%]" />
+                          </div>
                         </div>
-                        <div className="h-1 rounded-full bg-white/10 overflow-hidden">
-                          <div className="h-full bg-gradient-to-r from-amber-500 to-orange-400 rounded-full w-[96%]" />
-                        </div>
-                      </div>
-                      <div>
-                        <div className="flex justify-between text-slate-300 mb-0.5 font-medium">
-                          <span>Huduma (Service)</span>
-                          <span className="font-bold text-amber-400 font-mono">4.7</span>
-                        </div>
-                        <div className="h-1 rounded-full bg-white/10 overflow-hidden">
-                          <div className="h-full bg-gradient-to-r from-amber-500 to-orange-400 rounded-full w-[94%]" />
-                        </div>
-                      </div>
-                      <div>
-                        <div className="flex justify-between text-slate-300 mb-0.5 font-medium">
-                          <span>Thamani (Value)</span>
-                          <span className="font-bold text-amber-400 font-mono">4.9</span>
-                        </div>
-                        <div className="h-1 rounded-full bg-white/10 overflow-hidden">
-                          <div className="h-full bg-gradient-to-r from-amber-500 to-orange-400 rounded-full w-[98%]" />
+                        <div>
+                          <div className="flex justify-between text-slate-300 mb-0.5 font-medium">
+                            <span>Thamani (Value)</span>
+                            <span className="font-bold text-amber-400 font-mono">4.9</span>
+                          </div>
+                          <div className="h-1 rounded-full bg-white/10 overflow-hidden">
+                            <div className="h-full bg-gradient-to-r from-amber-500 to-orange-400 rounded-full w-[98%]" />
+                          </div>
                         </div>
                       </div>
                     </div>
+                  )}
+                </div>
+
+                {/* Action Buttons: [🍽️ Agiza Sasa] and [💬 Wasiliana Mgahawa] */}
+                <div className="grid grid-cols-2 gap-2 pt-1">
+                  <button
+                    type="button"
+                    onClick={() => setIsFoodOrderOpen(true)}
+                    className="py-2.5 px-3 rounded-2xl bg-gradient-to-r from-amber-500 via-orange-500 to-amber-500 hover:from-amber-400 hover:to-orange-400 text-slate-950 font-black text-xs flex items-center justify-center gap-1.5 shadow-lg shadow-amber-500/25 active:scale-95 transition-all"
+                  >
+                    <Utensils className="w-3.5 h-3.5 stroke-[2.5]" />
+                    <span>🍽️ Agiza Sasa</span>
+                  </button>
+
+                  <button
+                    type="button"
+                    onClick={handleChatNow}
+                    className="py-2.5 px-3 rounded-2xl bg-white/10 hover:bg-white/15 text-white font-bold text-xs flex items-center justify-center gap-1.5 active:scale-95 transition-all border border-white/10"
+                  >
+                    <MessageCircle className="w-3.5 h-3.5" />
+                    <span>💬 Chat Mgahawa</span>
+                  </button>
+                </div>
+              </div>
+            ) : (
+              /* Unhide / Onyesha Pill for Food */
+              <div className="flex items-center justify-between p-2 px-3 rounded-2xl bg-slate-950/90 backdrop-blur-xl border border-amber-500/40 shadow-2xl animate-in fade-in slide-in-from-bottom-2 duration-200 gap-2">
+                <div className="flex items-center gap-2 min-w-0 flex-1">
+                  <div className="w-7 h-7 sm:w-8 sm:h-8 rounded-lg bg-amber-500/20 border border-amber-500/30 flex items-center justify-center text-base shrink-0">
+                    🍔
                   </div>
-                )}
-              </div>
-
-              {/* Action Buttons: [🍽️ Agiza Sasa] and [💬 Wasiliana Mgahawa] */}
-              <div className="grid grid-cols-2 gap-2 pt-1">
+                  <div className="min-w-0 flex-1">
+                    <div className="flex items-center gap-1.5 truncate">
+                      <span className="text-xs font-black text-white truncate">
+                        {current.metadata?.foodName || 'Chicken Burger Deluxe'}
+                      </span>
+                      <span className="text-amber-400 font-mono text-[11px] font-bold shrink-0">
+                        TSh {(current.metadata?.offerPrice || 12000).toLocaleString()}
+                      </span>
+                    </div>
+                    <p className="text-[10px] text-amber-300/80 font-medium truncate">
+                      Kadi imefichwa • Gusa kuonyesha
+                    </p>
+                  </div>
+                </div>
                 <button
                   type="button"
-                  onClick={() => setIsFoodOrderOpen(true)}
-                  className="py-2.5 px-3 rounded-2xl bg-gradient-to-r from-amber-500 via-orange-500 to-amber-500 hover:from-amber-400 hover:to-orange-400 text-slate-950 font-black text-xs flex items-center justify-center gap-1.5 shadow-lg shadow-amber-500/25 active:scale-95 transition-all"
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    setIsCardHidden(false);
+                  }}
+                  className="flex items-center gap-1.5 px-2.5 py-1.5 rounded-xl bg-gradient-to-r from-amber-500 to-orange-500 hover:from-amber-400 hover:to-orange-400 text-slate-950 font-bold text-xs shadow-md active:scale-95 transition-all shrink-0"
+                  title="Onyesha kadi tena (Unhide)"
                 >
-                  <Utensils className="w-3.5 h-3.5 stroke-[2.5]" />
-                  <span>🍽️ Agiza Sasa</span>
-                </button>
-
-                <button
-                  type="button"
-                  onClick={handleChatNow}
-                  className="py-2.5 px-3 rounded-2xl bg-white/10 hover:bg-white/15 text-white font-bold text-xs flex items-center justify-center gap-1.5 active:scale-95 transition-all border border-white/10"
-                >
-                  <MessageCircle className="w-3.5 h-3.5" />
-                  <span>💬 Chat Mgahawa</span>
+                  <Eye className="w-3.5 h-3.5 stroke-[2.5]" />
+                  <span>Onyesha</span>
                 </button>
               </div>
-            </div>
+            )
           )}
 
           {/* ==================== 2. POLL STORY CONTENT ==================== */}
           {current.type === 'poll' && (
-            <div className="p-3.5 rounded-2xl bg-[#0F1426]/90 backdrop-blur-md border border-blue-500/30 space-y-2.5">
-              <div className="flex items-center justify-between">
-                <h4 className="font-bold text-sm text-white flex items-center gap-1.5">
-                  <BarChart2 className="w-4 h-4 text-blue-400" />
-                  <span>{current.metadata?.pollQuestion || 'Leo tukatoke wapi? 😎'}</span>
-                </h4>
-                <span className="text-[10px] text-blue-300 font-bold px-2 py-0.5 rounded-full bg-blue-500/20">
-                  {votedOption ? '✓ Umepiga Kura' : 'Gusa Kupiga Kura'}
-                </span>
-              </div>
-
-              <div className="space-y-1.5">
-                {current.metadata?.pollOptions?.map((opt) => {
-                  const isSelected = votedOption === opt.id;
-                  const added = extraPollVotes[opt.id] || 0;
-                  const currentOptVotes = opt.votes + added;
-                  const totalVotes =
-                    (current.metadata?.pollOptions?.reduce((s, o) => s + o.votes + (extraPollVotes[o.id] || 0), 0) || 1);
-                  const pct = Math.round((currentOptVotes / totalVotes) * 100);
-
-                  return (
+            !isCardHidden ? (
+              <div className="p-3.5 rounded-2xl bg-[#0F1426]/90 backdrop-blur-md border border-blue-500/30 space-y-2.5 shadow-2xl transition-all animate-in fade-in duration-200">
+                <div className="flex items-center justify-between gap-2">
+                  <h4 className="font-bold text-sm text-white flex items-center gap-1.5 truncate">
+                    <BarChart2 className="w-4 h-4 text-blue-400 shrink-0" />
+                    <span className="truncate">{current.metadata?.pollQuestion || 'Leo tukatoke wapi? 😎'}</span>
+                  </h4>
+                  <div className="flex items-center gap-1.5 shrink-0">
+                    <span className="text-[10px] text-blue-300 font-bold px-2 py-0.5 rounded-full bg-blue-500/20">
+                      {votedOption ? '✓ Umepiga' : 'Piga Kura'}
+                    </span>
                     <button
-                      key={opt.id}
                       type="button"
-                      onClick={() => handleVotePoll(opt.id)}
-                      className={`relative w-full p-2.5 rounded-xl border text-left overflow-hidden transition-all text-xs font-semibold active:scale-[0.99] ${
-                        isSelected
-                          ? 'border-blue-400 bg-blue-500/30 text-white shadow-md'
-                          : 'border-white/10 bg-black/40 text-slate-200 hover:border-blue-400/50'
-                      }`}
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        setIsCardHidden(true);
+                      }}
+                      className="flex items-center gap-1 px-2 py-1 rounded-xl bg-white/10 hover:bg-white/20 active:scale-95 text-slate-200 hover:text-white text-[11px] font-bold border border-white/15 transition-all shadow-sm shrink-0"
+                      title="Ficha kura (Hide)"
                     >
-                      <div
-                        className="absolute inset-y-0 left-0 bg-blue-500/35 transition-all duration-500"
-                        style={{ width: `${pct}%` }}
-                      />
-                      <div className="relative z-10 flex items-center justify-between">
-                        <span className="flex items-center gap-1.5">
-                          {isSelected && <span className="text-blue-300 font-bold">✓</span>}
-                          <span>{opt.text}</span>
-                        </span>
-                        <span className="font-mono text-blue-300 font-bold text-[11px]">
-                          {pct}% ({currentOptVotes})
-                        </span>
-                      </div>
+                      <EyeOff className="w-3.5 h-3.5 text-blue-400 stroke-[2.2]" />
+                      <span>Ficha</span>
                     </button>
-                  );
-                })}
+                  </div>
+                </div>
+
+                <div className="space-y-1.5">
+                  {current.metadata?.pollOptions?.map((opt) => {
+                    const isSelected = votedOption === opt.id;
+                    const added = extraPollVotes[opt.id] || 0;
+                    const currentOptVotes = opt.votes + added;
+                    const totalVotes =
+                      (current.metadata?.pollOptions?.reduce((s, o) => s + o.votes + (extraPollVotes[o.id] || 0), 0) || 1);
+                    const pct = Math.round((currentOptVotes / totalVotes) * 100);
+
+                    return (
+                      <button
+                        key={opt.id}
+                        type="button"
+                        onClick={() => handleVotePoll(opt.id)}
+                        className={`relative w-full p-2.5 rounded-xl border text-left overflow-hidden transition-all text-xs font-semibold active:scale-[0.99] ${
+                          isSelected
+                            ? 'border-blue-400 bg-blue-500/30 text-white shadow-md'
+                            : 'border-white/10 bg-black/40 text-slate-200 hover:border-blue-400/50'
+                        }`}
+                      >
+                        <div
+                          className="absolute inset-y-0 left-0 bg-blue-500/35 transition-all duration-500"
+                          style={{ width: `${pct}%` }}
+                        />
+                        <div className="relative z-10 flex items-center justify-between">
+                          <span className="flex items-center gap-1.5">
+                            {isSelected && <span className="text-blue-300 font-bold">✓</span>}
+                            <span>{opt.text}</span>
+                          </span>
+                          <span className="font-mono text-blue-300 font-bold text-[11px]">
+                            {pct}% ({currentOptVotes})
+                          </span>
+                        </div>
+                      </button>
+                    );
+                  })}
+                </div>
               </div>
-            </div>
+            ) : (
+              /* Unhide / Onyesha Pill for Poll */
+              <div className="flex items-center justify-between p-2 px-3 rounded-2xl bg-[#0F1426]/90 backdrop-blur-xl border border-blue-500/40 shadow-2xl animate-in fade-in slide-in-from-bottom-2 duration-200 gap-2">
+                <div className="flex items-center gap-2 min-w-0 flex-1">
+                  <div className="w-7 h-7 sm:w-8 sm:h-8 rounded-lg bg-blue-500/20 border border-blue-500/30 flex items-center justify-center text-base shrink-0">
+                    📊
+                  </div>
+                  <div className="min-w-0 flex-1">
+                    <p className="text-xs font-black text-white truncate">
+                      {current.metadata?.pollQuestion || 'Kura ya Maoni'}
+                    </p>
+                    <p className="text-[10px] text-blue-300/80 font-medium truncate">
+                      Kura imefichwa • Gusa kuonyesha
+                    </p>
+                  </div>
+                </div>
+                <button
+                  type="button"
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    setIsCardHidden(false);
+                  }}
+                  className="flex items-center gap-1.5 px-2.5 py-1.5 rounded-xl bg-blue-500 hover:bg-blue-400 text-white font-bold text-xs shadow-md active:scale-95 transition-all shrink-0"
+                  title="Onyesha kura tena (Unhide)"
+                >
+                  <Eye className="w-3.5 h-3.5 stroke-[2.5]" />
+                  <span>Onyesha</span>
+                </button>
+              </div>
+            )
           )}
 
           {/* ==================== 3. PRODUCT STORY CONTENT ==================== */}
           {current.type === 'product' && (
-            <div className="p-3.5 rounded-2xl bg-[#0F1426]/90 backdrop-blur-md border border-emerald-500/30 space-y-2.5">
-              <div className="flex items-center justify-between">
-                <h4 className="font-extrabold text-sm text-white">
-                  🛍️ {current.metadata?.productName || 'Nike Air Max'}
-                </h4>
-                <span className="text-emerald-400 text-xs font-bold font-mono">
-                  TSh {(current.metadata?.salePrice || 175000).toLocaleString()}
-                </span>
+            !isCardHidden ? (
+              <div className="p-3.5 rounded-2xl bg-[#0F1426]/90 backdrop-blur-md border border-emerald-500/30 space-y-2.5 shadow-2xl transition-all animate-in fade-in duration-200">
+                <div className="flex items-center justify-between gap-2">
+                  <h4 className="font-extrabold text-sm text-white truncate">
+                    🛍️ {current.metadata?.productName || 'Nike Air Max'}
+                  </h4>
+                  <div className="flex items-center gap-2 shrink-0">
+                    <span className="text-emerald-400 text-xs font-bold font-mono">
+                      TSh {(current.metadata?.salePrice || 175000).toLocaleString()}
+                    </span>
+
+                    {/* Ficha (Hide) Button on Product Card Header */}
+                    <button
+                      type="button"
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        setIsCardHidden(true);
+                      }}
+                      className="flex items-center gap-1 px-2 py-1 rounded-xl bg-white/10 hover:bg-white/20 active:scale-95 text-slate-200 hover:text-white text-[11px] font-bold border border-white/15 transition-all shadow-sm shrink-0"
+                      title="Ficha kadi hii ya bidhaa (Hide)"
+                    >
+                      <EyeOff className="w-3.5 h-3.5 text-emerald-400 stroke-[2.2]" />
+                      <span>Ficha</span>
+                    </button>
+                  </div>
+                </div>
+                <div className="grid grid-cols-2 gap-2">
+                  <button
+                    type="button"
+                    onClick={() => setIsProductPurchaseOpen(true)}
+                    className="py-2.5 px-3 rounded-xl bg-emerald-500 hover:bg-emerald-400 text-slate-950 font-black text-xs flex items-center justify-center gap-1.5 shadow-md shadow-emerald-500/30 active:scale-95 transition-all"
+                  >
+                    <ShoppingBag className="w-3.5 h-3.5" />
+                    <span>🛍️ Buy Now</span>
+                  </button>
+                  <button
+                    type="button"
+                    onClick={handleChatNow}
+                    className="py-2.5 px-3 rounded-xl bg-white/10 hover:bg-white/15 text-white font-bold text-xs flex items-center justify-center gap-1.5 active:scale-95 transition-all"
+                  >
+                    <MessageCircle className="w-3.5 h-3.5" />
+                    <span>💬 Chat Now</span>
+                  </button>
+                </div>
               </div>
-              <div className="grid grid-cols-2 gap-2">
+            ) : (
+              /* Unhide / Onyesha Pill for Product */
+              <div className="flex items-center justify-between p-2 px-3 rounded-2xl bg-[#0F1426]/90 backdrop-blur-xl border border-emerald-500/40 shadow-2xl animate-in fade-in slide-in-from-bottom-2 duration-200 gap-2">
+                <div className="flex items-center gap-2 min-w-0 flex-1">
+                  <div className="w-7 h-7 sm:w-8 sm:h-8 rounded-lg bg-emerald-500/20 border border-emerald-500/30 flex items-center justify-center text-base shrink-0">
+                    🛍️
+                  </div>
+                  <div className="min-w-0 flex-1">
+                    <div className="flex items-center gap-1.5 truncate">
+                      <span className="text-xs font-black text-white truncate">
+                        {current.metadata?.productName || 'Nike Air Max'}
+                      </span>
+                      <span className="text-emerald-400 font-mono text-[11px] font-bold shrink-0">
+                        TSh {(current.metadata?.salePrice || 175000).toLocaleString()}
+                      </span>
+                    </div>
+                    <p className="text-[10px] text-emerald-300/80 font-medium truncate">
+                      Kadi imefichwa • Gusa kuonyesha
+                    </p>
+                  </div>
+                </div>
                 <button
                   type="button"
-                  onClick={() => setIsProductPurchaseOpen(true)}
-                  className="py-2.5 px-3 rounded-xl bg-emerald-500 text-slate-950 font-black text-xs flex items-center justify-center gap-1.5 shadow-md shadow-emerald-500/30"
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    setIsCardHidden(false);
+                  }}
+                  className="flex items-center gap-1.5 px-2.5 py-1.5 rounded-xl bg-emerald-500 hover:bg-emerald-400 text-slate-950 font-bold text-xs shadow-md active:scale-95 transition-all shrink-0"
+                  title="Onyesha kadi tena (Unhide)"
                 >
-                  <ShoppingBag className="w-3.5 h-3.5" />
-                  <span>🛍️ Buy Now</span>
-                </button>
-                <button
-                  type="button"
-                  onClick={handleChatNow}
-                  className="py-2.5 px-3 rounded-xl bg-white/10 text-white font-bold text-xs flex items-center justify-center gap-1.5"
-                >
-                  <MessageCircle className="w-3.5 h-3.5" />
-                  <span>💬 Chat Now</span>
+                  <Eye className="w-3.5 h-3.5 stroke-[2.5]" />
+                  <span>Onyesha</span>
                 </button>
               </div>
-            </div>
+            )
           )}
 
           {/* ==================== 4. EVENT STORY CONTENT ==================== */}
           {current.type === 'event' && (
-            <div className="p-3.5 rounded-2xl bg-[#0F1426]/90 backdrop-blur-md border border-purple-500/30 space-y-2">
-              <div className="flex items-center justify-between">
-                <h4 className="font-bold text-sm text-white">
-                  🎪 {current.metadata?.eventName || 'Dar Food Festival 2026'}
-                </h4>
-                <span className="text-[10px] text-purple-300 font-mono">12 Oct 2026</span>
+            !isCardHidden ? (
+              <div className="p-3.5 rounded-2xl bg-[#0F1426]/90 backdrop-blur-md border border-purple-500/30 space-y-2 shadow-2xl transition-all animate-in fade-in duration-200">
+                <div className="flex items-center justify-between gap-2">
+                  <h4 className="font-bold text-sm text-white truncate">
+                    🎪 {current.metadata?.eventName || 'Dar Food Festival 2026'}
+                  </h4>
+                  <div className="flex items-center gap-1.5 shrink-0">
+                    <span className="text-[10px] text-purple-300 font-mono">12 Oct 2026</span>
+                    <button
+                      type="button"
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        setIsCardHidden(true);
+                      }}
+                      className="flex items-center gap-1 px-2 py-1 rounded-xl bg-white/10 hover:bg-white/20 active:scale-95 text-slate-200 hover:text-white text-[11px] font-bold border border-white/15 transition-all shadow-sm shrink-0"
+                      title="Ficha tiketi (Hide)"
+                    >
+                      <EyeOff className="w-3.5 h-3.5 text-purple-400 stroke-[2.2]" />
+                      <span>Ficha</span>
+                    </button>
+                  </div>
+                </div>
+                <div className="p-2 rounded-xl bg-purple-500/20 text-center font-mono text-xs text-purple-200 font-bold">
+                  EVENT STARTS IN: 🗓️ 3 Days • ⏰ 07 Hours • ⏱️ 24 Minutes
+                </div>
+                <div className="grid grid-cols-2 gap-2">
+                  <button
+                    type="button"
+                    onClick={() => setIsEventTicketOpen(true)}
+                    className="py-2.5 px-3 rounded-xl bg-purple-600 hover:bg-purple-500 text-white font-bold text-xs flex items-center justify-center gap-1.5 active:scale-95 transition-all"
+                  >
+                    <Ticket className="w-3.5 h-3.5" />
+                    <span>🎟️ Get Tickets</span>
+                  </button>
+                  <button
+                    type="button"
+                    onClick={handleChatNow}
+                    className="py-2.5 px-3 rounded-xl bg-white/10 hover:bg-white/15 text-white font-bold text-xs flex items-center justify-center gap-1.5 active:scale-95 transition-all"
+                  >
+                    <MessageCircle className="w-3.5 h-3.5" />
+                    <span>💬 Chat Now</span>
+                  </button>
+                </div>
               </div>
-              <div className="p-2 rounded-xl bg-purple-500/20 text-center font-mono text-xs text-purple-200 font-bold">
-                EVENT STARTS IN: 🗓️ 3 Days • ⏰ 07 Hours • ⏱️ 24 Minutes
-              </div>
-              <div className="grid grid-cols-2 gap-2">
+            ) : (
+              /* Unhide / Onyesha Pill for Event */
+              <div className="flex items-center justify-between p-2 px-3 rounded-2xl bg-[#0F1426]/90 backdrop-blur-xl border border-purple-500/40 shadow-2xl animate-in fade-in slide-in-from-bottom-2 duration-200 gap-2">
+                <div className="flex items-center gap-2 min-w-0 flex-1">
+                  <div className="w-7 h-7 sm:w-8 sm:h-8 rounded-lg bg-purple-500/20 border border-purple-500/30 flex items-center justify-center text-base shrink-0">
+                    🎪
+                  </div>
+                  <div className="min-w-0 flex-1">
+                    <p className="text-xs font-black text-white truncate">
+                      {current.metadata?.eventName || 'Tamasha la Muziki & Chakula'}
+                    </p>
+                    <p className="text-[10px] text-purple-300/80 font-medium truncate">
+                      Tiketi zimefichwa • Gusa kuonyesha
+                    </p>
+                  </div>
+                </div>
                 <button
                   type="button"
-                  onClick={() => setIsEventTicketOpen(true)}
-                  className="py-2.5 px-3 rounded-xl bg-purple-600 text-white font-bold text-xs flex items-center justify-center gap-1.5"
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    setIsCardHidden(false);
+                  }}
+                  className="flex items-center gap-1.5 px-2.5 py-1.5 rounded-xl bg-purple-600 hover:bg-purple-500 text-white font-bold text-xs shadow-md active:scale-95 transition-all shrink-0"
+                  title="Onyesha tiketi tena (Unhide)"
                 >
-                  <Ticket className="w-3.5 h-3.5" />
-                  <span>🎟️ Get Tickets</span>
-                </button>
-                <button
-                  type="button"
-                  onClick={handleChatNow}
-                  className="py-2.5 px-3 rounded-xl bg-white/10 text-white font-bold text-xs flex items-center justify-center gap-1.5"
-                >
-                  <MessageCircle className="w-3.5 h-3.5" />
-                  <span>💬 Chat Now</span>
+                  <Eye className="w-3.5 h-3.5 stroke-[2.5]" />
+                  <span>Onyesha</span>
                 </button>
               </div>
-            </div>
+            )
           )}
 
           {/* ==================== 5. JOB STORY CONTENT ==================== */}
           {current.type === 'job' && (
-            <div className="p-3.5 rounded-2xl bg-[#0F1426]/90 backdrop-blur-md border border-amber-500/30 space-y-2.5 shadow-2xl">
-              <div className="flex items-center justify-between">
-                <div>
-                  <h4 className="font-black text-sm sm:text-base text-white flex items-center gap-1.5">
-                    <Briefcase className="w-4 h-4 text-amber-400" />
-                    <span>{current.metadata?.jobTitle || 'Waiter / Waitress'}</span>
-                  </h4>
-                  <span className="text-[11px] text-amber-300 font-bold">
-                    {current.metadata?.companyName || current.authorName} • {current.location || 'Masaki, Dar es Salaam'}
-                  </span>
-                </div>
-                <span className="px-2 py-0.5 rounded-xl bg-amber-500/20 text-amber-300 font-black text-xs border border-amber-500/30">
-                  ⏱️ {current.metadata?.employmentType || 'Full Time'}
-                </span>
-              </div>
-
-              {/* Salary & Deadline Banner */}
-              <div className="flex items-center justify-between text-xs p-2 rounded-xl bg-black/40 border border-white/5">
-                <div className="flex items-center gap-1.5">
-                  <span className="text-amber-400 font-bold">💰 Mshahara:</span>
-                  <span className="text-white font-mono font-bold">
-                    {current.metadata?.isSalaryNegotiable
-                      ? 'Negotiable'
-                      : current.metadata?.salaryMin
-                      ? `TSh ${current.metadata.salaryMin.toLocaleString()} – ${(current.metadata.salaryMax || 600000).toLocaleString()}`
-                      : 'TSh 400,000 – 600,000'}
-                  </span>
-                </div>
-                {(current.metadata?.daysRemaining ?? 13) > 0 && !current.metadata?.isClosed ? (
-                  <span className="text-amber-300 text-[10px] font-black bg-amber-500/20 px-2 py-0.5 rounded">
-                    ⏳ {current.metadata?.daysRemaining ?? 13} days remaining
-                  </span>
-                ) : (
-                  <span className="text-rose-300 text-[10px] font-black bg-rose-500/20 px-2 py-0.5 rounded">
-                    🔴 Applications Closed
-                  </span>
-                )}
-              </div>
-
-              {/* Requirements */}
-              {current.metadata?.requirements && current.metadata.requirements.length > 0 && (
-                <div className="space-y-1 text-xs text-slate-200">
-                  <span className="text-[10px] font-bold text-slate-400 block uppercase">Requirements:</span>
-                  <div className="grid grid-cols-2 gap-1">
-                    {current.metadata.requirements.map((req, i) => (
-                      <div key={i} className="flex items-center gap-1 text-[11px]">
-                        <Check className="w-3 h-3 text-emerald-400 stroke-[3]" />
-                        <span className="truncate">{req}</span>
-                      </div>
-                    ))}
+            !isCardHidden ? (
+              <div className="p-3.5 rounded-2xl bg-[#0F1426]/90 backdrop-blur-md border border-amber-500/30 space-y-2.5 shadow-2xl transition-all animate-in fade-in duration-200">
+                <div className="flex items-center justify-between gap-2">
+                  <div className="min-w-0">
+                    <h4 className="font-black text-sm sm:text-base text-white flex items-center gap-1.5 truncate">
+                      <Briefcase className="w-4 h-4 text-amber-400 shrink-0" />
+                      <span className="truncate">{current.metadata?.jobTitle || 'Waiter / Waitress'}</span>
+                    </h4>
+                    <span className="text-[11px] text-amber-300 font-bold truncate block">
+                      {current.metadata?.companyName || current.authorName} • {current.location || 'Masaki, Dar es Salaam'}
+                    </span>
+                  </div>
+                  <div className="flex items-center gap-1.5 shrink-0">
+                    <span className="px-2 py-0.5 rounded-xl bg-amber-500/20 text-amber-300 font-black text-xs border border-amber-500/30">
+                      ⏱️ {current.metadata?.employmentType || 'Full Time'}
+                    </span>
+                    <button
+                      type="button"
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        setIsCardHidden(true);
+                      }}
+                      className="flex items-center gap-1 px-2 py-1 rounded-xl bg-white/10 hover:bg-white/20 active:scale-95 text-slate-200 hover:text-white text-[11px] font-bold border border-white/15 transition-all shadow-sm shrink-0"
+                      title="Ficha kazi (Hide)"
+                    >
+                      <EyeOff className="w-3.5 h-3.5 text-amber-400 stroke-[2.2]" />
+                      <span>Ficha</span>
+                    </button>
                   </div>
                 </div>
-              )}
 
-              {/* Action Buttons: [📄 Apply Now] and [💬 Chat Now] */}
-              <div className="grid grid-cols-2 gap-2 pt-1">
+                {/* Salary & Deadline Banner */}
+                <div className="flex items-center justify-between text-xs p-2 rounded-xl bg-black/40 border border-white/5">
+                  <div className="flex items-center gap-1.5">
+                    <span className="text-amber-400 font-bold">💰 Mshahara:</span>
+                    <span className="text-white font-mono font-bold">
+                      {current.metadata?.isSalaryNegotiable
+                        ? 'Negotiable'
+                        : current.metadata?.salaryMin
+                        ? `TSh ${current.metadata.salaryMin.toLocaleString()} – ${(current.metadata.salaryMax || 600000).toLocaleString()}`
+                        : 'TSh 400,000 – 600,000'}
+                    </span>
+                  </div>
+                  {(current.metadata?.daysRemaining ?? 13) > 0 && !current.metadata?.isClosed ? (
+                    <span className="text-amber-300 text-[10px] font-black bg-amber-500/20 px-2 py-0.5 rounded">
+                      ⏳ {current.metadata?.daysRemaining ?? 13} days remaining
+                    </span>
+                  ) : (
+                    <span className="text-rose-300 text-[10px] font-black bg-rose-500/20 px-2 py-0.5 rounded">
+                      🔴 Applications Closed
+                    </span>
+                  )}
+                </div>
+
+                {/* Requirements */}
+                {current.metadata?.requirements && current.metadata.requirements.length > 0 && (
+                  <div className="space-y-1 text-xs text-slate-200">
+                    <span className="text-[10px] font-bold text-slate-400 block uppercase">Requirements:</span>
+                    <div className="grid grid-cols-2 gap-1">
+                      {current.metadata.requirements.map((req, i) => (
+                        <div key={i} className="flex items-center gap-1 text-[11px]">
+                          <Check className="w-3 h-3 text-emerald-400 stroke-[3]" />
+                          <span className="truncate">{req}</span>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                )}
+
+                {/* Action Buttons: [📄 Apply Now] and [💬 Chat Now] */}
+                <div className="grid grid-cols-2 gap-2 pt-1">
+                  <button
+                    type="button"
+                    onClick={() => setIsJobApplicationOpen(true)}
+                    className="py-2.5 px-3 rounded-xl bg-emerald-500 hover:bg-emerald-400 text-slate-950 font-black text-xs flex items-center justify-center gap-1.5 shadow-md shadow-emerald-500/25 active:scale-95 transition-all"
+                  >
+                    <Briefcase className="w-3.5 h-3.5 stroke-[2.5]" />
+                    <span>📄 Apply Now</span>
+                  </button>
+                  <button
+                    type="button"
+                    onClick={handleChatNow}
+                    className="py-2.5 px-3 rounded-xl bg-white/10 hover:bg-white/15 text-white font-bold text-xs flex items-center justify-center gap-1.5 active:scale-95 transition-all"
+                  >
+                    <MessageCircle className="w-3.5 h-3.5" />
+                    <span>💬 Chat Now</span>
+                  </button>
+                </div>
+              </div>
+            ) : (
+              /* Unhide / Onyesha Pill for Job */
+              <div className="flex items-center justify-between p-2 px-3 rounded-2xl bg-[#0F1426]/90 backdrop-blur-xl border border-amber-500/40 shadow-2xl animate-in fade-in slide-in-from-bottom-2 duration-200 gap-2">
+                <div className="flex items-center gap-2 min-w-0 flex-1">
+                  <div className="w-7 h-7 sm:w-8 sm:h-8 rounded-lg bg-amber-500/20 border border-amber-500/30 flex items-center justify-center text-base shrink-0">
+                    💼
+                  </div>
+                  <div className="min-w-0 flex-1">
+                    <p className="text-xs font-black text-white truncate">
+                      {current.metadata?.jobTitle || 'Nafasi ya Kazi'}
+                    </p>
+                    <p className="text-[10px] text-amber-300/80 font-medium truncate">
+                      Maelezo yamefichwa • Gusa kuonyesha
+                    </p>
+                  </div>
+                </div>
                 <button
                   type="button"
-                  onClick={() => setIsJobApplicationOpen(true)}
-                  className="py-2.5 px-3 rounded-xl bg-emerald-500 hover:bg-emerald-400 text-slate-950 font-black text-xs flex items-center justify-center gap-1.5 shadow-md shadow-emerald-500/25 active:scale-95 transition-all"
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    setIsCardHidden(false);
+                  }}
+                  className="flex items-center gap-1.5 px-2.5 py-1.5 rounded-xl bg-amber-500 hover:bg-amber-400 text-slate-950 font-bold text-xs shadow-md active:scale-95 transition-all shrink-0"
+                  title="Onyesha kazi tena (Unhide)"
                 >
-                  <Briefcase className="w-3.5 h-3.5 stroke-[2.5]" />
-                  <span>📄 Apply Now</span>
-                </button>
-                <button
-                  type="button"
-                  onClick={handleChatNow}
-                  className="py-2.5 px-3 rounded-xl bg-white/10 hover:bg-white/15 text-white font-bold text-xs flex items-center justify-center gap-1.5 active:scale-95 transition-all"
-                >
-                  <MessageCircle className="w-3.5 h-3.5" />
-                  <span>💬 Chat Now</span>
+                  <Eye className="w-3.5 h-3.5 stroke-[2.5]" />
+                  <span>Onyesha</span>
                 </button>
               </div>
-            </div>
+            )
           )}
 
           {/* Caption */}
