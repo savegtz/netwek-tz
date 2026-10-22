@@ -5,7 +5,7 @@
 
 import React, { useState, useEffect } from 'react';
 import { onAuthStateChanged, signOut } from 'firebase/auth';
-import { doc, getDoc, setDoc } from 'firebase/firestore';
+import { doc, getDoc, setDoc, collection, onSnapshot } from 'firebase/firestore';
 import { auth, db } from './services/firebase/config';
 import { UserProfile, Conversation, StatusType, StatusItem, NotificationItem, isUserAdmin, ChatMessage } from './types';
 import { INITIAL_USER, INITIAL_CONVERSATIONS, INITIAL_NOTIFICATIONS } from './services/seed/initialData';
@@ -341,6 +341,61 @@ export default function App() {
       );
     } catch {}
   }, [notifications, currentUser?.id]);
+
+  // Real-time Firestore notification stream for instant cross-device alerts
+  useEffect(() => {
+    const targetId = currentUser?.id || activeUser.id;
+    if (!targetId || targetId === 'guest') return;
+
+    try {
+      const notifsCol = collection(db, 'notifications');
+      const unsub = onSnapshot(
+        notifsCol,
+        (snapshot) => {
+          if (!snapshot.empty) {
+            const remoteNotifs: NotificationItem[] = [];
+            snapshot.forEach((snap) => {
+              const data = snap.data() as NotificationItem;
+              const matchesUser =
+                data.userId === targetId ||
+                (currentUser?.email && data.userId === currentUser.email) ||
+                (targetId === 'current_user_id' && (data.userId === 'current_user_id' || data.userId === 'savegamour@gmail.com'));
+
+              if (matchesUser) {
+                remoteNotifs.push({
+                  ...data,
+                  id: snap.id,
+                });
+              }
+            });
+
+            if (remoteNotifs.length > 0) {
+              setNotifications((prev) => {
+                const map = new Map<string, NotificationItem>();
+                // First insert remote ones
+                remoteNotifs.forEach((n) => map.set(n.id, n));
+                // Then local non-overwritten ones
+                prev.forEach((n) => {
+                  if (!map.has(n.id)) {
+                    map.set(n.id, n);
+                  }
+                });
+                return Array.from(map.values()).sort(
+                  (a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime()
+                );
+              });
+            }
+          }
+        },
+        (err) => {
+          console.warn('Real-time notifications notice:', err);
+        }
+      );
+      return () => unsub();
+    } catch (e) {
+      console.warn('Failed to listen to Firestore notifications:', e);
+    }
+  }, [currentUser?.id, currentUser?.email, activeUser.id]);
 
   const handleSignOut = async () => {
     try {

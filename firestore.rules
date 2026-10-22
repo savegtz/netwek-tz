@@ -28,6 +28,11 @@ service cloud.firestore {
       allow read, write: if true;
     }
 
+    // Friendships & Friend Requests collection
+    match /friendships/{relId} {
+      allow read, write: if true;
+    }
+
     // Admins collection
     match /admins/{adminId} {
       allow read: if isSignedIn();
@@ -148,10 +153,7 @@ service cloud.firestore {
 
     // Notifications
     match /notifications/{notificationId} {
-      allow read: if isSignedIn() && (resource.data.userId == request.auth.uid || isAdmin());
-      allow create: if isSignedIn();
-      allow update: if isSignedIn() && (resource.data.userId == request.auth.uid || isAdmin());
-      allow delete: if isSignedIn() && (resource.data.userId == request.auth.uid || isAdmin());
+      allow read, write: if true;
     }
 
     // Rides

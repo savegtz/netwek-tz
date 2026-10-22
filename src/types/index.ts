@@ -593,12 +593,14 @@ export interface FriendRelationship {
     displayName: string;
     photoURL?: string;
     username?: string;
+    email?: string;
   };
   receiverDetails?: {
     id: string;
     displayName: string;
     photoURL?: string;
     username?: string;
+    email?: string;
   };
   createdAt: string;
   updatedAt?: string;

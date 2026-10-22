@@ -214,12 +214,33 @@
         "createdAt": { "type": "string" }
       },
       "required": ["id", "userId", "title", "message", "type", "createdAt"]
+    },
+    "Friendship": {
+      "title": "Friendship",
+      "description": "Friendship relationship and friend requests between users",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string", "maxLength": 256 },
+        "userA": { "type": "string", "maxLength": 128 },
+        "userB": { "type": "string", "maxLength": 128 },
+        "status": { "type": "string", "enum": ["none", "pending", "friends", "declined"] },
+        "requestedBy": { "type": "string", "maxLength": 128 },
+        "senderDetails": { "type": "object" },
+        "receiverDetails": { "type": "object" },
+        "createdAt": { "type": "string" },
+        "updatedAt": { "type": "string" }
+      },
+      "required": ["id", "userA", "userB", "status", "requestedBy", "createdAt"]
     }
   },
   "firestore": {
     "/users/{userId}": {
       "schema": { "$ref": "#/entities/User" },
       "description": "User profile collection"
+    },
+    "/friendships/{relId}": {
+      "schema": { "$ref": "#/entities/Friendship" },
+      "description": "Friendships and friend requests"
     },
     "/conversations/{conversationId}": {
       "schema": { "$ref": "#/entities/Conversation" },

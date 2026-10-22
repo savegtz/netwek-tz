@@ -1,7 +1,9 @@
+import { collection, doc, onSnapshot, setDoc, deleteDoc } from 'firebase/firestore';
+import { db } from '../firebase/config';
 import { FriendshipStatus, FriendRelationship } from '../../types';
 import { userService } from './userService';
 
-const FRIENDSHIPS_STORAGE_KEY = 'zenia_friend_relationships_v2';
+const FRIENDSHIPS_STORAGE_KEY = 'zenia_friend_relationships_v3';
 const FRIENDSHIP_EVENT = 'zenia_friendship_updated';
 
 // Cross-tab broadcast channel for immediate multi-window syncing
@@ -12,19 +14,20 @@ const friendshipBroadcast =
 
 export function normalizeUserId(id: string): string {
   if (!id) return id;
-  if (id === 'user_sarah' || id === 'u_3' || id === 'sarah_m' || id === 'user_sarah_mwangi') return 'user_sarah_m';
-  if (id === 'user_alex' || id === 'u_2' || id === 'alex_k' || id === 'user_alex_kanyama') return 'user_alex_k';
-  if (id === 'u_1' || id === 'fresh_kk' || id === 'user_freshkk') return 'user_fresh_kk';
-  if (id === 'u_4' || id === 'baraka_moto' || id === 'user_baraka') return 'user_baraka_m';
-  if (id === 'user_amina_1' || id === 'user_amina_kaunga' || id === 'amina_kaunga') return 'current_user_id';
-  return id;
+  const clean = id.trim();
+  if (clean === 'user_sarah' || clean === 'u_3' || clean === 'sarah_m' || clean === 'user_sarah_mwangi') return 'user_sarah_m';
+  if (clean === 'user_alex' || clean === 'u_2' || clean === 'alex_k' || clean === 'user_alex_kanyama') return 'user_alex_k';
+  if (clean === 'u_1' || clean === 'fresh_kk' || clean === 'user_freshkk') return 'user_fresh_kk';
+  if (clean === 'u_4' || clean === 'baraka_moto' || clean === 'user_baraka') return 'user_baraka_m';
+  if (clean === 'user_amina_1' || clean === 'user_amina_kaunga' || clean === 'amina_kaunga') return 'current_user_id';
+  return clean;
 }
 
-function makeRelId(id1: string, id2: string): string {
-  const norm1 = normalizeUserId(id1);
-  const norm2 = normalizeUserId(id2);
+export function makeRelId(id1: string, id2: string): string {
+  const norm1 = normalizeUserId(id1).replace(/[\/\\\s]/g, '_');
+  const norm2 = normalizeUserId(id2).replace(/[\/\\\s]/g, '_');
   const [first, second] = [norm1, norm2].sort();
-  return `${first}:::${second}`;
+  return `${first}___${second}`;
 }
 
 const DEFAULT_RELATIONSHIPS: Record<string, FriendRelationship> = {
@@ -76,6 +79,8 @@ const DEFAULT_RELATIONSHIPS: Record<string, FriendRelationship> = {
 class FriendshipServiceImpl {
   private listeners: Set<() => void> = new Set();
   private relationships: Record<string, FriendRelationship> = {};
+  private unsubscribeFirestore: (() => void) | null = null;
+  private hasInitializedFirestore = false;
 
   constructor() {
     this.relationships = this.loadFromStorage();
@@ -101,6 +106,56 @@ class FriendshipServiceImpl {
         this.notifyListeners();
       });
     }
+
+    // Initialize real-time Cloud Firestore sync
+    this.initFirestoreSync();
+  }
+
+  /**
+   * Real-time Cloud Firestore synchronizer
+   * Automatically streams all friendships and friend requests from the shared Firestore
+   * database across devices, accounts, and browsers.
+   */
+  public initFirestoreSync() {
+    if (this.hasInitializedFirestore) return;
+    this.hasInitializedFirestore = true;
+
+    try {
+      const friendshipsCol = collection(db, 'friendships');
+      this.unsubscribeFirestore = onSnapshot(
+        friendshipsCol,
+        (snapshot) => {
+          let hasChanges = false;
+
+          snapshot.docChanges().forEach((change) => {
+            const docId = change.doc.id;
+            if (change.type === 'removed') {
+              if (this.relationships[docId]) {
+                delete this.relationships[docId];
+                hasChanges = true;
+              }
+            } else {
+              const data = change.doc.data() as FriendRelationship;
+              this.relationships[docId] = {
+                ...data,
+                id: docId,
+              };
+              hasChanges = true;
+            }
+          });
+
+          if (hasChanges) {
+            this.saveToStorage(this.relationships, false);
+            this.notifyListeners();
+          }
+        },
+        (error) => {
+          console.warn('Firestore friendships real-time sync notice:', error);
+        }
+      );
+    } catch (err) {
+      console.warn('Could not initialize Firestore friendships listener:', err);
+    }
   }
 
   private loadFromStorage(): Record<string, FriendRelationship> {
@@ -108,23 +163,25 @@ class FriendshipServiceImpl {
     try {
       const raw = localStorage.getItem(FRIENDSHIPS_STORAGE_KEY);
       if (raw) {
-        return JSON.parse(raw);
+        const parsed = JSON.parse(raw);
+        return { ...DEFAULT_RELATIONSHIPS, ...parsed };
       }
     } catch (e) {
       console.warn('Failed to parse relationships from localStorage', e);
     }
-    // Save defaults
-    this.saveToStorage(DEFAULT_RELATIONSHIPS);
+    this.saveToStorage(DEFAULT_RELATIONSHIPS, false);
     return { ...DEFAULT_RELATIONSHIPS };
   }
 
-  private saveToStorage(data: Record<string, FriendRelationship>) {
+  private saveToStorage(data: Record<string, FriendRelationship>, broadcast = true) {
     if (typeof window === 'undefined') return;
     try {
       localStorage.setItem(FRIENDSHIPS_STORAGE_KEY, JSON.stringify(data));
-      window.dispatchEvent(new CustomEvent(FRIENDSHIP_EVENT));
-      if (friendshipBroadcast) {
-        friendshipBroadcast.postMessage({ type: 'SYNC' });
+      if (broadcast) {
+        window.dispatchEvent(new CustomEvent(FRIENDSHIP_EVENT));
+        if (friendshipBroadcast) {
+          friendshipBroadcast.postMessage({ type: 'SYNC' });
+        }
       }
     } catch (e) {
       console.warn('Failed to save relationships to localStorage', e);
@@ -152,6 +209,58 @@ class FriendshipServiceImpl {
   }
 
   /**
+   * Helper to check if a relationship matches two target users
+   */
+  private findRelationship(user1: string, user2: string): FriendRelationship | null {
+    if (!user1 || !user2) return null;
+    const relIdModern = makeRelId(user1, user2);
+    if (this.relationships[relIdModern]) {
+      return this.relationships[relIdModern];
+    }
+
+    // Try legacy format with ':::'
+    const norm1 = normalizeUserId(user1);
+    const norm2 = normalizeUserId(user2);
+    const [first, second] = [norm1, norm2].sort();
+    const legacyKey = `${first}:::${second}`;
+    if (this.relationships[legacyKey]) {
+      return this.relationships[legacyKey];
+    }
+
+    // Search across all relationships with robust fuzzy identification
+    const allRels = Object.values(this.relationships);
+    for (const rel of allRels) {
+      const matchA =
+        rel.userA === user1 ||
+        rel.userA === norm1 ||
+        rel.senderDetails?.id === user1 ||
+        rel.receiverDetails?.id === user1;
+      const matchB =
+        rel.userB === user2 ||
+        rel.userB === norm2 ||
+        rel.senderDetails?.id === user2 ||
+        rel.receiverDetails?.id === user2;
+
+      const reverseMatchA =
+        rel.userA === user2 ||
+        rel.userA === norm2 ||
+        rel.senderDetails?.id === user2 ||
+        rel.receiverDetails?.id === user2;
+      const reverseMatchB =
+        rel.userB === user1 ||
+        rel.userB === norm1 ||
+        rel.senderDetails?.id === user1 ||
+        rel.receiverDetails?.id === user1;
+
+      if ((matchA && matchB) || (reverseMatchA && reverseMatchB)) {
+        return rel;
+      }
+    }
+
+    return null;
+  }
+
+  /**
    * Determine exact friendship status between two users
    */
   public getFriendshipStatus(currentUserId: string, targetUserId: string): FriendshipStatus {
@@ -169,8 +278,7 @@ class FriendshipServiceImpl {
       return 'none';
     }
 
-    const relId = makeRelId(currentUserId, targetUserId);
-    const rel = this.relationships[relId];
+    const rel = this.findRelationship(currentUserId, targetUserId);
 
     if (!rel || rel.status === 'none' || rel.status === 'declined') {
       return 'none';
@@ -181,7 +289,15 @@ class FriendshipServiceImpl {
     }
 
     if (rel.status === 'pending') {
-      if (rel.requestedBy === currentUserId) {
+      const normCurrent = normalizeUserId(currentUserId);
+      const normRequestedBy = normalizeUserId(rel.requestedBy);
+
+      const isRequestedByMe =
+        rel.requestedBy === currentUserId ||
+        normRequestedBy === normCurrent ||
+        rel.senderDetails?.id === currentUserId;
+
+      if (isRequestedByMe) {
         return 'pending_sent';
       } else {
         return 'pending_received';
@@ -199,18 +315,18 @@ class FriendshipServiceImpl {
   }
 
   /**
-   * Send a friend request from sender to receiver
+   * Send a friend request from sender to receiver.
+   * Writes in real time to Cloud Firestore and posts a notification.
    */
-  public sendFriendRequest(
-    sender: { id: string; displayName: string; photoURL?: string; username?: string },
-    receiver: { id: string; displayName: string; photoURL?: string; username?: string }
-  ): boolean {
+  public async sendFriendRequest(
+    sender: { id: string; displayName: string; photoURL?: string; username?: string; email?: string },
+    receiver: { id: string; displayName: string; photoURL?: string; username?: string; email?: string }
+  ): Promise<boolean> {
     if (!sender.id || !receiver.id || sender.id === receiver.id) return false;
 
-    const relId = makeRelId(sender.id, receiver.id);
-    const existing = this.relationships[relId];
+    const existing = this.findRelationship(sender.id, receiver.id);
 
-    // If already friends, no need to send
+    // If already friends, no need to send again
     if (existing?.status === 'friends') return true;
 
     // If receiver had already requested sender, auto-accept as mutual friend!
@@ -218,30 +334,67 @@ class FriendshipServiceImpl {
       return this.acceptFriendRequest(sender.id, receiver.id);
     }
 
+    const relId = makeRelId(sender.id, receiver.id);
+
     const updatedRel: FriendRelationship = {
       id: relId,
       userA: sender.id,
       userB: receiver.id,
       status: 'pending',
       requestedBy: sender.id,
-      senderDetails: sender,
-      receiverDetails: receiver,
+      senderDetails: {
+        id: sender.id,
+        displayName: sender.displayName || 'Mwanachama wa Zenia',
+        photoURL: sender.photoURL || '',
+        username: sender.username || '',
+        email: sender.email,
+      },
+      receiverDetails: {
+        id: receiver.id,
+        displayName: receiver.displayName || 'Mwanachama wa Zenia',
+        photoURL: receiver.photoURL || '',
+        username: receiver.username || '',
+        email: receiver.email,
+      },
       createdAt: new Date().toISOString(),
       updatedAt: new Date().toISOString(),
     };
 
+    // Instant local UI state update
     this.relationships[relId] = updatedRel;
     this.saveToStorage(this.relationships);
     this.notifyListeners();
+
+    // Write to Firestore in real time
+    try {
+      await setDoc(doc(db, 'friendships', relId), updatedRel, { merge: true });
+
+      // Create a notification for the receiver so they get alerted in real time
+      const notifId = `notif_friend_${Date.now()}_${Math.random().toString(36).substring(2, 7)}`;
+      await setDoc(doc(db, 'notifications', notifId), {
+        id: notifId,
+        userId: receiver.id,
+        title: 'Ombi Jipya la Urafiki 👥',
+        message: `${sender.displayName} (@${sender.username || 'user'}) amekutumia ombi la urafiki kwenye Zenia!`,
+        type: 'follow',
+        read: false,
+        avatar: sender.photoURL || '',
+        createdAt: new Date().toISOString(),
+      });
+    } catch (err) {
+      console.warn('Firestore write warning in sendFriendRequest:', err);
+    }
+
     return true;
   }
 
   /**
-   * Accept an incoming friend request
+   * Accept an incoming friend request.
+   * Syncs to Cloud Firestore and notifies the requester.
    */
-  public acceptFriendRequest(currentUserId: string, targetUserId: string): boolean {
-    const relId = makeRelId(currentUserId, targetUserId);
-    const existing = this.relationships[relId];
+  public async acceptFriendRequest(currentUserId: string, targetUserId: string): Promise<boolean> {
+    const existing = this.findRelationship(currentUserId, targetUserId);
+    const relId = existing?.id || makeRelId(currentUserId, targetUserId);
 
     const updatedRel: FriendRelationship = {
       ...(existing || {
@@ -258,14 +411,44 @@ class FriendshipServiceImpl {
     this.relationships[relId] = updatedRel;
     this.saveToStorage(this.relationships);
     this.notifyListeners();
+
+    try {
+      await setDoc(
+        doc(db, 'friendships', relId),
+        {
+          ...updatedRel,
+          status: 'friends',
+          updatedAt: new Date().toISOString(),
+        },
+        { merge: true }
+      );
+
+      // Create notification for the requester that their request was accepted
+      const requesterId = existing?.requestedBy || targetUserId;
+      const notifId = `notif_acc_${Date.now()}_${Math.random().toString(36).substring(2, 7)}`;
+      await setDoc(doc(db, 'notifications', notifId), {
+        id: notifId,
+        userId: requesterId,
+        title: 'Ombi la Urafiki Limekubaliwa! 🎉',
+        message: `Mwanachama amekubali ombi lako la urafiki. Sasa mnaweza kuchati na kupigiana simu bila kikwazo!`,
+        type: 'follow',
+        read: false,
+        createdAt: new Date().toISOString(),
+      });
+    } catch (err) {
+      console.warn('Firestore write warning in acceptFriendRequest:', err);
+    }
+
     return true;
   }
 
   /**
    * Decline an incoming friend request
    */
-  public declineFriendRequest(currentUserId: string, targetUserId: string): boolean {
-    const relId = makeRelId(currentUserId, targetUserId);
+  public async declineFriendRequest(currentUserId: string, targetUserId: string): Promise<boolean> {
+    const existing = this.findRelationship(currentUserId, targetUserId);
+    const relId = existing?.id || makeRelId(currentUserId, targetUserId);
+
     if (this.relationships[relId]) {
       this.relationships[relId] = {
         ...this.relationships[relId],
@@ -274,37 +457,66 @@ class FriendshipServiceImpl {
       };
       this.saveToStorage(this.relationships);
       this.notifyListeners();
-      return true;
     }
-    return false;
+
+    try {
+      await setDoc(
+        doc(db, 'friendships', relId),
+        {
+          status: 'declined',
+          updatedAt: new Date().toISOString(),
+        },
+        { merge: true }
+      );
+    } catch (err) {
+      console.warn('Firestore write warning in declineFriendRequest:', err);
+    }
+
+    return true;
   }
 
   /**
    * Cancel a pending sent friend request
    */
-  public cancelFriendRequest(currentUserId: string, targetUserId: string): boolean {
-    const relId = makeRelId(currentUserId, targetUserId);
+  public async cancelFriendRequest(currentUserId: string, targetUserId: string): Promise<boolean> {
+    const existing = this.findRelationship(currentUserId, targetUserId);
+    const relId = existing?.id || makeRelId(currentUserId, targetUserId);
+
     if (this.relationships[relId]) {
       delete this.relationships[relId];
       this.saveToStorage(this.relationships);
       this.notifyListeners();
-      return true;
     }
-    return false;
+
+    try {
+      await deleteDoc(doc(db, 'friendships', relId));
+    } catch (err) {
+      console.warn('Firestore delete warning in cancelFriendRequest:', err);
+    }
+
+    return true;
   }
 
   /**
    * Remove friend (Unfriend)
    */
-  public unfriend(currentUserId: string, targetUserId: string): boolean {
-    const relId = makeRelId(currentUserId, targetUserId);
+  public async unfriend(currentUserId: string, targetUserId: string): Promise<boolean> {
+    const existing = this.findRelationship(currentUserId, targetUserId);
+    const relId = existing?.id || makeRelId(currentUserId, targetUserId);
+
     if (this.relationships[relId]) {
       delete this.relationships[relId];
       this.saveToStorage(this.relationships);
       this.notifyListeners();
-      return true;
     }
-    return false;
+
+    try {
+      await deleteDoc(doc(db, 'friendships', relId));
+    } catch (err) {
+      console.warn('Firestore delete warning in unfriend:', err);
+    }
+
+    return true;
   }
 
   /**
@@ -313,17 +525,31 @@ class FriendshipServiceImpl {
   public getFriendsList(userId: string): string[] {
     const normUser = normalizeUserId(userId);
     const friends: string[] = [];
+
     Object.values(this.relationships).forEach((rel) => {
       if (rel.status === 'friends') {
         const normA = normalizeUserId(rel.userA);
         const normB = normalizeUserId(rel.userB);
-        if (normA === normUser && !userService.isIdentifierDeleted(rel.userB)) {
+
+        const isUserInA =
+          normA === normUser ||
+          rel.userA === userId ||
+          rel.senderDetails?.id === userId ||
+          rel.receiverDetails?.id === userId;
+        const isUserInB =
+          normB === normUser ||
+          rel.userB === userId ||
+          rel.senderDetails?.id === userId ||
+          rel.receiverDetails?.id === userId;
+
+        if (isUserInA && !userService.isIdentifierDeleted(rel.userB)) {
           friends.push(rel.userB);
-        } else if (normB === normUser && !userService.isIdentifierDeleted(rel.userA)) {
+        } else if (isUserInB && !userService.isIdentifierDeleted(rel.userA)) {
           friends.push(rel.userA);
         }
       }
     });
+
     return Array.from(new Set(friends));
   }
 
@@ -339,13 +565,28 @@ class FriendshipServiceImpl {
    */
   public getPendingRequestsReceived(userId: string): FriendRelationship[] {
     const normUser = normalizeUserId(userId);
+
     return Object.values(this.relationships).filter((rel) => {
       if (rel.status !== 'pending') return false;
+
+      const normReq = normalizeUserId(rel.requestedBy);
+      // If requested by this user, it is not a received request
+      if (normReq === normUser || rel.requestedBy === userId || rel.senderDetails?.id === userId) {
+        return false;
+      }
+
       const normA = normalizeUserId(rel.userA);
       const normB = normalizeUserId(rel.userB);
-      const normReq = normalizeUserId(rel.requestedBy);
-      const isTarget = (normA === normUser || normB === normUser) && normReq !== normUser;
-      const otherId = normA === normUser ? rel.userB : rel.userA;
+
+      const isTarget =
+        normA === normUser ||
+        normB === normUser ||
+        rel.userA === userId ||
+        rel.userB === userId ||
+        rel.receiverDetails?.id === userId ||
+        rel.receiverDetails?.email?.toLowerCase() === userId.toLowerCase();
+
+      const otherId = normA === normUser || rel.userA === userId ? rel.userB : rel.userA;
       return isTarget && !userService.isIdentifierDeleted(otherId);
     });
   }
@@ -355,10 +596,20 @@ class FriendshipServiceImpl {
    */
   public getPendingRequestsSent(userId: string): FriendRelationship[] {
     const normUser = normalizeUserId(userId);
+
     return Object.values(this.relationships).filter((rel) => {
       if (rel.status !== 'pending') return false;
-      const isSender = normalizeUserId(rel.requestedBy) === normUser;
-      const otherId = normalizeUserId(rel.userA) === normUser ? rel.userB : rel.userA;
+
+      const isSender =
+        normalizeUserId(rel.requestedBy) === normUser ||
+        rel.requestedBy === userId ||
+        rel.senderDetails?.id === userId;
+
+      const otherId =
+        normalizeUserId(rel.userA) === normUser || rel.userA === userId
+          ? rel.userB
+          : rel.userA;
+
       return isSender && !userService.isIdentifierDeleted(otherId);
     });
   }
