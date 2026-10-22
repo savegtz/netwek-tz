@@ -105,10 +105,11 @@ export const ChatRoom: React.FC<ChatRoomProps> = ({
   onOpenAuth,
 }) => {
   const currentUserId = currentUser?.id || 'guest';
+  const participants = Array.isArray(conversation.participants) ? conversation.participants : [];
   const otherUserId =
-    conversation.participants.find((p) => p !== currentUserId) ||
-    conversation.participants.find((p) => p !== 'guest') ||
-    conversation.participants[0];
+    participants.find((p) => p !== currentUserId) ||
+    participants.find((p) => p !== 'guest') ||
+    participants[0] || '';
   const otherUser = otherUserId && conversation.participantDetails ? conversation.participantDetails[otherUserId] : null;
   const name = otherUser?.displayName || (conversation.isGroup ? conversation.groupName || 'Chat' : 'Fresh kk');
   const avatar = otherUser?.photoURL || freshKkAvatar;

@@ -488,10 +488,17 @@ export const ChatList: React.FC<ChatListProps> = ({
         q,
         (snapshot) => {
           if (!snapshot.empty) {
-            const fetched = snapshot.docs.map((d) => ({
-              id: d.id,
-              ...d.data(),
-            })) as Conversation[];
+            const fetched = snapshot.docs
+              .map((d) => {
+                const data = d.data() as any;
+                return {
+                  id: d.id,
+                  ...data,
+                  participants: Array.isArray(data.participants) ? data.participants : [],
+                  participantDetails: data.participantDetails || {},
+                };
+              })
+              .filter((c) => Array.isArray(c.participants) && c.participants.length > 0) as Conversation[];
             setConversations(fetched);
           }
         },
@@ -607,7 +614,8 @@ export const ChatList: React.FC<ChatListProps> = ({
 
     if (alsoDeleteUser && !conv.isGroup) {
       const currentUserId = currentUser ? currentUser.id : 'guest';
-      const otherUserId = conv.participants.find((p) => p !== currentUserId) || conv.participants[0];
+      const participants = Array.isArray(conv.participants) ? conv.participants : [];
+      const otherUserId = participants.find((p) => p !== currentUserId) || participants[0] || '';
       const otherUser = otherUserId && conv.participantDetails ? conv.participantDetails[otherUserId] : null;
       if (otherUserId) {
         userService.deleteUser(otherUserId, otherUser?.username, otherUser?.displayName);
@@ -774,18 +782,20 @@ export const ChatList: React.FC<ChatListProps> = ({
 
   const DEMO_IDS = ['conv_1', 'conv_2', 'conv_3', 'conv_4', 'conv_5', 'conv_6'];
 
-  const filteredConversations = conversations
+  const filteredConversations = (conversations || [])
     .filter((c) => {
+      if (!c) return false;
       // Exclude demo conversations as requested by user
       if (DEMO_IDS.includes(c.id)) return false;
 
       const effectiveUserId = currentUser ? currentUser.id : 'guest';
-      const otherId = c.participants.find((p) => p !== effectiveUserId) || '';
-      const other = c.participantDetails?.[otherId];
+      const participants = Array.isArray(c.participants) ? c.participants : [];
+      const otherId = participants.find((p) => p !== effectiveUserId) || participants[0] || '';
+      const other = otherId && c.participantDetails ? c.participantDetails[otherId] : null;
 
       // Exclude conversations with permanently deleted users
       if (!c.isGroup) {
-        if (c.participants?.some((p) => p !== effectiveUserId && userService.isIdentifierDeleted(p))) {
+        if (participants.some((p) => p !== effectiveUserId && userService.isIdentifierDeleted(p))) {
           return false;
         }
         if (other && userService.isUserDeleted(other)) {
@@ -1363,7 +1373,7 @@ export const ChatList: React.FC<ChatListProps> = ({
                               return;
                             }
                             const matchedConv = propConversations?.find(
-                              (c) => !c.isGroup && c.participants.includes(log.remoteUserId)
+                              (c) => !c.isGroup && Array.isArray(c.participants) && c.participants.includes(log.remoteUserId)
                             );
                             const syntheticConv: Conversation = matchedConv || {
                               id: `conv_${log.remoteUserId}`,
@@ -1409,7 +1419,7 @@ export const ChatList: React.FC<ChatListProps> = ({
                               return;
                             }
                             const matchedConv = propConversations?.find(
-                              (c) => !c.isGroup && c.participants.includes(log.remoteUserId)
+                              (c) => !c.isGroup && Array.isArray(c.participants) && c.participants.includes(log.remoteUserId)
                             );
                             const syntheticConv: Conversation = matchedConv || {
                               id: `conv_${log.remoteUserId}`,
@@ -1557,7 +1567,8 @@ export const ChatList: React.FC<ChatListProps> = ({
         ) : (
           filteredConversations.map((conv) => {
             const currentUserId = currentUser ? currentUser.id : 'guest';
-            const otherUserId = conv.participants.find((p) => p !== currentUserId) || conv.participants[0];
+            const participants = Array.isArray(conv.participants) ? conv.participants : [];
+            const otherUserId = participants.find((p) => p !== currentUserId) || participants[0] || '';
             const otherUser = otherUserId && conv.participantDetails ? conv.participantDetails[otherUserId] : null;
             const title: string = (conv.isGroup ? conv.groupName : otherUser?.displayName) || 'Direct Chat';
             const avatar = conv.isGroup

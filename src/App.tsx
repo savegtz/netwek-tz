@@ -80,9 +80,12 @@ export default function App() {
 
   // Helper to purge any conversations with deleted users
   const filterDeletedConversations = (convList: Conversation[]) => {
+    if (!Array.isArray(convList)) return [];
     return convList.filter((c) => {
+      if (!c) return false;
       if (c.isGroup) return true;
-      const hasDeleted = c.participants?.some((p) => userService.isIdentifierDeleted(p));
+      const participants = Array.isArray(c.participants) ? c.participants : [];
+      const hasDeleted = participants.some((p) => userService.isIdentifierDeleted(p));
       return !hasDeleted;
     });
   };
@@ -128,6 +131,7 @@ export default function App() {
         } else {
           const normCurrent = normalizeUserId(currentUser.id);
           const relevant = INITIAL_CONVERSATIONS.filter((c) =>
+            Array.isArray(c?.participants) &&
             c.participants.some(
               (p) => p === currentUser.id || normalizeUserId(p) === normCurrent
             )
@@ -271,8 +275,9 @@ export default function App() {
       return;
     }
 
+    const convParticipants = Array.isArray(conv.participants) ? conv.participants : [];
     const otherParticipantId =
-      conv.participants.find((p) => p !== activeUser.id) || 'user_fresh_kk';
+      convParticipants.find((p) => p !== activeUser.id) || 'user_fresh_kk';
     const rName =
       (conv.isGroup
         ? conv.groupName
