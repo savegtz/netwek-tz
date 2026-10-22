@@ -24,6 +24,7 @@ import {
 } from 'lucide-react';
 import { SafeImage } from '../../components/SafeImage';
 import { AVAILABLE_CONTACTS } from '../chat/components/StartNewChatModal';
+import { userDirectoryService } from '../../services/user/userDirectoryService';
 import { userService } from '../../services/user/userService';
 import { friendshipService } from '../../services/user/friendshipService';
 import { UserProfile } from '../../types';
@@ -61,10 +62,16 @@ export const DiscoverView: React.FC<DiscoverViewProps> = ({
   const [peopleFilter, setPeopleFilter] = useState<'all' | 'friends' | 'requests'>('all');
   const [, setRefreshTick] = useState(0);
   const [toastMessage, setToastMessage] = useState<string | null>(null);
+  const [directoryUsers, setDirectoryUsers] = useState<UserProfile[]>(() =>
+    userDirectoryService.getAllUsers()
+  );
 
   const effectiveCurrentUserId = currentUser?.id || 'current_user_id';
 
   useEffect(() => {
+    const unsubDir = userDirectoryService.subscribe((users) => {
+      setDirectoryUsers(users);
+    });
     const unsubUser = userService.subscribe(() => {
       setRefreshTick((t) => t + 1);
     });
@@ -72,6 +79,7 @@ export const DiscoverView: React.FC<DiscoverViewProps> = ({
       setRefreshTick((t) => t + 1);
     });
     return () => {
+      unsubDir();
       unsubUser();
       unsubFriendship();
     };
@@ -126,7 +134,7 @@ export const DiscoverView: React.FC<DiscoverViewProps> = ({
   ];
 
   // Filter people list based on active subfilter and search query
-  const allActivePeople = AVAILABLE_CONTACTS.filter(
+  const allActivePeople = directoryUsers.filter(
     (p) => !userService.isUserDeleted(p) && p.id !== effectiveCurrentUserId
   );
 
@@ -144,9 +152,10 @@ export const DiscoverView: React.FC<DiscoverViewProps> = ({
     if (!searchQuery.trim()) return true;
     const q = searchQuery.toLowerCase();
     return (
-      p.displayName.toLowerCase().includes(q) ||
-      p.username.toLowerCase().includes(q) ||
-      p.bio.toLowerCase().includes(q)
+      (p.displayName || '').toLowerCase().includes(q) ||
+      (p.username || '').toLowerCase().includes(q) ||
+      (p.email || '').toLowerCase().includes(q) ||
+      (p.bio || '').toLowerCase().includes(q)
     );
   });
 

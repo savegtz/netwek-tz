@@ -4,6 +4,7 @@ import { UserProfile } from '../../../types';
 import { SafeImage } from '../../../components/SafeImage';
 import { userService } from '../../../services/user/userService';
 import { friendshipService } from '../../../services/user/friendshipService';
+import { userDirectoryService, FIREBASE_AUTH_USERS_SEEDS } from '../../../services/user/userDirectoryService';
 import freshKkAvatar from '../../../assets/images/fresh_kk_avatar_1791078365294.jpg';
 
 interface StartNewChatModalProps {
@@ -18,48 +19,8 @@ interface StartNewChatModalProps {
   }) => void;
 }
 
-export const AVAILABLE_CONTACTS = [
-  {
-    id: 'user_fresh_kk',
-    displayName: 'Fresh kk',
-    username: 'fresh_kk',
-    photoURL: freshKkAvatar,
-    bio: 'Muuzaji wa Vifaa vya Kielektroniki | Kariakoo',
-    isOnline: true,
-  },
-  {
-    id: 'user_sarah_m',
-    displayName: 'Sarah Mwangi',
-    username: 'sarah_m',
-    photoURL: '/assets/images/sarah_avatar_1790802224123.jpg',
-    bio: 'Mjasiriamali & Mbunifu wa Mitindo | Dar',
-    isOnline: true,
-  },
-  {
-    id: 'user_alex_k',
-    displayName: 'Alex Kanyama',
-    username: 'alex_k',
-    photoURL: '/assets/images/alex_avatar_1790802235334.jpg',
-    bio: 'Mhandisi wa Programu & Tech Enthusiast',
-    isOnline: false,
-  },
-  {
-    id: 'user_amina_kaunga',
-    displayName: 'Amina Kaunga',
-    username: 'amina_kaunga',
-    photoURL: '/assets/images/amina_avatar_1790280951312.jpg',
-    bio: 'Content Creator & Brand Ambassador',
-    isOnline: true,
-  },
-  {
-    id: 'user_juma_rashid',
-    displayName: 'Juma Rashid',
-    username: 'juma_r',
-    photoURL: 'https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?w=200',
-    bio: 'Dereva wa Zenia Ride & Courier',
-    isOnline: true,
-  },
-];
+// Export dynamic AVAILABLE_CONTACTS backed by real Firebase/Firestore user directory
+export const AVAILABLE_CONTACTS: UserProfile[] = FIREBASE_AUTH_USERS_SEEDS;
 
 export const StartNewChatModal: React.FC<StartNewChatModalProps> = ({
   isOpen,
@@ -68,29 +29,36 @@ export const StartNewChatModal: React.FC<StartNewChatModalProps> = ({
   onSelectUserToChat,
 }) => {
   const [searchQuery, setSearchQuery] = useState('');
-  const [confirmDeleteContact, setConfirmDeleteContact] = useState<typeof AVAILABLE_CONTACTS[0] | null>(null);
+  const [directoryUsers, setDirectoryUsers] = useState<UserProfile[]>(() =>
+    userDirectoryService.getAllUsers()
+  );
+  const [confirmDeleteContact, setConfirmDeleteContact] = useState<UserProfile | null>(null);
   const [deleteToast, setDeleteToast] = useState<string | null>(null);
   const [, setRefreshTick] = useState(0);
 
   useEffect(() => {
-    const unsub = userService.subscribe(() => {
+    const unsubDir = userDirectoryService.subscribe((users) => {
+      setDirectoryUsers(users);
+    });
+    const unsubUser = userService.subscribe(() => {
       setRefreshTick((t) => t + 1);
     });
-    return unsub;
+    return () => {
+      unsubDir();
+      unsubUser();
+    };
   }, []);
 
   if (!isOpen) return null;
 
-  // Filter out any contacts that have been deleted across the application
-  const contactsToDisplay = AVAILABLE_CONTACTS.filter(
-    (c) => c.id !== currentUser.id && !userService.isUserDeleted(c)
-  ).filter(
-    (c) =>
-      c.displayName.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      c.username.toLowerCase().includes(searchQuery.toLowerCase())
-  );
+  // Filter out current user and deleted users across the application
+  const contactsToDisplay = searchQuery.trim()
+    ? userDirectoryService.searchUsers(searchQuery, currentUser?.id)
+    : directoryUsers.filter(
+        (c) => c.id !== currentUser?.id && !userService.isUserDeleted(c)
+      );
 
-  const handleDeleteContact = (contact: typeof AVAILABLE_CONTACTS[0]) => {
+  const handleDeleteContact = (contact: UserProfile) => {
     userService.deleteUser(contact.id, contact.username, contact.displayName);
     setConfirmDeleteContact(null);
     setDeleteToast(`Mawasiliano na @${contact.username} (${contact.displayName}) yamefutwa kabisa!`);
@@ -200,7 +168,7 @@ export const StartNewChatModal: React.FC<StartNewChatModalProps> = ({
                       )}
                     </div>
                     <p className="text-[11px] text-cyan-400/80 font-mono truncate">
-                      @{contact.username}
+                      @{contact.username} {contact.email ? `• ${contact.email}` : ''}
                     </p>
                     <p className="text-[10px] text-slate-400 truncate mt-0.5">{contact.bio}</p>
                   </div>

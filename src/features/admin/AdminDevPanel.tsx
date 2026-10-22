@@ -50,6 +50,7 @@ import {
 import { SafeImage } from '../../components/SafeImage';
 import { AdminVisualCharts } from './AdminVisualCharts';
 import { userService } from '../../services/user/userService';
+import { userDirectoryService } from '../../services/user/userDirectoryService';
 import { businessStatusService, BusinessPromotionRecord } from '../../services/status/businessStatusService';
 import freshKkAvatar from '../../assets/images/fresh_kk_avatar_1791078365294.jpg';
 
@@ -217,6 +218,26 @@ export const AdminDevPanel: React.FC<AdminDevPanelProps> = ({
     ];
     return defaultList.filter((u) => !userService.isUserDeleted(u));
   });
+
+  // Subscribe to live user directory (Firebase Auth & Firestore users)
+  useEffect(() => {
+    const unsub = userDirectoryService.subscribe((users) => {
+      setUsersList((prev) => {
+        const map = new Map<string, UserProfile>();
+        users.forEach((u) => map.set(u.id, u));
+        prev.forEach((u) => {
+          const existing = map.get(u.id);
+          if (existing) {
+            map.set(u.id, { ...existing, ...u });
+          } else {
+            map.set(u.id, u);
+          }
+        });
+        return Array.from(map.values()).filter((u) => !userService.isUserDeleted(u));
+      });
+    });
+    return () => unsub();
+  }, []);
 
   useEffect(() => {
     try {
@@ -744,20 +765,36 @@ export const AdminDevPanel: React.FC<AdminDevPanelProps> = ({
                   />
                 </div>
 
-                <div className="flex items-center gap-1 bg-[#12162A] p-1 rounded-2xl border border-white/5 w-full sm:w-auto overflow-x-auto">
-                  {['all', 'personal', 'creator', 'business'].map((role) => (
-                    <button
-                      key={role}
-                      onClick={() => setUserFilterRole(role as any)}
-                      className={`px-3 py-1.5 rounded-xl text-xs font-bold capitalize transition-all ${
-                        userFilterRole === role
-                          ? 'bg-cyan-500 text-slate-950'
-                          : 'text-slate-400 hover:text-white'
-                      }`}
-                    >
-                      {role}
-                    </button>
-                  ))}
+                <div className="flex items-center gap-2 w-full sm:w-auto">
+                  <div className="flex items-center gap-1 bg-[#12162A] p-1 rounded-2xl border border-white/5 overflow-x-auto">
+                    {['all', 'personal', 'creator', 'business'].map((role) => (
+                      <button
+                        key={role}
+                        onClick={() => setUserFilterRole(role as any)}
+                        className={`px-3 py-1.5 rounded-xl text-xs font-bold capitalize transition-all ${
+                          userFilterRole === role
+                            ? 'bg-cyan-500 text-slate-950'
+                            : 'text-slate-400 hover:text-white'
+                        }`}
+                      >
+                        {role}
+                      </button>
+                    ))}
+                  </div>
+
+                  <button
+                    type="button"
+                    onClick={async () => {
+                      showToast('Inasawazisha watumiaji na Firebase / Firestore...');
+                      await userDirectoryService.seedInitialUsersToFirestore();
+                      showToast('Watumiaji wote wa Firebase Auth wamesawazishwa kwenye Firestore! ✓');
+                    }}
+                    className="flex items-center gap-1.5 px-3 py-2 rounded-2xl bg-cyan-500/20 hover:bg-cyan-500/30 text-cyan-300 font-bold text-xs border border-cyan-500/30 transition-all shrink-0 active:scale-95"
+                    title="Sawazisha watumiaji wote na Cloud Firestore"
+                  >
+                    <RefreshCw className="w-3.5 h-3.5" />
+                    <span className="hidden sm:inline">Sawazisha Firebase</span>
+                  </button>
                 </div>
               </div>
 

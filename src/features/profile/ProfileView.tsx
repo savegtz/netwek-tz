@@ -59,6 +59,7 @@ import { useTheme } from '../../context/ThemeContext';
 import { INITIAL_USER } from '../../services/seed/initialData';
 import { friendshipService } from '../../services/user/friendshipService';
 import { AVAILABLE_CONTACTS } from '../chat/components/StartNewChatModal';
+import { userDirectoryService } from '../../services/user/userDirectoryService';
 
 // Import local image assets
 import aminaAvatar from '../../assets/images/amina_avatar_1790280951312.jpg';
@@ -248,6 +249,10 @@ export const ProfileView: React.FC<ProfileViewProps> = ({
   const friendsCount = friendshipService.getFriendsCount(currentUid);
 
   const getContactInfo = (userId: string) => {
+    const fromDir = userDirectoryService.getAllUsers().find(
+      (c) => c.id === userId || c.email?.toLowerCase() === userId.toLowerCase()
+    );
+    if (fromDir) return fromDir;
     const contact = AVAILABLE_CONTACTS.find((c) => c.id === userId);
     if (contact) return contact;
     if (userId === 'user_fresh_kk') {

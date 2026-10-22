@@ -48,6 +48,7 @@ import { ChatListStatusRow } from '../status/ChatListStatusRow';
 import { ProfilePicturePreviewModal } from './components/ProfilePicturePreviewModal';
 import { StatusIcon } from '../../components/StatusIcon';
 import { AVAILABLE_CONTACTS } from './components/StartNewChatModal';
+import { userDirectoryService } from '../../services/user/userDirectoryService';
 import { CreateGroupModal } from './components/CreateGroupModal';
 import { StarredMessagesModal } from './components/StarredMessagesModal';
 import { AppLockModal } from './components/AppLockModal';
@@ -268,6 +269,18 @@ export const ChatList: React.FC<ChatListProps> = ({
     conversation?: Conversation;
     contact?: any;
   } | null>(null);
+
+  // Live Firestore directory users
+  const [directoryUsers, setDirectoryUsers] = useState<UserProfile[]>(() =>
+    userDirectoryService.getAllUsers()
+  );
+
+  useEffect(() => {
+    const unsub = userDirectoryService.subscribe((users) => {
+      setDirectoryUsers(users);
+    });
+    return () => unsub();
+  }, []);
 
   const handleMarkAllAsRead = () => {
     setConversations((prev) =>
@@ -809,14 +822,7 @@ export const ChatList: React.FC<ChatListProps> = ({
     });
 
   const matchingContacts = searchQuery.trim()
-    ? AVAILABLE_CONTACTS.filter(
-        (c) =>
-          !userService.isUserDeleted(c) &&
-          c.id !== (currentUser ? currentUser.id : 'guest') &&
-          (c.displayName.toLowerCase().includes(searchQuery.toLowerCase()) ||
-            c.username.toLowerCase().includes(searchQuery.toLowerCase()) ||
-            c.bio.toLowerCase().includes(searchQuery.toLowerCase()))
-      )
+    ? userDirectoryService.searchUsers(searchQuery, currentUser ? currentUser.id : undefined)
     : [];
 
   return (
@@ -1182,12 +1188,25 @@ export const ChatList: React.FC<ChatListProps> = ({
                       )}
                     </div>
                     <div className="min-w-0">
-                      <h4 className="font-bold text-xs text-white group-hover:text-cyan-300 truncate">
-                        {contact.displayName}
-                      </h4>
+                      <div className="flex items-center gap-1.5">
+                        <h4 className="font-bold text-xs text-white group-hover:text-cyan-300 truncate">
+                          {contact.displayName}
+                        </h4>
+                        {contact.verified && (
+                          <span className="text-cyan-400 text-xs shrink-0">✓</span>
+                        )}
+                        {contact.role === 'superadmin' && (
+                          <span className="px-1 py-0.2 rounded bg-amber-500/20 text-amber-300 text-[9px] font-black shrink-0">
+                            Admin
+                          </span>
+                        )}
+                      </div>
                       <p className="text-[10px] text-cyan-400/80 font-mono truncate">
-                        @{contact.username} • {contact.bio}
+                        @{contact.username} {contact.email ? `• ${contact.email}` : ''}
                       </p>
+                      {contact.bio && (
+                        <p className="text-[10px] text-slate-400 truncate mt-0.5">{contact.bio}</p>
+                      )}
                     </div>
                   </div>
 
@@ -1489,7 +1508,7 @@ export const ChatList: React.FC<ChatListProps> = ({
                   <span>Marafiki Waliopo Mtandaoni:</span>
                 </p>
                 <div className="space-y-2">
-                  {AVAILABLE_CONTACTS.filter((c) => !userService.isUserDeleted(c) && c.id !== (currentUser ? currentUser.id : 'guest')).slice(0, 3).map((contact) => (
+                  {directoryUsers.filter((c) => !userService.isUserDeleted(c) && c.id !== (currentUser ? currentUser.id : 'guest')).slice(0, 3).map((contact) => (
                     <div
                       key={contact.id}
                       className="flex items-center justify-between gap-2 p-1.5 rounded-xl hover:bg-white/5 transition-colors"
