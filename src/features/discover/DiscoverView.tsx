@@ -27,6 +27,7 @@ import { AVAILABLE_CONTACTS } from '../chat/components/StartNewChatModal';
 import { userDirectoryService } from '../../services/user/userDirectoryService';
 import { userService } from '../../services/user/userService';
 import { friendshipService } from '../../services/user/friendshipService';
+import { isUserOnline, formatUserLastSeen } from '../../services/user/presenceService';
 import { UserProfile } from '../../types';
 
 interface DiscoverViewProps {
@@ -138,17 +139,57 @@ export const DiscoverView: React.FC<DiscoverViewProps> = ({
     (p) => !userService.isUserDeleted(p) && p.id !== effectiveCurrentUserId
   );
 
-  const filteredPeople = allActivePeople.filter((p) => {
-    // 1. Subfilter condition
-    const relStatus = friendshipService.getFriendshipStatus(effectiveCurrentUserId, p.id);
-    if (peopleFilter === 'friends' && relStatus !== 'friends') {
-      return false;
-    }
-    if (peopleFilter === 'requests' && relStatus !== 'pending_received') {
-      return false;
-    }
+  // Build the list of people to display based on the active tab
+  let peopleToDisplay: UserProfile[] = [];
 
-    // 2. Search condition
+  if (peopleFilter === 'requests') {
+    // When viewing 'Maombi', dynamically map all incoming friend requests so every single request is 100% visible
+    peopleToDisplay = pendingReceived.map((req) => {
+      const senderId = req.requestedBy || req.senderDetails?.id || req.userA;
+      const matched = directoryUsers.find(
+        (u) =>
+          u.id === senderId ||
+          (u.email && req.senderDetails?.email && u.email.toLowerCase() === req.senderDetails.email.toLowerCase()) ||
+          (u.username && req.senderDetails?.username && u.username.toLowerCase() === req.senderDetails.username.toLowerCase())
+      );
+
+      if (matched) {
+        return matched;
+      }
+
+      return {
+        id: senderId,
+        displayName: req.senderDetails?.displayName || 'Mwanachama wa Zenia',
+        username: req.senderDetails?.username || senderId.replace(/[^a-z0-9_]/g, '_'),
+        email: req.senderDetails?.email,
+        photoURL: req.senderDetails?.photoURL,
+        bio: 'Amekuomba muwe marafiki kwenye Zenia Network 👋',
+        accountType: 'personal',
+        verified: false,
+        followersCount: 1,
+        followingCount: 1,
+        postsCount: 0,
+        isOnline: false,
+        lastSeen: 'Muda mfupi uliopita',
+      } as UserProfile;
+    });
+  } else if (peopleFilter === 'friends') {
+    // Filter active confirmed friends
+    peopleToDisplay = allActivePeople.filter((p) => {
+      const relStatus = friendshipService.getFriendshipStatus(effectiveCurrentUserId, p.id);
+      return (
+        relStatus === 'friends' ||
+        friendsList.includes(p.id) ||
+        (p.email && friendsList.includes(p.email))
+      );
+    });
+  } else {
+    // All users
+    peopleToDisplay = allActivePeople;
+  }
+
+  const filteredPeople = peopleToDisplay.filter((p) => {
+    // Search condition
     if (!searchQuery.trim()) return true;
     const q = searchQuery.toLowerCase();
     return (
@@ -338,7 +379,8 @@ export const DiscoverView: React.FC<DiscoverViewProps> = ({
                 );
                 const isFriend = relStatus === 'friends';
                 const isPendingSent = relStatus === 'pending_sent';
-                const isPendingReceived = relStatus === 'pending_received';
+                const isPendingReceived = peopleFilter === 'requests' || relStatus === 'pending_received';
+                const isPersonOnline = isUserOnline(person, effectiveCurrentUserId);
 
                 return (
                   <div
@@ -362,8 +404,8 @@ export const DiscoverView: React.FC<DiscoverViewProps> = ({
                             alt={person.displayName}
                             className="w-13 h-13 rounded-2xl object-cover ring-2 ring-white/10 group-hover:ring-cyan-400"
                           />
-                          {person.isOnline && (
-                            <span className="absolute -bottom-0.5 -right-0.5 w-3.5 h-3.5 rounded-full bg-emerald-500 ring-2 ring-[#0E1324]" />
+                          {isPersonOnline && (
+                            <span className="absolute -bottom-0.5 -right-0.5 w-3.5 h-3.5 rounded-full bg-emerald-500 ring-2 ring-[#0E1324] animate-pulse" />
                           )}
                         </div>
 
@@ -400,9 +442,19 @@ export const DiscoverView: React.FC<DiscoverViewProps> = ({
                           </h5>
                           <CheckCircle2 className="w-3.5 h-3.5 text-cyan-400 shrink-0 fill-cyan-400/20" />
                         </div>
-                        <p className="text-[11px] text-cyan-400/80 font-mono truncate">
-                          @{person.username}
-                        </p>
+                        <div className="flex items-center gap-1.5 mt-0.5">
+                          <p className="text-[11px] text-cyan-400/80 font-mono truncate">
+                            @{person.username}
+                          </p>
+                          <span className="text-slate-600 text-[10px]">•</span>
+                          <span
+                            className={`text-[10px] font-medium ${
+                              isPersonOnline ? 'text-emerald-400' : 'text-slate-400'
+                            }`}
+                          >
+                            {isPersonOnline ? 'Online' : formatUserLastSeen(person, isPersonOnline)}
+                          </span>
+                        </div>
                         <p className="text-xs text-slate-400 mt-1 line-clamp-2 leading-relaxed">
                           {person.bio}
                         </p>

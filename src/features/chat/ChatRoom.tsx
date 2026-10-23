@@ -82,6 +82,7 @@ import { ArrowLeftRight } from 'lucide-react';
 import freshKkAvatar from '../../assets/images/fresh_kk_avatar_1791078365294.jpg';
 import { userService } from '../../services/user/userService';
 import { friendshipService } from '../../services/user/friendshipService';
+import { isUserOnline, formatUserLastSeen } from '../../services/user/presenceService';
 
 interface ChatRoomProps {
   conversation: Conversation;
@@ -132,6 +133,11 @@ export const ChatRoom: React.FC<ChatRoomProps> = ({
       : otherUserId
       ? friendshipService.getFriendshipStatus(currentUserId, otherUserId)
       : 'friends';
+
+  const isOtherOnline =
+    !conversation.isGroup && otherUser
+      ? isUserOnline(otherUser, currentUserId)
+      : false;
 
   const [messages, setMessages] = useState<ChatMessage[]>(() => {
     try {
@@ -871,7 +877,9 @@ export const ChatRoom: React.FC<ChatRoomProps> = ({
                   alt={name}
                   className="w-10 h-10 aspect-square rounded-[14px] object-cover ring-2 ring-white/10 group-hover:ring-cyan-400/80 transition-all"
                 />
-                <span className="absolute -bottom-0.5 -right-0.5 w-3 h-3 rounded-full bg-emerald-500 ring-2 ring-[#0D1222]" />
+                {isOtherOnline && (
+                  <span className="absolute -bottom-0.5 -right-0.5 w-3 h-3 rounded-full bg-emerald-500 ring-2 ring-[#0D1222] animate-pulse" />
+                )}
               </div>
 
               <div className="min-w-0">
@@ -885,10 +893,19 @@ export const ChatRoom: React.FC<ChatRoomProps> = ({
                     </span>
                   )}
                 </div>
-                <p className="text-[11px] text-emerald-400 flex items-center gap-1">
-                  <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse" />
-                  <span>
-                    Online •{' '}
+                <div className="text-[11px] flex items-center gap-1 mt-0.5">
+                  {isOtherOnline ? (
+                    <span className="text-emerald-400 font-semibold flex items-center gap-1">
+                      <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse" />
+                      Online
+                    </span>
+                  ) : (
+                    <span className="text-slate-400">
+                      {!conversation.isGroup && otherUser ? formatUserLastSeen(otherUser, false) : 'Offline'}
+                    </span>
+                  )}
+                  <span className="text-slate-600">•</span>
+                  <span className="text-slate-400">
                     {conversation.isGroup
                       ? 'Kikundi'
                       : isFriend
@@ -899,7 +916,7 @@ export const ChatRoom: React.FC<ChatRoomProps> = ({
                       ? 'Ombi Limetumwa'
                       : 'Si Rafiki Bado'}
                   </span>
-                </p>
+                </div>
               </div>
             </div>
           </div>

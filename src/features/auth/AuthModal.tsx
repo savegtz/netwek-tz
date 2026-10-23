@@ -99,6 +99,7 @@ export const AuthModal: React.FC<AuthModalProps> = ({
           followingCount: 0,
           postsCount: 0,
           isOnline: true,
+          lastActiveAt: Date.now(),
           lastSeen: 'Sasa hivi',
           createdAt: new Date().toISOString(),
         };
@@ -121,6 +122,8 @@ export const AuthModal: React.FC<AuthModalProps> = ({
           const userDoc = await getDoc(doc(db, 'users', cred.user.uid));
           if (userDoc.exists()) {
             loggedUser = userDoc.data() as UserProfile;
+            loggedUser.lastActiveAt = Date.now();
+            loggedUser.isOnline = true;
           } else {
             loggedUser = {
               id: cred.user.uid,
@@ -132,6 +135,8 @@ export const AuthModal: React.FC<AuthModalProps> = ({
               followingCount: 0,
               postsCount: 0,
               isOnline: true,
+              lastActiveAt: Date.now(),
+              lastSeen: 'Sasa hivi',
             };
           }
         } catch (firebaseErr: any) {
@@ -147,6 +152,8 @@ export const AuthModal: React.FC<AuthModalProps> = ({
             followingCount: 0,
             postsCount: 0,
             isOnline: true,
+            lastActiveAt: Date.now(),
+            lastSeen: 'Sasa hivi',
           };
         }
 
@@ -175,6 +182,8 @@ export const AuthModal: React.FC<AuthModalProps> = ({
 
       if (userDoc.exists()) {
         userProfile = userDoc.data() as UserProfile;
+        userProfile.lastActiveAt = Date.now();
+        userProfile.isOnline = true;
       } else {
         userProfile = {
           id: cred.user.uid,
@@ -189,6 +198,8 @@ export const AuthModal: React.FC<AuthModalProps> = ({
           followingCount: 0,
           postsCount: 0,
           isOnline: true,
+          lastActiveAt: Date.now(),
+          lastSeen: 'Sasa hivi',
           createdAt: new Date().toISOString(),
         };
         await setDoc(doc(db, 'users', cred.user.uid), userProfile);

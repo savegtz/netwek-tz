@@ -262,7 +262,8 @@ export const ProfileView: React.FC<ProfileViewProps> = ({
         username: 'fresh_kk',
         photoURL: freshKkAvatar,
         bio: 'Muuzaji & Mjasiriamali Kariakoo',
-        isOnline: true,
+        isOnline: false,
+        lastSeen: 'Dakika 45 zilizopita',
       };
     }
     if (userId === 'current_user_id') {
@@ -272,7 +273,8 @@ export const ProfileView: React.FC<ProfileViewProps> = ({
         username: 'amina_kaunga',
         photoURL: aminaAvatar,
         bio: 'Content Creator | Lifestyle',
-        isOnline: true,
+        isOnline: false,
+        lastSeen: 'Muda mfupi uliopita',
       };
     }
     return {
@@ -281,7 +283,8 @@ export const ProfileView: React.FC<ProfileViewProps> = ({
       username: userId.replace('user_', ''),
       photoURL: freshKkAvatar,
       bio: 'Mwanachama wa Zenia',
-      isOnline: true,
+      isOnline: false,
+      lastSeen: 'Muda mrefu uliopita',
     };
   };
 
@@ -361,6 +364,7 @@ export const ProfileView: React.FC<ProfileViewProps> = ({
           followingCount: 0,
           postsCount: 0,
           isOnline: true,
+          lastActiveAt: Date.now(),
           lastSeen: 'Sasa hivi',
           createdAt: new Date().toISOString(),
         };
@@ -382,6 +386,8 @@ export const ProfileView: React.FC<ProfileViewProps> = ({
           const userDoc = await getDoc(doc(db, 'users', cred.user.uid));
           if (userDoc.exists()) {
             loggedUser = userDoc.data() as UserProfile;
+            loggedUser.lastActiveAt = Date.now();
+            loggedUser.isOnline = true;
           } else {
             loggedUser = {
               id: cred.user.uid,
@@ -393,6 +399,8 @@ export const ProfileView: React.FC<ProfileViewProps> = ({
               followingCount: 0,
               postsCount: 0,
               isOnline: true,
+              lastActiveAt: Date.now(),
+              lastSeen: 'Sasa hivi',
             };
           }
         } catch (firebaseErr: any) {
@@ -407,6 +415,8 @@ export const ProfileView: React.FC<ProfileViewProps> = ({
             followingCount: 0,
             postsCount: 0,
             isOnline: true,
+            lastActiveAt: Date.now(),
+            lastSeen: 'Sasa hivi',
           };
         }
 

@@ -5,6 +5,7 @@ import { SafeImage } from '../../../components/SafeImage';
 import { userService } from '../../../services/user/userService';
 import { friendshipService } from '../../../services/user/friendshipService';
 import { userDirectoryService, FIREBASE_AUTH_USERS_SEEDS } from '../../../services/user/userDirectoryService';
+import { isUserOnline, formatUserLastSeen } from '../../../services/user/presenceService';
 import freshKkAvatar from '../../../assets/images/fresh_kk_avatar_1791078365294.jpg';
 
 interface StartNewChatModalProps {
@@ -149,8 +150,8 @@ export const StartNewChatModal: React.FC<StartNewChatModalProps> = ({
                       alt={contact.displayName}
                       className="w-10 h-10 rounded-2xl object-cover ring-1 ring-white/10 group-hover:ring-cyan-400 transition-all"
                     />
-                    {contact.isOnline && (
-                      <span className="absolute -bottom-0.5 -right-0.5 w-3 h-3 rounded-full bg-emerald-500 ring-2 ring-[#0F1426]" />
+                    {isUserOnline(contact, currentUser?.id) && (
+                      <span className="absolute -bottom-0.5 -right-0.5 w-3 h-3 rounded-full bg-emerald-500 ring-2 ring-[#0F1426] animate-pulse" />
                     )}
                   </div>
 
@@ -167,9 +168,13 @@ export const StartNewChatModal: React.FC<StartNewChatModalProps> = ({
                         </span>
                       )}
                     </div>
-                    <p className="text-[11px] text-cyan-400/80 font-mono truncate">
-                      @{contact.username} {contact.email ? `• ${contact.email}` : ''}
-                    </p>
+                    <div className="flex items-center gap-1.5 text-[11px] text-cyan-400/80 font-mono truncate">
+                      <span>@{contact.username}</span>
+                      <span className="text-slate-600">•</span>
+                      <span className={isUserOnline(contact, currentUser?.id) ? 'text-emerald-400 font-semibold' : 'text-slate-400 font-sans'}>
+                        {isUserOnline(contact, currentUser?.id) ? 'Online' : formatUserLastSeen(contact)}
+                      </span>
+                    </div>
                     <p className="text-[10px] text-slate-400 truncate mt-0.5">{contact.bio}</p>
                   </div>
                 </div>

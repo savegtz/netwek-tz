@@ -44,6 +44,7 @@ import { AdminDevPanel } from './features/admin/AdminDevPanel';
 import { BroadcastBanner } from './components/BroadcastBanner';
 import { userService } from './services/user/userService';
 import { friendshipService, normalizeUserId } from './services/user/friendshipService';
+import { presenceService, isUserOnline } from './services/user/presenceService';
 import { ZeniaMiniPlayer } from './components/ZeniaMiniPlayer';
 import freshKkAvatar from './assets/images/fresh_kk_avatar_1791078365294.jpg';
 
@@ -188,6 +189,16 @@ export default function App() {
       } catch {}
     }
   }, [conversations, currentUser?.id]);
+
+  // Active presence heartbeat manager: Emits pulse every 45s while user is active
+  useEffect(() => {
+    if (currentUser?.id && currentUser.id !== 'guest') {
+      presenceService.startHeartbeat(currentUser.id);
+      return () => {
+        presenceService.stopHeartbeat(currentUser.id);
+      };
+    }
+  }, [currentUser?.id]);
 
   // Modals & Subscreens
   const [isAuthOpen, setIsAuthOpen] = useState(false);
@@ -404,6 +415,9 @@ export default function App() {
 
   const handleSignOut = async () => {
     try {
+      if (currentUser?.id) {
+        presenceService.stopHeartbeat(currentUser.id);
+      }
       await signOut(auth);
     } catch (e) {
       console.warn('Signout warning:', e);
@@ -439,7 +453,7 @@ export default function App() {
           displayName: targetUser.displayName,
           username: targetUser.username,
           photoURL: targetUser.photoURL,
-          isOnline: true,
+          isOnline: isUserOnline(targetUser, currentUser.id),
         },
         [currentUser.id]: {
           displayName: currentUser.displayName,
@@ -481,6 +495,8 @@ export default function App() {
               followingCount: 0,
               postsCount: 0,
               isOnline: true,
+              lastActiveAt: Date.now(),
+              lastSeen: 'Sasa hivi',
             };
             await setDoc(doc(db, 'users', user.uid), fallback);
             setCurrentUser(fallback);

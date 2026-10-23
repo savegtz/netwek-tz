@@ -56,6 +56,7 @@ import { GuestChatPromptModal } from './components/GuestChatPromptModal';
 import freshKkAvatar from '../../assets/images/fresh_kk_avatar_1791078365294.jpg';
 import { userService } from '../../services/user/userService';
 import { friendshipService } from '../../services/user/friendshipService';
+import { isUserOnline, formatUserLastSeen } from '../../services/user/presenceService';
 
 interface ChatListProps {
   currentUser: UserProfile | null;
@@ -491,10 +492,17 @@ export const ChatList: React.FC<ChatListProps> = ({
             const fetched = snapshot.docs
               .map((d) => {
                 const data = d.data() as any;
+                let parts: string[] = Array.isArray(data.participants) ? data.participants : [];
+                if (parts.length === 0 && d.id.startsWith('conv_')) {
+                  const derived = d.id.replace('conv_', '').split('_').filter(Boolean);
+                  if (derived.length >= 2) {
+                    parts = derived;
+                  }
+                }
                 return {
                   id: d.id,
                   ...data,
-                  participants: Array.isArray(data.participants) ? data.participants : [],
+                  participants: parts,
                   participantDetails: data.participantDetails || {},
                 };
               })
@@ -1515,7 +1523,7 @@ export const ChatList: React.FC<ChatListProps> = ({
               <div className="w-full max-w-xs text-left bg-white/[0.03] border border-white/5 rounded-2xl p-3 shadow-inner">
                 <p className="text-[10px] font-bold text-cyan-400 uppercase tracking-wider mb-2.5 flex items-center gap-1.5">
                   <Sparkles className="w-3 h-3 text-cyan-400" />
-                  <span>Marafiki Waliopo Mtandaoni:</span>
+                  <span>Marafiki Unaoweza Kuchati Nao:</span>
                 </p>
                 <div className="space-y-2">
                   {directoryUsers.filter((c) => !userService.isUserDeleted(c) && c.id !== (currentUser ? currentUser.id : 'guest')).slice(0, 3).map((contact) => (
@@ -1576,7 +1584,7 @@ export const ChatList: React.FC<ChatListProps> = ({
               : (conv.id === 'conv_fresh_kk' || title.toLowerCase().includes('fresh'))
               ? freshKkAvatar
               : otherUser?.photoURL || freshKkAvatar;
-            const isOnline = otherUser?.isOnline ?? true;
+            const isOnline = !conv.isGroup && otherUser ? isUserOnline(otherUser, currentUserId) : false;
             const isSelected = activeConversationId === conv.id;
             const hasStatus = conv.id === 'conv_fresh_kk' || title.toLowerCase().includes('fresh');
 

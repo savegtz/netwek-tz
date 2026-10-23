@@ -27,6 +27,7 @@ export interface UserProfile {
   followingCount: number;
   postsCount: number;
   isOnline?: boolean;
+  lastActiveAt?: number;
   lastSeen?: string;
   createdAt?: string;
   isSuspended?: boolean;

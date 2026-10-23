@@ -40,7 +40,7 @@ export const INITIAL_CONVERSATIONS: Conversation[] = [
         displayName: 'Fresh kk',
         photoURL: freshKkAvatar,
         username: 'fresh_kk',
-        isOnline: true,
+        isOnline: false,
       },
       current_user_id: {
         displayName: 'Amina Kaunga',

@@ -22,8 +22,8 @@ export const FIREBASE_AUTH_USERS_SEEDS: UserProfile[] = [
     followersCount: 15,
     followingCount: 30,
     postsCount: 2,
-    isOnline: true,
-    lastSeen: 'Sasa hivi',
+    isOnline: false,
+    lastSeen: 'Masaa 3 yaliyopita',
     walletBalance: 25000,
     role: 'user',
   },
@@ -54,8 +54,8 @@ export const FIREBASE_AUTH_USERS_SEEDS: UserProfile[] = [
     followersCount: 28,
     followingCount: 60,
     postsCount: 5,
-    isOnline: true,
-    lastSeen: 'Sasa hivi',
+    isOnline: false,
+    lastSeen: 'Masaa 5 yaliyopita',
     walletBalance: 10000,
     role: 'user',
   },
@@ -71,8 +71,8 @@ export const FIREBASE_AUTH_USERS_SEEDS: UserProfile[] = [
     followersCount: 12400,
     followingCount: 245,
     postsCount: 3200,
-    isOnline: true,
-    lastSeen: 'Sasa hivi',
+    isOnline: false,
+    lastSeen: 'Muda mfupi uliopita',
     walletBalance: 500000,
     role: 'superadmin',
   },
@@ -87,8 +87,8 @@ export const FIREBASE_AUTH_USERS_SEEDS: UserProfile[] = [
     followersCount: 42,
     followingCount: 88,
     postsCount: 8,
-    isOnline: true,
-    lastSeen: '10m ago',
+    isOnline: false,
+    lastSeen: 'Masaa 4 yaliyopita',
     walletBalance: 85000,
     role: 'user',
   },
@@ -119,8 +119,8 @@ export const FIREBASE_AUTH_USERS_SEEDS: UserProfile[] = [
     followersCount: 65,
     followingCount: 110,
     postsCount: 14,
-    isOnline: true,
-    lastSeen: 'Sasa hivi',
+    isOnline: false,
+    lastSeen: 'Masaa 2 yaliyopita',
     walletBalance: 40000,
     role: 'user',
   },
@@ -135,8 +135,8 @@ export const FIREBASE_AUTH_USERS_SEEDS: UserProfile[] = [
     followersCount: 310,
     followingCount: 150,
     postsCount: 22,
-    isOnline: true,
-    lastSeen: 'Sasa hivi',
+    isOnline: false,
+    lastSeen: 'Masaa 6 yaliyopita',
     walletBalance: 120000,
     role: 'user',
   },
@@ -153,8 +153,8 @@ export const FIREBASE_AUTH_USERS_SEEDS: UserProfile[] = [
     followersCount: 18400,
     followingCount: 310,
     postsCount: 420,
-    isOnline: true,
-    lastSeen: 'Sasa hivi',
+    isOnline: false,
+    lastSeen: 'Dakika 45 zilizopita',
     walletBalance: 485000,
     role: 'user',
   },
@@ -170,8 +170,8 @@ export const FIREBASE_AUTH_USERS_SEEDS: UserProfile[] = [
     followersCount: 8900,
     followingCount: 412,
     postsCount: 310,
-    isOnline: true,
-    lastSeen: 'Sasa hivi',
+    isOnline: false,
+    lastSeen: 'Masaa 2 yaliyopita',
     walletBalance: 125000,
     role: 'user',
   },
@@ -204,8 +204,8 @@ export const FIREBASE_AUTH_USERS_SEEDS: UserProfile[] = [
     followersCount: 430,
     followingCount: 85,
     postsCount: 18,
-    isOnline: true,
-    lastSeen: 'Sasa hivi',
+    isOnline: false,
+    lastSeen: 'Jana',
     walletBalance: 92000,
     role: 'user',
   },
@@ -229,7 +229,14 @@ class UserDirectoryServiceImpl {
     try {
       const cached = localStorage.getItem('zenia_firestore_users_cache');
       if (cached) {
-        this.users = JSON.parse(cached);
+        const parsed = JSON.parse(cached) as UserProfile[];
+        this.users = parsed.map((u) => ({
+          ...u,
+          isOnline:
+            u.isOnline === true &&
+            typeof u.lastActiveAt === 'number' &&
+            Date.now() - u.lastActiveAt < 3 * 60 * 1000,
+        }));
         this.notifyListeners();
       }
     } catch (_) {}
@@ -244,9 +251,21 @@ class UserDirectoryServiceImpl {
             const firestoreUsers: UserProfile[] = [];
             snapshot.forEach((docSnap) => {
               const data = docSnap.data() as UserProfile;
+              // User is genuinely online ONLY if they sent an active heartbeat within 3 minutes
+              const isActuallyOnline =
+                data.isOnline === true &&
+                typeof data.lastActiveAt === 'number' &&
+                Date.now() - data.lastActiveAt < 3 * 60 * 1000;
+
               firestoreUsers.push({
                 ...data,
                 id: docSnap.id,
+                isOnline: isActuallyOnline,
+                lastSeen: isActuallyOnline
+                  ? 'Sasa hivi'
+                  : data.lastSeen && data.lastSeen !== 'Sasa hivi'
+                  ? data.lastSeen
+                  : 'Muda mfupi uliopita',
               });
             });
 
@@ -381,3 +400,4 @@ class UserDirectoryServiceImpl {
 }
 
 export const userDirectoryService = new UserDirectoryServiceImpl();
+export { isUserOnline, formatUserLastSeen, presenceService } from './presenceService';

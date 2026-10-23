@@ -15,12 +15,50 @@ const friendshipBroadcast =
 export function normalizeUserId(id: string): string {
   if (!id) return id;
   const clean = id.trim();
-  if (clean === 'user_sarah' || clean === 'u_3' || clean === 'sarah_m' || clean === 'user_sarah_mwangi') return 'user_sarah_m';
-  if (clean === 'user_alex' || clean === 'u_2' || clean === 'alex_k' || clean === 'user_alex_kanyama') return 'user_alex_k';
-  if (clean === 'u_1' || clean === 'fresh_kk' || clean === 'user_freshkk') return 'user_fresh_kk';
+  if (clean === 'user_sarah' || clean === 'u_3' || clean === 'sarah_m' || clean === 'user_sarah_mwangi' || clean === 'sarah@soundwave.tz') return 'user_sarah_m';
+  if (clean === 'user_alex' || clean === 'u_2' || clean === 'alex_k' || clean === 'user_alex_kanyama' || clean === 'alex.kanyama@zenia.app') return 'user_alex_k';
+  if (clean === 'u_1' || clean === 'fresh_kk' || clean === 'user_freshkk' || clean === 'fresh.kk@zenia.app') return 'user_fresh_kk';
   if (clean === 'u_4' || clean === 'baraka_moto' || clean === 'user_baraka') return 'user_baraka_m';
-  if (clean === 'user_amina_1' || clean === 'user_amina_kaunga' || clean === 'amina_kaunga') return 'current_user_id';
+  if (
+    clean === 'user_amina_1' ||
+    clean === 'user_amina_kaunga' ||
+    clean === 'amina_kaunga' ||
+    clean === 'savegamour@gmail.com' ||
+    clean === 'UkgR7gl8afU92vg6OCT3wHhA' ||
+    clean === 'savegamour' ||
+    clean === 'admin'
+  ) {
+    return 'current_user_id';
+  }
   return clean;
+}
+
+export function matchesUser(
+  query: string,
+  fieldId?: string,
+  details?: { id?: string; email?: string; username?: string; displayName?: string }
+): boolean {
+  if (!query) return false;
+  const q = query.trim().toLowerCase();
+  const normQ = normalizeUserId(query);
+
+  if (fieldId) {
+    const fId = fieldId.trim().toLowerCase();
+    if (fId === q) return true;
+    if (normalizeUserId(fieldId) === normQ) return true;
+  }
+
+  if (details) {
+    if (details.id) {
+      const dId = details.id.trim().toLowerCase();
+      if (dId === q) return true;
+      if (normalizeUserId(details.id) === normQ) return true;
+    }
+    if (details.email && details.email.trim().toLowerCase() === q) return true;
+    if (details.username && details.username.trim().toLowerCase() === q) return true;
+  }
+
+  return false;
 }
 
 export function makeRelId(id1: string, id2: string): string {
@@ -227,32 +265,15 @@ class FriendshipServiceImpl {
       return this.relationships[legacyKey];
     }
 
-    // Search across all relationships with robust fuzzy identification
+    // Search across all relationships with robust fuzzy identification using matchesUser
     const allRels = Object.values(this.relationships);
     for (const rel of allRels) {
-      const matchA =
-        rel.userA === user1 ||
-        rel.userA === norm1 ||
-        rel.senderDetails?.id === user1 ||
-        rel.receiverDetails?.id === user1;
-      const matchB =
-        rel.userB === user2 ||
-        rel.userB === norm2 ||
-        rel.senderDetails?.id === user2 ||
-        rel.receiverDetails?.id === user2;
+      const u1A = matchesUser(user1, rel.userA, rel.senderDetails) || matchesUser(user1, rel.userA, rel.receiverDetails);
+      const u1B = matchesUser(user1, rel.userB, rel.senderDetails) || matchesUser(user1, rel.userB, rel.receiverDetails);
+      const u2A = matchesUser(user2, rel.userA, rel.senderDetails) || matchesUser(user2, rel.userA, rel.receiverDetails);
+      const u2B = matchesUser(user2, rel.userB, rel.senderDetails) || matchesUser(user2, rel.userB, rel.receiverDetails);
 
-      const reverseMatchA =
-        rel.userA === user2 ||
-        rel.userA === norm2 ||
-        rel.senderDetails?.id === user2 ||
-        rel.receiverDetails?.id === user2;
-      const reverseMatchB =
-        rel.userB === user1 ||
-        rel.userB === norm1 ||
-        rel.senderDetails?.id === user1 ||
-        rel.receiverDetails?.id === user1;
-
-      if ((matchA && matchB) || (reverseMatchA && reverseMatchB)) {
+      if ((u1A && u2B) || (u1B && u2A)) {
         return rel;
       }
     }
@@ -289,13 +310,8 @@ class FriendshipServiceImpl {
     }
 
     if (rel.status === 'pending') {
-      const normCurrent = normalizeUserId(currentUserId);
-      const normRequestedBy = normalizeUserId(rel.requestedBy);
-
       const isRequestedByMe =
-        rel.requestedBy === currentUserId ||
-        normRequestedBy === normCurrent ||
-        rel.senderDetails?.id === currentUserId;
+        matchesUser(currentUserId, rel.requestedBy, rel.senderDetails);
 
       if (isRequestedByMe) {
         return 'pending_sent';
@@ -393,7 +409,17 @@ class FriendshipServiceImpl {
    * Syncs to Cloud Firestore and notifies the requester.
    */
   public async acceptFriendRequest(currentUserId: string, targetUserId: string): Promise<boolean> {
-    const existing = this.findRelationship(currentUserId, targetUserId);
+    let existing = this.findRelationship(currentUserId, targetUserId);
+    if (!existing) {
+      const pending = this.getPendingRequestsReceived(currentUserId);
+      existing =
+        pending.find(
+          (p) =>
+            matchesUser(targetUserId, p.requestedBy, p.senderDetails) ||
+            matchesUser(targetUserId, p.userA, p.senderDetails) ||
+            matchesUser(targetUserId, p.userB, p.senderDetails)
+        ) || null;
+    }
     const relId = existing?.id || makeRelId(currentUserId, targetUserId);
 
     const updatedRel: FriendRelationship = {
@@ -446,7 +472,17 @@ class FriendshipServiceImpl {
    * Decline an incoming friend request
    */
   public async declineFriendRequest(currentUserId: string, targetUserId: string): Promise<boolean> {
-    const existing = this.findRelationship(currentUserId, targetUserId);
+    let existing = this.findRelationship(currentUserId, targetUserId);
+    if (!existing) {
+      const pending = this.getPendingRequestsReceived(currentUserId);
+      existing =
+        pending.find(
+          (p) =>
+            matchesUser(targetUserId, p.requestedBy, p.senderDetails) ||
+            matchesUser(targetUserId, p.userA, p.senderDetails) ||
+            matchesUser(targetUserId, p.userB, p.senderDetails)
+        ) || null;
+    }
     const relId = existing?.id || makeRelId(currentUserId, targetUserId);
 
     if (this.relationships[relId]) {
@@ -564,30 +600,27 @@ class FriendshipServiceImpl {
    * Get all pending received requests for a user
    */
   public getPendingRequestsReceived(userId: string): FriendRelationship[] {
-    const normUser = normalizeUserId(userId);
+    if (!userId || userId === 'guest') return [];
 
     return Object.values(this.relationships).filter((rel) => {
       if (rel.status !== 'pending') return false;
 
-      const normReq = normalizeUserId(rel.requestedBy);
       // If requested by this user, it is not a received request
-      if (normReq === normUser || rel.requestedBy === userId || rel.senderDetails?.id === userId) {
+      const isRequestedByMe = matchesUser(userId, rel.requestedBy, rel.senderDetails);
+      if (isRequestedByMe) {
         return false;
       }
 
-      const normA = normalizeUserId(rel.userA);
-      const normB = normalizeUserId(rel.userB);
-
       const isTarget =
-        normA === normUser ||
-        normB === normUser ||
-        rel.userA === userId ||
-        rel.userB === userId ||
-        rel.receiverDetails?.id === userId ||
-        rel.receiverDetails?.email?.toLowerCase() === userId.toLowerCase();
+        matchesUser(userId, rel.userA, rel.receiverDetails) ||
+        matchesUser(userId, rel.userB, rel.receiverDetails) ||
+        (rel.receiverDetails?.email && userId.includes('@') && rel.receiverDetails.email.toLowerCase() === userId.toLowerCase()) ||
+        (normalizeUserId(userId) === 'current_user_id' && (rel.userA === 'current_user_id' || rel.userB === 'current_user_id' || rel.receiverDetails?.id === 'current_user_id'));
 
-      const otherId = normA === normUser || rel.userA === userId ? rel.userB : rel.userA;
-      return isTarget && !userService.isIdentifierDeleted(otherId);
+      if (!isTarget) return false;
+
+      const otherId = matchesUser(userId, rel.userA) ? rel.userB : rel.userA;
+      return !userService.isIdentifierDeleted(otherId);
     });
   }
 

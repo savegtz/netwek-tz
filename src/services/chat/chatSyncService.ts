@@ -318,20 +318,23 @@ export const ChatSyncService = {
 
       // Update parent conversation doc
       const convRef = doc(db, 'conversations', conversationId);
-      await setDoc(
-        convRef,
-        {
-          id: conversationId,
-          lastMessage:
-            message.text ||
-            (message.messageType === 'audio' ? 'Ujumbe wa sauti' : 'Ujumbe mpya'),
-          lastMessageType: message.messageType,
-          lastMessageSenderId: message.senderId,
-          updatedAt: message.createdAt,
-          timestamp: Date.now(),
-        },
-        { merge: true }
-      );
+      const updates: any = {
+        id: conversationId,
+        lastMessage:
+          message.text ||
+          (message.messageType === 'audio' ? 'Ujumbe wa sauti' : 'Ujumbe mpya'),
+        lastMessageType: message.messageType,
+        lastMessageSenderId: message.senderId,
+        updatedAt: message.createdAt,
+        timestamp: Date.now(),
+      };
+      if (conversationId.startsWith('conv_')) {
+        const parts = conversationId.replace('conv_', '').split('_').filter(Boolean);
+        if (parts.length >= 2) {
+          updates.participants = parts;
+        }
+      }
+      await setDoc(convRef, updates, { merge: true });
     } catch (e) {
       console.warn('Firestore message save error:', e);
     }
