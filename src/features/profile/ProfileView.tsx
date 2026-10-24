@@ -57,7 +57,7 @@ import { AvatarShapeShowcaseStudio } from '../../components/AvatarShapeShowcaseS
 import { Palette, Shapes } from 'lucide-react';
 import { useTheme } from '../../context/ThemeContext';
 import { INITIAL_USER } from '../../services/seed/initialData';
-import { friendshipService } from '../../services/user/friendshipService';
+import { friendshipService, matchesUser } from '../../services/user/friendshipService';
 import { AVAILABLE_CONTACTS } from '../chat/components/StartNewChatModal';
 import { userDirectoryService } from '../../services/user/userDirectoryService';
 
@@ -250,12 +250,12 @@ export const ProfileView: React.FC<ProfileViewProps> = ({
 
   const getContactInfo = (userId: string) => {
     const fromDir = userDirectoryService.getAllUsers().find(
-      (c) => c.id === userId || c.email?.toLowerCase() === userId.toLowerCase()
+      (c) => matchesUser(userId, c.id) || (c.email && matchesUser(userId, c.email))
     );
     if (fromDir) return fromDir;
-    const contact = AVAILABLE_CONTACTS.find((c) => c.id === userId);
+    const contact = AVAILABLE_CONTACTS.find((c) => matchesUser(userId, c.id));
     if (contact) return contact;
-    if (userId === 'user_fresh_kk') {
+    if (matchesUser(userId, 'user_fresh_kk')) {
       return {
         id: 'user_fresh_kk',
         displayName: 'Fresh kk',
@@ -266,13 +266,17 @@ export const ProfileView: React.FC<ProfileViewProps> = ({
         lastSeen: 'Dakika 45 zilizopita',
       };
     }
-    if (userId === 'current_user_id') {
+    if (
+      matchesUser(userId, 'current_user_id') ||
+      (currentUser && matchesUser(userId, currentUser.id)) ||
+      (currentUser?.email && matchesUser(userId, currentUser.email))
+    ) {
       return {
-        id: 'current_user_id',
-        displayName: 'Amina Kaunga',
-        username: 'amina_kaunga',
-        photoURL: aminaAvatar,
-        bio: 'Content Creator | Lifestyle',
+        id: currentUser?.id || 'current_user_id',
+        displayName: currentUser?.displayName || INITIAL_USER.displayName,
+        username: currentUser?.username || INITIAL_USER.username,
+        photoURL: currentUser?.photoURL || aminaAvatar,
+        bio: currentUser?.bio || INITIAL_USER.bio,
         isOnline: false,
         lastSeen: 'Muda mfupi uliopita',
       };
@@ -281,7 +285,7 @@ export const ProfileView: React.FC<ProfileViewProps> = ({
       id: userId,
       displayName: userId.replace('user_', '').replace('_', ' ').toUpperCase(),
       username: userId.replace('user_', ''),
-      photoURL: freshKkAvatar,
+      photoURL: undefined,
       bio: 'Mwanachama wa Zenia',
       isOnline: false,
       lastSeen: 'Muda mrefu uliopita',
@@ -1751,12 +1755,16 @@ export const ProfileView: React.FC<ProfileViewProps> = ({
                   </div>
                 ) : (
                   pendingReceived.map((req) => {
-                    const sender = req.senderDetails || {
-                      displayName: 'Mwanachama wa Zenia',
-                      username: 'user',
-                      photoURL: undefined,
+                    const senderId = req.requestedBy || (!matchesUser(currentUid, req.userA) ? req.userA : req.userB);
+                    const senderContact = getContactInfo(senderId);
+                    const sender = {
+                      displayName:
+                        req.senderDetails?.displayName && req.senderDetails.displayName !== 'Mwanachama wa Zenia'
+                          ? req.senderDetails.displayName
+                          : senderContact.displayName || req.senderDetails?.displayName || 'Mwanachama wa Zenia',
+                      username: req.senderDetails?.username || senderContact.username || 'user',
+                      photoURL: req.senderDetails?.photoURL || senderContact.photoURL,
                     };
-                    const senderId = req.requestedBy;
                     return (
                       <div
                         key={req.id}
@@ -1766,7 +1774,13 @@ export const ProfileView: React.FC<ProfileViewProps> = ({
                       >
                         <div className="flex items-center gap-3 min-w-0">
                           <div className="w-11 h-11 rounded-full overflow-hidden shrink-0 border border-white/10 bg-slate-800">
-                            <SafeImage src={sender.photoURL} alt={sender.displayName} className="w-full h-full object-cover" />
+                            <SafeImage
+                              src={sender.photoURL}
+                              fallbackText={sender.displayName}
+                              fallbackGradient="from-cyan-800 to-indigo-900"
+                              alt={sender.displayName}
+                              className="w-full h-full object-cover"
+                            />
                           </div>
                           <div className="min-w-0">
                             <p className="text-xs font-bold truncate">{sender.displayName}</p>
@@ -1815,12 +1829,16 @@ export const ProfileView: React.FC<ProfileViewProps> = ({
                   </div>
                 ) : (
                   pendingSent.map((req) => {
-                    const receiver = req.receiverDetails || {
-                      displayName: 'Mwanachama wa Zenia',
-                      username: 'user',
-                      photoURL: undefined,
+                    const receiverId = !matchesUser(currentUid, req.userA) ? req.userA : req.userB;
+                    const receiverContact = getContactInfo(receiverId);
+                    const receiver = {
+                      displayName:
+                        req.receiverDetails?.displayName && req.receiverDetails.displayName !== 'Mwanachama wa Zenia'
+                          ? req.receiverDetails.displayName
+                          : receiverContact.displayName || req.receiverDetails?.displayName || 'Mwanachama wa Zenia',
+                      username: req.receiverDetails?.username || receiverContact.username || 'user',
+                      photoURL: req.receiverDetails?.photoURL || receiverContact.photoURL,
                     };
-                    const receiverId = req.userA === currentUid ? req.userB : req.userA;
                     return (
                       <div
                         key={req.id}
@@ -1830,7 +1848,13 @@ export const ProfileView: React.FC<ProfileViewProps> = ({
                       >
                         <div className="flex items-center gap-3 min-w-0">
                           <div className="w-11 h-11 rounded-full overflow-hidden shrink-0 border border-white/10 bg-slate-800">
-                            <SafeImage src={receiver.photoURL} alt={receiver.displayName} className="w-full h-full object-cover" />
+                            <SafeImage
+                              src={receiver.photoURL}
+                              fallbackText={receiver.displayName}
+                              fallbackGradient="from-indigo-800 to-purple-900"
+                              alt={receiver.displayName}
+                              className="w-full h-full object-cover"
+                            />
                           </div>
                           <div className="min-w-0">
                             <p className="text-xs font-bold truncate">{receiver.displayName}</p>

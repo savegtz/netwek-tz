@@ -81,7 +81,8 @@ import { AVAILABLE_CONTACTS } from './components/StartNewChatModal';
 import { ArrowLeftRight } from 'lucide-react';
 import freshKkAvatar from '../../assets/images/fresh_kk_avatar_1791078365294.jpg';
 import { userService } from '../../services/user/userService';
-import { friendshipService } from '../../services/user/friendshipService';
+import { userDirectoryService } from '../../services/user/userDirectoryService';
+import { friendshipService, matchesUser } from '../../services/user/friendshipService';
 import { isUserOnline, formatUserLastSeen } from '../../services/user/presenceService';
 
 interface ChatRoomProps {
@@ -91,7 +92,6 @@ interface ChatRoomProps {
   onStartCall: (type: 'video' | 'voice') => void;
   onUpdateConversation?: (conv: Conversation) => void;
   onDeleteConversation?: (convId: string) => void;
-  onSwitchUser?: (user: UserProfile) => void;
   onOpenAuth?: (preferMode?: 'signin' | 'signup', reason?: string) => void;
 }
 
@@ -102,18 +102,32 @@ export const ChatRoom: React.FC<ChatRoomProps> = ({
   onStartCall,
   onUpdateConversation,
   onDeleteConversation,
-  onSwitchUser,
   onOpenAuth,
 }) => {
   const currentUserId = currentUser?.id || 'guest';
   const participants = Array.isArray(conversation.participants) ? conversation.participants : [];
   const otherUserId =
+    participants.find((p) => !matchesUser(currentUserId, p)) ||
     participants.find((p) => p !== currentUserId) ||
     participants.find((p) => p !== 'guest') ||
     participants[0] || '';
   const otherUser = otherUserId && conversation.participantDetails ? conversation.participantDetails[otherUserId] : null;
-  const name = otherUser?.displayName || (conversation.isGroup ? conversation.groupName || 'Chat' : 'Fresh kk');
-  const avatar = otherUser?.photoURL || freshKkAvatar;
+  const dirUser = otherUserId
+    ? userDirectoryService.getAllUsers().find(
+        (u) => matchesUser(otherUserId, u.id) || (u.email && matchesUser(otherUserId, u.email))
+      )
+    : null;
+  const contact = otherUserId ? AVAILABLE_CONTACTS.find((c) => matchesUser(otherUserId, c.id)) : null;
+  const name =
+    (conversation.isGroup
+      ? conversation.groupName
+      : otherUser?.displayName || dirUser?.displayName || contact?.displayName) || 'Mtumiaji';
+  const avatar =
+    (conversation.isGroup ? conversation.groupAvatar : undefined) ||
+    otherUser?.photoURL ||
+    dirUser?.photoURL ||
+    contact?.photoURL ||
+    (matchesUser(otherUserId, 'user_fresh_kk') ? freshKkAvatar : undefined);
 
   const [, setFriendshipTick] = useState(0);
   useEffect(() => {
@@ -433,55 +447,6 @@ export const ChatRoom: React.FC<ChatRoomProps> = ({
     return () => unsub();
   }, [conversation.id]);
 
-  const handleToggleSenderPersona = () => {
-    if (!onSwitchUser) return;
-    if (currentUser.id === otherUserId) {
-      // Switch back to Amina Kaunga
-      onSwitchUser({
-        id: 'current_user_id',
-        email: 'savegamour@gmail.com',
-        displayName: 'Amina Kaunga',
-        username: 'amina_kaunga',
-        photoURL: '/assets/images/amina_avatar_1790280951312.jpg',
-        accountType: 'creator',
-        verified: true,
-        followersCount: 12400,
-        followingCount: 245,
-        postsCount: 3200,
-        isOnline: true,
-      });
-      showToast('Sasa unaongea kama Amina Kaunga! 👤');
-    } else {
-      // Switch to other contact (e.g. Fresh kk)
-      const contactObj = AVAILABLE_CONTACTS.find((c) => c.id === otherUserId) || {
-        id: otherUserId || 'user_fresh_kk',
-        displayName: name,
-        username: (otherUser?.username || name).toLowerCase().replace(/\s+/g, '_'),
-        photoURL: avatar,
-        accountType: 'business' as const,
-        verified: true,
-        followersCount: 18400,
-        followingCount: 310,
-        postsCount: 420,
-        isOnline: true,
-      };
-      onSwitchUser({
-        id: contactObj.id,
-        email: `${contactObj.username}@zenia.app`,
-        displayName: contactObj.displayName,
-        username: contactObj.username,
-        photoURL: contactObj.photoURL,
-        accountType: 'business',
-        verified: true,
-        followersCount: 18400,
-        followingCount: 310,
-        postsCount: 420,
-        isOnline: true,
-      });
-      showToast(`Sasa unaongea kama ${contactObj.displayName}! 👤`);
-    }
-  };
-
   const activeTheme = CHAT_THEMES.find((t) => t.id === currentThemeId) || CHAT_THEMES[0];
 
   // Feature 1: Open and dismiss View-Once media
@@ -684,6 +649,7 @@ export const ChatRoom: React.FC<ChatRoomProps> = ({
       conversationId: conversation.id,
       senderId: currentUser.id,
       senderName: currentUser.displayName || 'You',
+      senderAvatar: currentUser.photoURL,
       text: inputText.trim(),
       messageType: 'text',
       createdAt: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
@@ -1040,29 +1006,6 @@ export const ChatRoom: React.FC<ChatRoomProps> = ({
         </div>
       )}
 
-      {/* Real-time Multi-User Persona Switcher Banner */}
-      <div className="bg-[#0A0E1C] border-b border-white/[0.08] px-3.5 py-1.5 flex items-center justify-between text-xs z-10 shrink-0">
-        <div className="flex items-center gap-2 truncate">
-          <span className="w-2 h-2 rounded-full bg-emerald-400 animate-pulse shrink-0" />
-          <span className="text-[11px] text-slate-300 truncate">
-            Unaandika kama:{' '}
-            <strong className="text-cyan-300 font-bold">{currentUser.displayName}</strong>{' '}
-            <span className="text-slate-500 font-mono text-[10px]">(@{currentUser.username})</span>
-          </span>
-        </div>
-
-        {onSwitchUser && (
-          <button
-            type="button"
-            onClick={handleToggleSenderPersona}
-            className="px-2.5 py-1 rounded-xl bg-cyan-500/15 hover:bg-cyan-500/25 border border-cyan-500/40 text-cyan-300 hover:text-white font-bold text-[11px] flex items-center gap-1.5 active:scale-95 transition-all shrink-0 ml-2"
-            title="Badili mtumiaji ili ujaribu kutuma na kupokea ujumbe kutoka upande wa pili"
-          >
-            <ArrowLeftRight className="w-3.5 h-3.5 text-cyan-400" />
-            <span>Badili kwenda {currentUser.id === otherUserId ? 'Amina Kaunga' : name}</span>
-          </button>
-        )}
-      </div>
 
       {/* Scheduled Messages Banner (Feature 3) */}
       {scheduledList.length > 0 && (
@@ -1125,7 +1068,20 @@ export const ChatRoom: React.FC<ChatRoomProps> = ({
         )}
 
         {messages.map((msg) => {
-          const isMe = msg.senderId === currentUser.id;
+          const isMe =
+            msg.senderId === currentUser.id ||
+            matchesUser(currentUser.id, msg.senderId) ||
+            Boolean(currentUser.email && matchesUser(currentUser.email, msg.senderId));
+          const senderDirUser = msg.senderId
+            ? userDirectoryService.getAllUsers().find(
+                (u) => matchesUser(msg.senderId, u.id) || (u.email && matchesUser(msg.senderId, u.email))
+              )
+            : null;
+          const msgAvatar =
+            (conversation.participantDetails && msg.senderId && conversation.participantDetails[msg.senderId]?.photoURL) ||
+            msg.senderAvatar ||
+            senderDirUser?.photoURL ||
+            avatar;
           const isSwipingThis = swipingMessageId === msg.id;
           const reactionEntries = Object.entries(msg.reactions || {});
 
@@ -1155,7 +1111,7 @@ export const ChatRoom: React.FC<ChatRoomProps> = ({
 
               {!isMe && (
                 <SafeImage
-                  src={avatar}
+                  src={msgAvatar}
                   fallbackText={name}
                   fallbackGradient="from-cyan-800 to-indigo-900"
                   alt={name}

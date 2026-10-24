@@ -54,8 +54,9 @@ import { StarredMessagesModal } from './components/StarredMessagesModal';
 import { AppLockModal } from './components/AppLockModal';
 import { GuestChatPromptModal } from './components/GuestChatPromptModal';
 import freshKkAvatar from '../../assets/images/fresh_kk_avatar_1791078365294.jpg';
+import aminaAvatar from '../../assets/images/amina_avatar_1790280951312.jpg';
 import { userService } from '../../services/user/userService';
-import { friendshipService } from '../../services/user/friendshipService';
+import { friendshipService, matchesUser } from '../../services/user/friendshipService';
 import { isUserOnline, formatUserLastSeen } from '../../services/user/presenceService';
 
 interface ChatListProps {
@@ -623,7 +624,10 @@ export const ChatList: React.FC<ChatListProps> = ({
     if (alsoDeleteUser && !conv.isGroup) {
       const currentUserId = currentUser ? currentUser.id : 'guest';
       const participants = Array.isArray(conv.participants) ? conv.participants : [];
-      const otherUserId = participants.find((p) => p !== currentUserId) || participants[0] || '';
+      const otherUserId =
+        participants.find((p) => !matchesUser(currentUserId, p)) ||
+        participants.find((p) => p !== currentUserId) ||
+        participants[0] || '';
       const otherUser = otherUserId && conv.participantDetails ? conv.participantDetails[otherUserId] : null;
       if (otherUserId) {
         userService.deleteUser(otherUserId, otherUser?.username, otherUser?.displayName);
@@ -1576,14 +1580,29 @@ export const ChatList: React.FC<ChatListProps> = ({
           filteredConversations.map((conv) => {
             const currentUserId = currentUser ? currentUser.id : 'guest';
             const participants = Array.isArray(conv.participants) ? conv.participants : [];
-            const otherUserId = participants.find((p) => p !== currentUserId) || participants[0] || '';
+            const otherUserId =
+              participants.find((p) => !matchesUser(currentUserId, p)) ||
+              participants.find((p) => p !== currentUserId) ||
+              participants[0] || '';
             const otherUser = otherUserId && conv.participantDetails ? conv.participantDetails[otherUserId] : null;
-            const title: string = (conv.isGroup ? conv.groupName : otherUser?.displayName) || 'Direct Chat';
+            const dirUser = otherUserId
+              ? directoryUsers.find(
+                  (u) => matchesUser(otherUserId, u.id) || (u.email && matchesUser(otherUserId, u.email))
+                )
+              : null;
+            const title: string =
+              (conv.isGroup ? conv.groupName : otherUser?.displayName || dirUser?.displayName) || 'Direct Chat';
+            const otherUserAvatar =
+              otherUser?.photoURL ||
+              dirUser?.photoURL ||
+              (matchesUser(otherUserId, 'user_fresh_kk')
+                ? freshKkAvatar
+                : matchesUser(otherUserId, 'current_user_id')
+                ? aminaAvatar
+                : undefined);
             const avatar = conv.isGroup
-              ? conv.groupAvatar || '/assets/images/amina_avatar_1790280951312.jpg'
-              : (conv.id === 'conv_fresh_kk' || title.toLowerCase().includes('fresh'))
-              ? freshKkAvatar
-              : otherUser?.photoURL || freshKkAvatar;
+              ? conv.groupAvatar || aminaAvatar
+              : otherUserAvatar;
             const isOnline = !conv.isGroup && otherUser ? isUserOnline(otherUser, currentUserId) : false;
             const isSelected = activeConversationId === conv.id;
             const hasStatus = conv.id === 'conv_fresh_kk' || title.toLowerCase().includes('fresh');

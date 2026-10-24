@@ -54,7 +54,11 @@ export default function App() {
     const saved = localStorage.getItem('zenia_active_user');
     if (saved) {
       try {
-        return JSON.parse(saved);
+        const u = JSON.parse(saved);
+        if (u && u.id === 'user_fresh_kk') {
+          return INITIAL_USER;
+        }
+        return u;
       } catch {
         return INITIAL_USER;
       }
@@ -763,7 +767,6 @@ export default function App() {
                             currentUser={currentUser || activeUser}
                             onBack={() => setActiveConversation(null)}
                             onStartCall={handleStartCallFromConversation}
-                            onSwitchUser={(u) => setCurrentUser(u)}
                             onOpenAuth={(mode, reason) => requireAuthToChat(reason, mode)}
                             onUpdateConversation={(updated) => {
                               setConversations((prev) =>

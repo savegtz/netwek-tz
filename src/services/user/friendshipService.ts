@@ -628,22 +628,16 @@ class FriendshipServiceImpl {
    * Get all pending sent requests by a user
    */
   public getPendingRequestsSent(userId: string): FriendRelationship[] {
-    const normUser = normalizeUserId(userId);
+    if (!userId || userId === 'guest') return [];
 
     return Object.values(this.relationships).filter((rel) => {
       if (rel.status !== 'pending') return false;
 
-      const isSender =
-        normalizeUserId(rel.requestedBy) === normUser ||
-        rel.requestedBy === userId ||
-        rel.senderDetails?.id === userId;
+      const isSender = matchesUser(userId, rel.requestedBy, rel.senderDetails);
+      if (!isSender) return false;
 
-      const otherId =
-        normalizeUserId(rel.userA) === normUser || rel.userA === userId
-          ? rel.userB
-          : rel.userA;
-
-      return isSender && !userService.isIdentifierDeleted(otherId);
+      const otherId = matchesUser(userId, rel.userA) ? rel.userB : rel.userA;
+      return !userService.isIdentifierDeleted(otherId);
     });
   }
 }
