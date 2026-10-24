@@ -173,23 +173,72 @@ export const AuthModal: React.FC<AuthModalProps> = ({
               lastActiveAt: Date.now(),
               lastSeen: 'Sasa hivi',
             };
+            try {
+              await setDoc(doc(db, 'users', cred.user.uid), loggedUser);
+            } catch (seedErr) {
+              console.warn('Notice writing user record to firestore:', seedErr);
+            }
           }
         } catch (firebaseErr: any) {
-          console.warn('Firebase signin notice, falling back to local session check:', firebaseErr);
-          // Allow sign in if user matches
-          loggedUser = {
-            id: 'user_' + Math.abs(cleanEmail.split('').reduce((a, b) => (a << 5) - a + b.charCodeAt(0), 0)),
-            email: cleanEmail,
-            displayName: cleanEmail.split('@')[0],
-            username: cleanEmail.split('@')[0].replace(/[^a-z0-9_]/g, '_'),
-            accountType: 'personal',
-            followersCount: 1,
-            followingCount: 0,
-            postsCount: 0,
-            isOnline: true,
-            lastActiveAt: Date.now(),
-            lastSeen: 'Sasa hivi',
-          };
+          const errCode = firebaseErr?.code || '';
+          console.warn('Firebase signin rejected:', errCode, firebaseErr);
+
+          // Check if this email exists anywhere in registered users
+          const allKnownUsers = userDirectoryService.getAllUsers();
+          const registeredMatch = allKnownUsers.find(
+            (u) => u.email?.trim().toLowerCase() === cleanEmail
+          );
+
+          if (errCode === 'auth/user-not-found') {
+            setErrorMsg(`Akaunti yenye barua pepe (${cleanEmail}) haijasajiliwa kwenye mfumo. Huwezi kuingia bila kujisajili! Tafadhali bofya 'Jisajili (Register)' ili ujisajili kwanza.`);
+            setLoading(false);
+            return;
+          }
+
+          if (errCode === 'auth/wrong-password') {
+            setErrorMsg('Nenosiri uliloweka si sahihi. Tafadhali hakiki herufi zako na ujaribu tena.');
+            setLoading(false);
+            return;
+          }
+
+          if (errCode === 'auth/invalid-credential') {
+            if (!registeredMatch) {
+              setErrorMsg(`Akaunti yenye barua pepe (${cleanEmail}) haijasajiliwa. Huwezi kuingia bila kujisajili! Tafadhali bofya 'Jisajili (Register)' hapo juu ili ujisajili.`);
+            } else {
+              setErrorMsg('Nenosiri uliloweka si sahihi kwa akaunti hii. Tafadhali jaribu tena au weka upya nenosiri.');
+            }
+            setLoading(false);
+            return;
+          }
+
+          if (errCode === 'auth/invalid-email') {
+            setErrorMsg('Muundo wa barua pepe si sahihi. Tafadhali weka barua pepe kamili (mfano: jina@gmail.com).');
+            setLoading(false);
+            return;
+          }
+
+          if (errCode === 'auth/user-disabled') {
+            setErrorMsg('Akaunti hii imesimamishwa na mfumo. Wasiliana na msimamizi wa Zenia.');
+            setLoading(false);
+            return;
+          }
+
+          if (errCode === 'auth/too-many-requests') {
+            setErrorMsg('Majaribio ya kuingia yamekuwa mengi mno. Tafadhali subiri kidogo kisha ujaribu tena.');
+            setLoading(false);
+            return;
+          }
+
+          // Strictly reject anyone who is not registered in the system
+          if (!registeredMatch) {
+            setErrorMsg(`Akaunti ya barua pepe (${cleanEmail}) haijasajiliwa kwenye mfumo. Huwezi kuingia bila kujisajili kwanza! Tafadhali bofya 'Jisajili'.`);
+            setLoading(false);
+            return;
+          }
+
+          setErrorMsg('Imeshindikana kuingia. Hakikisha nenosiri lako ni sahihi au jaribu tena baada ya muda mfupi.');
+          setLoading(false);
+          return;
         }
 
         if (loggedUser) {
@@ -399,9 +448,24 @@ export const AuthModal: React.FC<AuthModalProps> = ({
         </div>
 
         {errorMsg && (
-          <div className="mb-4 p-3 rounded-xl bg-red-500/10 border border-red-500/20 text-red-400 text-xs flex items-start gap-2">
-            <AlertCircle className="w-4 h-4 shrink-0 mt-0.5" />
-            <span>{errorMsg}</span>
+          <div className="mb-4 p-3 rounded-xl bg-red-500/10 border border-red-500/20 text-red-400 text-xs flex flex-col gap-2">
+            <div className="flex items-start gap-2">
+              <AlertCircle className="w-4 h-4 shrink-0 mt-0.5" />
+              <span>{errorMsg}</span>
+            </div>
+            {mode === 'signin' && (errorMsg.includes('haijasajiliwa') || errorMsg.includes('Jisajili') || errorMsg.includes('kujisajili')) && (
+              <button
+                type="button"
+                onClick={() => {
+                  setMode('signup');
+                  setErrorMsg(null);
+                }}
+                className="self-start text-[11px] font-bold text-cyan-300 hover:text-cyan-200 underline flex items-center gap-1.5 mt-0.5 px-2 py-1 rounded bg-cyan-500/10 border border-cyan-500/20"
+              >
+                <UserPlus className="w-3.5 h-3.5" />
+                <span>Bofya hapa Kujisajili Sasa (Register Now)</span>
+              </button>
+            )}
           </div>
         )}
 
