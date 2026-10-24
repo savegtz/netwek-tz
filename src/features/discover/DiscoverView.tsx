@@ -24,9 +24,9 @@ import {
 } from 'lucide-react';
 import { SafeImage } from '../../components/SafeImage';
 import { AVAILABLE_CONTACTS } from '../chat/components/StartNewChatModal';
-import { userDirectoryService } from '../../services/user/userDirectoryService';
+import { userDirectoryService, deduplicateUsers } from '../../services/user/userDirectoryService';
 import { userService } from '../../services/user/userService';
-import { friendshipService } from '../../services/user/friendshipService';
+import { friendshipService, matchesUser } from '../../services/user/friendshipService';
 import { isUserOnline, formatUserLastSeen } from '../../services/user/presenceService';
 import { UserProfile } from '../../types';
 
@@ -134,9 +134,14 @@ export const DiscoverView: React.FC<DiscoverViewProps> = ({
     },
   ];
 
-  // Filter people list based on active subfilter and search query
-  const allActivePeople = directoryUsers.filter(
-    (p) => !userService.isUserDeleted(p) && p.id !== effectiveCurrentUserId
+  // Filter people list based on active subfilter and search query, strictly deduplicated
+  const allActivePeople = deduplicateUsers(
+    directoryUsers.filter(
+      (p) =>
+        !userService.isUserDeleted(p) &&
+        !matchesUser(effectiveCurrentUserId, p.id, p) &&
+        (!currentUser?.email || p.email?.toLowerCase() !== currentUser.email.toLowerCase())
+    )
   );
 
   // Build the list of people to display based on the active tab
@@ -144,11 +149,11 @@ export const DiscoverView: React.FC<DiscoverViewProps> = ({
 
   if (peopleFilter === 'requests') {
     // When viewing 'Maombi', dynamically map all incoming friend requests so every single request is 100% visible
-    peopleToDisplay = pendingReceived.map((req) => {
+    const mappedRequests = pendingReceived.map((req) => {
       const senderId = req.requestedBy || req.senderDetails?.id || req.userA;
       const matched = directoryUsers.find(
         (u) =>
-          u.id === senderId ||
+          matchesUser(senderId, u.id, u) ||
           (u.email && req.senderDetails?.email && u.email.toLowerCase() === req.senderDetails.email.toLowerCase()) ||
           (u.username && req.senderDetails?.username && u.username.toLowerCase() === req.senderDetails.username.toLowerCase())
       );
@@ -173,16 +178,19 @@ export const DiscoverView: React.FC<DiscoverViewProps> = ({
         lastSeen: 'Muda mfupi uliopita',
       } as UserProfile;
     });
+    peopleToDisplay = deduplicateUsers(mappedRequests);
   } else if (peopleFilter === 'friends') {
     // Filter active confirmed friends
-    peopleToDisplay = allActivePeople.filter((p) => {
-      const relStatus = friendshipService.getFriendshipStatus(effectiveCurrentUserId, p.id);
-      return (
-        relStatus === 'friends' ||
-        friendsList.includes(p.id) ||
-        (p.email && friendsList.includes(p.email))
-      );
-    });
+    peopleToDisplay = deduplicateUsers(
+      allActivePeople.filter((p) => {
+        const relStatus = friendshipService.getFriendshipStatus(effectiveCurrentUserId, p.id);
+        return (
+          relStatus === 'friends' ||
+          friendsList.includes(p.id) ||
+          (p.email && friendsList.includes(p.email))
+        );
+      })
+    );
   } else {
     // All users
     peopleToDisplay = allActivePeople;

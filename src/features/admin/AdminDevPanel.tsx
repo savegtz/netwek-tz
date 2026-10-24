@@ -50,7 +50,7 @@ import {
 import { SafeImage } from '../../components/SafeImage';
 import { AdminVisualCharts } from './AdminVisualCharts';
 import { userService } from '../../services/user/userService';
-import { userDirectoryService } from '../../services/user/userDirectoryService';
+import { userDirectoryService, deduplicateUsers } from '../../services/user/userDirectoryService';
 import { businessStatusService, BusinessPromotionRecord } from '../../services/status/businessStatusService';
 import freshKkAvatar from '../../assets/images/fresh_kk_avatar_1791078365294.jpg';
 
@@ -127,114 +127,46 @@ export const AdminDevPanel: React.FC<AdminDevPanelProps> = ({
       const saved = localStorage.getItem('zenia_admin_users_list');
       if (saved) {
         const parsed: UserProfile[] = JSON.parse(saved);
-        return parsed
-          .map((u) => {
-            if (u.id === 'u_1') return { ...u, id: 'user_fresh_kk' };
-            if (u.id === 'u_2') return { ...u, id: 'user_alex_k' };
-            if (u.id === 'u_3') return { ...u, id: 'user_sarah_m' };
-            if (u.id === 'u_4') return { ...u, id: 'user_baraka_m' };
-            return u;
-          })
-          .filter((u) => !userService.isUserDeleted(u));
+        return deduplicateUsers(
+          parsed
+            .map((u) => {
+              if (u.id === 'u_1') return { ...u, id: 'user_fresh_kk' };
+              if (u.id === 'u_2') return { ...u, id: 'user_alex_k' };
+              if (u.id === 'u_3') return { ...u, id: 'user_sarah_m' };
+              if (u.id === 'u_4') return { ...u, id: 'user_baraka_m' };
+              return u;
+            })
+            .filter((u) => !userService.isUserDeleted(u))
+        );
       }
     } catch {}
-    const defaultList: UserProfile[] = [
-      {
-        id: 'user_fresh_kk',
-        displayName: 'Fresh kk',
-        username: 'fresh_kk',
-        email: 'fresh.kk@zenia.app',
-        photoURL: freshKkAvatar,
-        accountType: 'business',
-        verified: true,
-        followersCount: 18400,
-        followingCount: 310,
-        postsCount: 420,
-        walletBalance: 485000,
-        isOnline: true,
-        role: 'user',
-      },
-      {
-        id: 'current_user_id',
-        displayName: currentUser.displayName || 'Amina Kaunga',
-        username: currentUser.username || 'amina_kaunga',
-        email: currentUser.email || 'savegamour@gmail.com',
-        photoURL: currentUser.photoURL,
-        accountType: currentUser.accountType || 'creator',
-        verified: true,
-        followersCount: 12400,
-        followingCount: 245,
-        postsCount: 3200,
-        walletBalance: 320000,
-        isOnline: true,
-        role: 'superadmin',
-      },
-      {
-        id: 'user_alex_k',
-        displayName: 'Alex Kanyama',
-        username: 'alex_k',
-        email: 'alex@example.com',
-        photoURL: '/assets/images/alex_avatar_1790802235334.jpg',
-        accountType: 'personal',
-        verified: false,
-        followersCount: 890,
-        followingCount: 140,
-        postsCount: 45,
-        walletBalance: 15000,
-        isOnline: false,
-        role: 'user',
-      },
-      {
-        id: 'user_sarah_m',
-        displayName: 'Sarah Mwangi',
-        username: 'sarah_m',
-        email: 'sarah@soundwave.tz',
-        photoURL: '/assets/images/sarah_avatar_1790802224123.jpg',
-        accountType: 'creator',
-        verified: true,
-        followersCount: 8900,
-        followingCount: 412,
-        postsCount: 310,
-        walletBalance: 1250000,
-        isOnline: true,
-        role: 'user',
-      },
-      {
-        id: 'user_baraka_m',
-        displayName: 'Baraka Moto',
-        username: 'baraka_moto',
-        email: 'baraka@spam.xyz',
-        photoURL: 'https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?w=150',
-        accountType: 'personal',
-        verified: false,
-        followersCount: 12,
-        followingCount: 800,
-        postsCount: 2,
-        walletBalance: 0,
-        isSuspended: true,
-        isOnline: false,
-        role: 'user',
-      },
-    ];
-    return defaultList.filter((u) => !userService.isUserDeleted(u));
+    return userDirectoryService.getAllUsers();
   });
+
+  const [isCleaningDuplicates, setIsCleaningDuplicates] = useState(false);
+
+  const handleCleanDuplicates = async () => {
+    setIsCleaningDuplicates(true);
+    try {
+      const res = await userDirectoryService.cleanDuplicateUsersFromFirestore();
+      const freshUsers = userDirectoryService.getAllUsers();
+      setUsersList(freshUsers);
+      if (res.cleanedCount > 0) {
+        showToast(`Usafishaji umekamilika! Akaunti ${res.cleanedCount} zilizokuwa zimejirudia zimefutwa kikamilifu kwenye database! ✨`);
+      } else {
+        showToast('Hakuna akaunti zilizojirudia. Data za watumiaji ziko safi na sawa! ✓');
+      }
+    } catch (e) {
+      showToast('Kuna hitilafu wakati wa kusafisha: ' + (e as Error).message);
+    } finally {
+      setIsCleaningDuplicates(false);
+    }
+  };
 
   // Subscribe to live user directory (Firebase Auth & Firestore users)
   useEffect(() => {
     const unsub = userDirectoryService.subscribe((users) => {
-      setUsersList((prev) => {
-        const map = new Map<string, UserProfile>();
-        users.forEach((u) => map.set(u.id, u));
-        prev.forEach((u) => {
-          const existing = map.get(u.id);
-          if (existing) {
-            map.set(u.id, { ...existing, ...u });
-          } else {
-            map.set(u.id, u);
-          }
-        });
-        return Array.from(map.values()).filter((u) => !userService.isUserDeleted(u));
-      });
+      setUsersList(deduplicateUsers(users.filter((u) => !userService.isUserDeleted(u))));
     });
     return () => unsub();
   }, []);
@@ -781,6 +713,17 @@ export const AdminDevPanel: React.FC<AdminDevPanelProps> = ({
                       </button>
                     ))}
                   </div>
+
+                  <button
+                    type="button"
+                    disabled={isCleaningDuplicates}
+                    onClick={handleCleanDuplicates}
+                    className="flex items-center gap-1.5 px-3 py-2 rounded-2xl bg-amber-500/20 hover:bg-amber-500/30 text-amber-300 font-bold text-xs border border-amber-500/30 transition-all shrink-0 active:scale-95 disabled:opacity-50 shadow-sm"
+                    title="Changanua na ufute akaunti/data zilizojirudia mara mbili mbili kwenye Firestore"
+                  >
+                    <RefreshCw className={`w-3.5 h-3.5 ${isCleaningDuplicates ? 'animate-spin' : ''}`} />
+                    <span>{isCleaningDuplicates ? 'Inasafisha...' : 'Ondoa Data Zilizojirudia (Safisha)'}</span>
+                  </button>
 
                   <button
                     type="button"

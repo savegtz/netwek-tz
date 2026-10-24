@@ -3,8 +3,8 @@ import { X, Search, MessageSquare, Trash2, AlertTriangle, Check, UserPlus, UserC
 import { UserProfile } from '../../../types';
 import { SafeImage } from '../../../components/SafeImage';
 import { userService } from '../../../services/user/userService';
-import { friendshipService } from '../../../services/user/friendshipService';
-import { userDirectoryService, FIREBASE_AUTH_USERS_SEEDS } from '../../../services/user/userDirectoryService';
+import { friendshipService, matchesUser } from '../../../services/user/friendshipService';
+import { userDirectoryService, deduplicateUsers, FIREBASE_AUTH_USERS_SEEDS } from '../../../services/user/userDirectoryService';
 import { isUserOnline, formatUserLastSeen } from '../../../services/user/presenceService';
 import freshKkAvatar from '../../../assets/images/fresh_kk_avatar_1791078365294.jpg';
 
@@ -52,12 +52,18 @@ export const StartNewChatModal: React.FC<StartNewChatModalProps> = ({
 
   if (!isOpen) return null;
 
-  // Filter out current user and deleted users across the application
-  const contactsToDisplay = searchQuery.trim()
-    ? userDirectoryService.searchUsers(searchQuery, currentUser?.id)
-    : directoryUsers.filter(
-        (c) => c.id !== currentUser?.id && !userService.isUserDeleted(c)
-      );
+  // Filter out current user and deleted users across the application, strictly deduplicated
+  const contactsToDisplay = deduplicateUsers(
+    searchQuery.trim()
+      ? userDirectoryService.searchUsers(searchQuery, currentUser?.id)
+      : directoryUsers.filter(
+          (c) =>
+            c.id !== currentUser?.id &&
+            !matchesUser(currentUser?.id, c.id, c) &&
+            (!currentUser?.email || c.email?.toLowerCase() !== currentUser.email.toLowerCase()) &&
+            !userService.isUserDeleted(c)
+        )
+  );
 
   const handleDeleteContact = (contact: UserProfile) => {
     userService.deleteUser(contact.id, contact.username, contact.displayName);

@@ -345,7 +345,17 @@ export const ProfileView: React.FC<ProfileViewProps> = ({
 
     try {
       if (authTab === 'signup') {
-        let uid = 'user_' + Date.now();
+        const existingDirUser = userDirectoryService.getAllUsers().find(
+          (u) => u.email?.trim().toLowerCase() === cleanEmail
+        );
+        if (existingDirUser) {
+          setAuthError(`Barua pepe (${cleanEmail}) imeshajisajili kwenye Zenia! Tafadhali weka nenosiri lako na ubonyeze 'Ingia'.`);
+          setAuthTab('signin');
+          setAuthLoading(false);
+          return;
+        }
+
+        let uid = '';
         let userEmail = cleanEmail;
 
         try {
@@ -353,7 +363,29 @@ export const ProfileView: React.FC<ProfileViewProps> = ({
           uid = cred.user.uid;
           userEmail = cred.user.email || cleanEmail;
         } catch (firebaseErr: any) {
+          const errCode = firebaseErr?.code || '';
+          if (errCode === 'auth/email-already-in-use' || String(firebaseErr).includes('email-already-in-use')) {
+            setAuthError(`Barua pepe hii (${cleanEmail}) tayari imesajiliwa. Tafadhali ingia hapa chini.`);
+            setAuthTab('signin');
+            setAuthLoading(false);
+            return;
+          }
+          if (errCode === 'auth/weak-password') {
+            setAuthError('Nenosiri ni fupi mno. Weka nenosiri lenye herufi 6 au zaidi.');
+            setAuthLoading(false);
+            return;
+          }
           console.warn('Firebase signup notice:', firebaseErr);
+          uid = 'user_' + Math.abs(cleanEmail.split('').reduce((a, b) => (a << 5) - a + b.charCodeAt(0), 0));
+        }
+
+        const existingDoc = await getDoc(doc(db, 'users', uid));
+        if (existingDoc.exists()) {
+          const existingData = existingDoc.data() as UserProfile;
+          localStorage.setItem('zenia_active_user', JSON.stringify(existingData));
+          if (onLoginSuccess) onLoginSuccess(existingData);
+          setAuthSuccess('Umeingia kwenye akaunti yako kikamilifu!');
+          return;
         }
 
         const newUser: UserProfile = {

@@ -1,9 +1,84 @@
-import { collection, doc, onSnapshot, getDocs, setDoc, query } from 'firebase/firestore';
+import { collection, doc, onSnapshot, getDocs, setDoc, deleteDoc, query } from 'firebase/firestore';
 import { db } from '../firebase/config';
 import { UserProfile } from '../../types';
 import { userService } from './userService';
+import { normalizeUserId } from './friendshipService';
 import freshKkAvatar from '../../assets/images/fresh_kk_avatar_1791078365294.jpg';
 import aminaAvatar from '../../assets/images/amina_avatar_1790280951312.jpg';
+
+/**
+ * Intelligent User Deduplication:
+ * Prevents multiple registrations, dual accounts, and conflicting IDs for the same person
+ * by merging entries sharing the same email, normalized username, or normalized ID.
+ */
+export function deduplicateUsers(users: UserProfile[]): UserProfile[] {
+  if (!Array.isArray(users)) return [];
+
+  const result: UserProfile[] = [];
+
+  for (const user of users) {
+    if (!user || userService.isUserDeleted(user)) continue;
+
+    const emailKey = user.email ? user.email.trim().toLowerCase() : '';
+    const usernameKey = user.username
+      ? user.username.trim().toLowerCase().replace(/[^a-z0-9_]/g, '_')
+      : '';
+    const normId = normalizeUserId(user.id);
+
+    // Look for existing profile matching this user
+    const existingIndex = result.findIndex((existing) => {
+      // 1. Email match (most authoritative)
+      if (emailKey && existing.email && existing.email.trim().toLowerCase() === emailKey) {
+        return true;
+      }
+      // 2. Normalized User ID match
+      if (normId && normalizeUserId(existing.id) === normId) {
+        return true;
+      }
+      // 3. Normalized Username match
+      if (usernameKey && existing.username && existing.username.trim().toLowerCase().replace(/[^a-z0-9_]/g, '_') === usernameKey) {
+        return true;
+      }
+      return false;
+    });
+
+    if (existingIndex >= 0) {
+      // Merge: retain the richer/authoritative record
+      const prev = result[existingIndex];
+      const isCurrentBetter =
+        (user.role === 'superadmin' && prev.role !== 'superadmin') ||
+        (user.verified && !prev.verified) ||
+        (!user.id.startsWith('user_') && prev.id.startsWith('user_')) ||
+        (user.id.length > 20 && prev.id === 'current_user_id') ||
+        ((user.walletBalance || 0) > (prev.walletBalance || 0)) ||
+        ((user.followersCount || 0) > (prev.followersCount || 0));
+
+      result[existingIndex] = {
+        ...(isCurrentBetter ? prev : user),
+        ...(isCurrentBetter ? user : prev),
+        // Preserve rich assets
+        photoURL: user.photoURL || prev.photoURL,
+        bio: (user.bio && user.bio.length > (prev.bio || '').length) ? user.bio : prev.bio || user.bio,
+        walletBalance: Math.max(user.walletBalance || 0, prev.walletBalance || 0),
+        followersCount: Math.max(user.followersCount || 0, prev.followersCount || 0),
+        postsCount: Math.max(user.postsCount || 0, prev.postsCount || 0),
+        verified: Boolean(user.verified || prev.verified),
+        role:
+          user.role === 'superadmin' || prev.role === 'superadmin'
+            ? 'superadmin'
+            : user.role === 'admin' || prev.role === 'admin'
+            ? 'admin'
+            : 'user',
+        isOnline: Boolean(user.isOnline || prev.isOnline),
+        lastSeen: user.isOnline ? 'Sasa hivi' : user.lastSeen || prev.lastSeen,
+      };
+    } else {
+      result.push(user);
+    }
+  }
+
+  return result;
+}
 
 /**
  * Known Firebase Auth Users from the Firebase Authentication Console.
@@ -286,8 +361,8 @@ class UserDirectoryServiceImpl {
               }
             });
 
-            this.users = Array.from(combinedMap.values()).filter(
-              (u) => !userService.isUserDeleted(u)
+            this.users = deduplicateUsers(
+              Array.from(combinedMap.values()).filter((u) => !userService.isUserDeleted(u))
             );
 
             try {
@@ -304,7 +379,9 @@ class UserDirectoryServiceImpl {
           console.warn('Firestore users collection listener notice:', error);
           // Fallback to seeds if offline or permissions issue
           if (this.users.length === 0) {
-            this.users = FIREBASE_AUTH_USERS_SEEDS.filter((u) => !userService.isUserDeleted(u));
+            this.users = deduplicateUsers(
+              FIREBASE_AUTH_USERS_SEEDS.filter((u) => !userService.isUserDeleted(u))
+            );
             this.notifyListeners();
           }
         }
@@ -312,7 +389,9 @@ class UserDirectoryServiceImpl {
     } catch (e) {
       console.warn('Failed to attach Firestore users listener:', e);
       if (this.users.length === 0) {
-        this.users = FIREBASE_AUTH_USERS_SEEDS.filter((u) => !userService.isUserDeleted(u));
+        this.users = deduplicateUsers(
+          FIREBASE_AUTH_USERS_SEEDS.filter((u) => !userService.isUserDeleted(u))
+        );
         this.notifyListeners();
       }
     }
@@ -326,23 +405,105 @@ class UserDirectoryServiceImpl {
       for (const u of FIREBASE_AUTH_USERS_SEEDS) {
         await setDoc(doc(db, 'users', u.id), u, { merge: true });
       }
-      this.users = FIREBASE_AUTH_USERS_SEEDS.filter((u) => !userService.isUserDeleted(u));
+      this.users = deduplicateUsers(
+        FIREBASE_AUTH_USERS_SEEDS.filter((u) => !userService.isUserDeleted(u))
+      );
       this.notifyListeners();
     } catch (e) {
       console.warn('Notice seeding users to Firestore:', e);
-      this.users = FIREBASE_AUTH_USERS_SEEDS.filter((u) => !userService.isUserDeleted(u));
+      this.users = deduplicateUsers(
+        FIREBASE_AUTH_USERS_SEEDS.filter((u) => !userService.isUserDeleted(u))
+      );
       this.notifyListeners();
     }
   }
 
   /**
-   * Returns all active users
+   * Cleans up duplicate users from Cloud Firestore and local storage.
+   * Finds documents with matching emails or usernames, retains the primary authoritative account,
+   * and deletes redundant duplicate documents from Firestore.
+   */
+  public async cleanDuplicateUsersFromFirestore(): Promise<{ cleanedCount: number; deletedIds: string[] }> {
+    const deletedIds: string[] = [];
+    try {
+      const snap = await getDocs(collection(db, 'users'));
+      const allDocs: { id: string; data: UserProfile }[] = [];
+      snap.forEach((d) => {
+        allDocs.push({ id: d.id, data: d.data() as UserProfile });
+      });
+
+      const emailMap = new Map<string, { id: string; data: UserProfile }[]>();
+      const usernameMap = new Map<string, { id: string; data: UserProfile }[]>();
+
+      allDocs.forEach((item) => {
+        const email = (item.data.email || '').trim().toLowerCase();
+        if (email) {
+          if (!emailMap.has(email)) emailMap.set(email, []);
+          emailMap.get(email)!.push(item);
+        }
+        const uname = (item.data.username || '').trim().toLowerCase();
+        if (uname) {
+          if (!usernameMap.has(uname)) usernameMap.set(uname, []);
+          usernameMap.get(uname)!.push(item);
+        }
+      });
+
+      const idsToDelete = new Set<string>();
+
+      const checkGroup = (group: { id: string; data: UserProfile }[]) => {
+        if (group.length <= 1) return;
+        // Sort: best account first
+        group.sort((a, b) => {
+          if (a.data.role === 'superadmin' && b.data.role !== 'superadmin') return -1;
+          if (b.data.role === 'superadmin' && a.data.role !== 'superadmin') return 1;
+          if (a.data.verified && !b.data.verified) return -1;
+          if (b.data.verified && !a.data.verified) return 1;
+          const aIsUid = !a.id.startsWith('user_') && a.id !== 'current_user_id';
+          const bIsUid = !b.id.startsWith('user_') && b.id !== 'current_user_id';
+          if (aIsUid && !bIsUid) return -1;
+          if (bIsUid && !aIsUid) return 1;
+          return (b.data.walletBalance || 0) - (a.data.walletBalance || 0);
+        });
+
+        // The first one is authoritative; all others are deleted
+        for (let i = 1; i < group.length; i++) {
+          idsToDelete.add(group[i].id);
+        }
+      };
+
+      emailMap.forEach(checkGroup);
+      usernameMap.forEach(checkGroup);
+
+      // Perform deletions in Firestore
+      for (const id of idsToDelete) {
+        try {
+          await deleteDoc(doc(db, 'users', id));
+          deletedIds.push(id);
+        } catch (delErr) {
+          console.warn('Could not delete duplicate user doc from Firestore:', id, delErr);
+        }
+      }
+
+      // Refresh local directory state
+      this.users = deduplicateUsers(this.users.filter((u) => !idsToDelete.has(u.id)));
+      try {
+        localStorage.setItem('zenia_firestore_users_cache', JSON.stringify(this.users));
+        localStorage.removeItem('zenia_admin_users_list');
+      } catch (_) {}
+      this.notifyListeners();
+    } catch (e) {
+      console.error('Error during cleanDuplicateUsersFromFirestore:', e);
+    }
+
+    return { cleanedCount: deletedIds.length, deletedIds };
+  }
+
+  /**
+   * Returns all active users, strictly deduplicated
    */
   public getAllUsers(): UserProfile[] {
-    if (this.users.length === 0) {
-      return FIREBASE_AUTH_USERS_SEEDS.filter((u) => !userService.isUserDeleted(u));
-    }
-    return this.users.filter((u) => !userService.isUserDeleted(u));
+    const raw = this.users.length === 0 ? FIREBASE_AUTH_USERS_SEEDS : this.users;
+    return deduplicateUsers(raw.filter((u) => !userService.isUserDeleted(u)));
   }
 
   /**

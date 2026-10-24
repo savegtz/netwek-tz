@@ -25,6 +25,7 @@ import { doc, setDoc, getDoc } from 'firebase/firestore';
 import { auth, db, googleProvider } from '../../services/firebase/config';
 import { UserProfile, AccountType } from '../../types';
 import { INITIAL_USER } from '../../services/seed/initialData';
+import { userDirectoryService } from '../../services/user/userDirectoryService';
 import freshKkAvatar from '../../assets/images/fresh_kk_avatar_1791078365294.jpg';
 
 interface AuthModalProps {
@@ -75,7 +76,18 @@ export const AuthModal: React.FC<AuthModalProps> = ({
 
     try {
       if (mode === 'signup') {
-        let uid = 'user_' + Date.now();
+        // Prevent duplicate registration: check existing directory users first
+        const existingDirUser = userDirectoryService.getAllUsers().find(
+          (u) => u.email?.trim().toLowerCase() === cleanEmail
+        );
+        if (existingDirUser) {
+          setErrorMsg(`Barua pepe (${cleanEmail}) imeshajisajili kwenye Zenia! Tafadhali weka nenosiri lako na ubonyeze 'Ingia'.`);
+          setMode('signin');
+          setLoading(false);
+          return;
+        }
+
+        let uid = '';
         let userEmail = cleanEmail;
 
         try {
@@ -83,8 +95,31 @@ export const AuthModal: React.FC<AuthModalProps> = ({
           uid = cred.user.uid;
           userEmail = cred.user.email || cleanEmail;
         } catch (firebaseErr: any) {
-          console.warn('Firebase signup notice, falling back to app profile session:', firebaseErr);
-          // If auth domain or offline fails, fallback to local registered profile
+          const errCode = firebaseErr?.code || '';
+          if (errCode === 'auth/email-already-in-use' || String(firebaseErr).includes('email-already-in-use')) {
+            setErrorMsg(`Barua pepe hii (${cleanEmail}) tayari imesajiliwa. Tafadhali ingia hapa chini badala ya kujisajili upya.`);
+            setMode('signin');
+            setLoading(false);
+            return;
+          }
+          if (errCode === 'auth/weak-password') {
+            setErrorMsg('Nenosiri ni fupi mno. Tafadhali weka nenosiri lenye herufi 6 au zaidi.');
+            setLoading(false);
+            return;
+          }
+          console.warn('Firebase signup notice, proceeding with unique profile session:', firebaseErr);
+          uid = 'user_' + Math.abs(cleanEmail.split('').reduce((a, b) => (a << 5) - a + b.charCodeAt(0), 0));
+        }
+
+        // Check if doc already exists in Firestore to avoid overwriting or duplicating
+        const existingDoc = await getDoc(doc(db, 'users', uid));
+        if (existingDoc.exists()) {
+          const existingData = existingDoc.data() as UserProfile;
+          localStorage.setItem('zenia_active_user', JSON.stringify(existingData));
+          onUserUpdate(existingData);
+          setSuccessMsg('Umeingia kwenye akaunti yako iliyopo kikamilifu!');
+          setTimeout(onClose, 800);
+          return;
         }
 
         const newUser: UserProfile = {
