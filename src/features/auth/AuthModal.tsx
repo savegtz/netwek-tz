@@ -302,9 +302,26 @@ export const AuthModal: React.FC<AuthModalProps> = ({
   };
 
   // Quick Demo Logins for instant evaluation / testing
-  const handleQuickDemoLogin = (type: 'amina' | 'freshkk' | 'newuser') => {
+  const handleQuickDemoLogin = (type: 'amytzee' | 'amina' | 'freshkk' | 'newuser') => {
     let demoUser: UserProfile;
-    if (type === 'amina') {
+    if (type === 'amytzee') {
+      demoUser = {
+        id: '7w6ldhpczBOVpimURqrpQ3C',
+        email: 'amytzee@gmail.com',
+        displayName: 'Amytzee (Admin)',
+        username: 'amytzee',
+        bio: 'Msimamizi Mkuu (Super Admin) wa Zenia Network 🛡️👑',
+        accountType: 'creator',
+        verified: true,
+        role: 'superadmin',
+        walletBalance: 500000,
+        followersCount: 15400,
+        followingCount: 150,
+        postsCount: 52,
+        isOnline: true,
+        lastSeen: 'Sasa hivi',
+      };
+    } else if (type === 'amina') {
       demoUser = INITIAL_USER;
     } else if (type === 'freshkk') {
       demoUser = {
@@ -643,16 +660,22 @@ export const AuthModal: React.FC<AuthModalProps> = ({
             <Zap className="w-3 h-3 text-amber-400" />
             <span>Majaribio ya Haraka (Instant Demo Test):</span>
           </p>
-          <div className="grid grid-cols-2 gap-2">
+          <div className="grid grid-cols-3 gap-1.5">
+            <button
+              onClick={() => handleQuickDemoLogin('amytzee')}
+              className="py-1.5 px-2 rounded-xl bg-emerald-500/10 hover:bg-emerald-500/20 border border-emerald-500/30 text-[11px] text-emerald-300 font-bold flex items-center justify-center gap-1 transition-colors"
+            >
+              <span>👑 Amytzee (Admin)</span>
+            </button>
             <button
               onClick={() => handleQuickDemoLogin('amina')}
-              className="py-1.5 px-2 rounded-xl bg-white/5 hover:bg-white/10 border border-white/10 text-[11px] text-cyan-300 font-semibold flex items-center justify-center gap-1.5 transition-colors"
+              className="py-1.5 px-2 rounded-xl bg-white/5 hover:bg-white/10 border border-white/10 text-[11px] text-cyan-300 font-semibold flex items-center justify-center gap-1 transition-colors"
             >
-              <span>Amina Kaunga</span>
+              <span>Amina K.</span>
             </button>
             <button
               onClick={() => handleQuickDemoLogin('freshkk')}
-              className="py-1.5 px-2 rounded-xl bg-white/5 hover:bg-white/10 border border-white/10 text-[11px] text-indigo-300 font-semibold flex items-center justify-center gap-1.5 transition-colors"
+              className="py-1.5 px-2 rounded-xl bg-white/5 hover:bg-white/10 border border-white/10 text-[11px] text-indigo-300 font-semibold flex items-center justify-center gap-1 transition-colors"
             >
               <span>Fresh kk</span>
             </button>

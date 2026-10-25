@@ -559,9 +559,26 @@ export const ProfileView: React.FC<ProfileViewProps> = ({
     }
   };
 
-  const handleQuickDemoLogin = (type: 'amina' | 'freshkk' | 'newuser') => {
+  const handleQuickDemoLogin = (type: 'amytzee' | 'amina' | 'freshkk' | 'newuser') => {
     let demoUser: UserProfile;
-    if (type === 'amina') {
+    if (type === 'amytzee') {
+      demoUser = {
+        id: '7w6ldhpczBOVpimURqrpQ3C',
+        email: 'amytzee@gmail.com',
+        displayName: 'Amytzee (Admin)',
+        username: 'amytzee',
+        bio: 'Msimamizi Mkuu (Super Admin) wa Zenia Network 🛡️👑',
+        accountType: 'creator',
+        verified: true,
+        role: 'superadmin',
+        walletBalance: 500000,
+        followersCount: 15400,
+        followingCount: 150,
+        postsCount: 52,
+        isOnline: true,
+        createdAt: new Date().toISOString(),
+      };
+    } else if (type === 'amina') {
       demoUser = INITIAL_USER;
     } else if (type === 'freshkk') {
       demoUser = {
@@ -837,18 +854,25 @@ export const ProfileView: React.FC<ProfileViewProps> = ({
                 <Zap className="w-3.5 h-3.5 text-amber-400" />
                 <span>Au Ingia Haraka kwa Majaribio (1-Click Demo):</span>
               </p>
-              <div className="grid grid-cols-2 gap-2">
+              <div className="grid grid-cols-3 gap-1.5">
+                <button
+                  type="button"
+                  onClick={() => handleQuickDemoLogin('amytzee')}
+                  className="py-1.5 px-2 rounded-xl bg-emerald-500/10 hover:bg-emerald-500/20 border border-emerald-500/30 text-emerald-300 text-[11px] font-bold flex items-center justify-center gap-1 transition-all active:scale-95"
+                >
+                  <span>👑 Amytzee</span>
+                </button>
                 <button
                   type="button"
                   onClick={() => handleQuickDemoLogin('amina')}
-                  className="py-1.5 px-2 rounded-xl bg-white/5 hover:bg-white/10 border border-cyan-500/30 text-cyan-300 text-[11px] font-bold flex items-center justify-center gap-1.5 transition-all active:scale-95"
+                  className="py-1.5 px-2 rounded-xl bg-white/5 hover:bg-white/10 border border-cyan-500/30 text-cyan-300 text-[11px] font-bold flex items-center justify-center gap-1 transition-all active:scale-95"
                 >
-                  <span>Amina Kaunga</span>
+                  <span>Amina K.</span>
                 </button>
                 <button
                   type="button"
                   onClick={() => handleQuickDemoLogin('freshkk')}
-                  className="py-1.5 px-2 rounded-xl bg-white/5 hover:bg-white/10 border border-indigo-500/30 text-indigo-300 text-[11px] font-bold flex items-center justify-center gap-1.5 transition-all active:scale-95"
+                  className="py-1.5 px-2 rounded-xl bg-white/5 hover:bg-white/10 border border-indigo-500/30 text-indigo-300 text-[11px] font-bold flex items-center justify-center gap-1 transition-all active:scale-95"
                 >
                   <span>Fresh kk</span>
                 </button>
@@ -1055,20 +1079,22 @@ export const ProfileView: React.FC<ProfileViewProps> = ({
       {/* ============================================================== */}
       {/* 1. COVER BANNER (CLEAN, ELEGANT BACKDROP WITH CAMERA ACTION)   */}
       {/* ============================================================== */}
-      <div className="relative w-full h-32 sm:h-44 overflow-hidden bg-gradient-to-r from-cyan-950 via-slate-900 to-indigo-950 shrink-0">
-        <SafeImage
-          src={coverPhoto}
-          fallbackGradient="from-cyan-900 via-indigo-950 to-purple-950"
-          fallbackText="Zenia Cover"
-          className="w-full h-full object-cover opacity-80"
-        />
-        <div
-          className={`absolute inset-0 bg-gradient-to-t ${
-            isDark
-              ? 'from-[#070A14] via-[#070A14]/25 to-transparent'
-              : 'from-slate-50 via-slate-50/20 to-transparent'
-          }`}
-        />
+      <div className="relative w-full h-32 sm:h-44 bg-gradient-to-r from-cyan-950 via-slate-900 to-indigo-950 shrink-0 z-20">
+        <div className="absolute inset-0 overflow-hidden">
+          <SafeImage
+            src={coverPhoto}
+            fallbackGradient="from-cyan-900 via-indigo-950 to-purple-950"
+            fallbackText="Zenia Cover"
+            className="w-full h-full object-cover opacity-80"
+          />
+          <div
+            className={`absolute inset-0 bg-gradient-to-t ${
+              isDark
+                ? 'from-[#070A14] via-[#070A14]/25 to-transparent'
+                : 'from-slate-50 via-slate-50/20 to-transparent'
+            }`}
+          />
+        </div>
 
         {/* Cover Photo Upload Button on Top-Left */}
         <div className="absolute top-2.5 left-3 z-20 flex items-center gap-1.5 pointer-events-auto">
@@ -1378,6 +1404,37 @@ export const ProfileView: React.FC<ProfileViewProps> = ({
             )}
           </div>
         </div>
+
+        {/* SUPER ADMIN DIRECT ACCESS BANNER */}
+        {isUserAdmin(currentUser) && (
+          <div className="mb-3">
+            <button
+              onClick={onOpenAdmin}
+              className="w-full py-2.5 px-3.5 rounded-2xl bg-gradient-to-r from-emerald-500/20 via-teal-500/25 to-emerald-500/20 hover:from-emerald-500/30 hover:to-teal-500/35 border border-emerald-500/40 text-emerald-300 hover:text-white text-xs font-bold flex items-center justify-between shadow-md shadow-emerald-500/10 transition-all active:scale-[0.99] group"
+            >
+              <div className="flex items-center gap-2.5 text-left">
+                <div className="w-8 h-8 rounded-xl bg-emerald-500/30 flex items-center justify-center text-emerald-300 group-hover:scale-105 transition-transform shrink-0 shadow-xs">
+                  <Shield className="w-4 h-4 text-emerald-300" />
+                </div>
+                <div>
+                  <div className="flex items-center gap-1.5">
+                    <span className="font-bold text-white text-xs sm:text-sm">Jopo Kuu la Utawala (Admin Panel)</span>
+                    <span className="text-[9px] px-1.5 py-0.5 rounded bg-emerald-500/30 text-emerald-300 uppercase font-mono font-bold">
+                      Super Admin
+                    </span>
+                  </div>
+                  <span className="text-[10px] text-emerald-300/80 font-normal">
+                    Dhibiti watumiaji, bidhaa, machapisho na mipangilio ya mfumo
+                  </span>
+                </div>
+              </div>
+              <div className="flex items-center gap-1 text-[11px] font-bold text-emerald-300 group-hover:translate-x-0.5 transition-transform shrink-0 ml-2">
+                <span className="hidden sm:inline">Fungua Jopo</span>
+                <span>→</span>
+              </div>
+            </button>
+          </div>
+        )}
 
         {/* ROW 3: ACTION BUTTONS (FULL WIDTH ROW, BALANCED & TOUCH-FRIENDLY) */}
         <div className="flex items-center gap-2 mb-3">

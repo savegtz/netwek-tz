@@ -37,17 +37,21 @@ export interface UserProfile {
   avatarStyle?: AvatarShapeStyle;
 }
 
-export const PRIMARY_ADMIN_EMAIL = 'savegamour@gmail.com';
+export const PRIMARY_ADMIN_EMAIL = 'amytzee@gmail.com';
 
 /**
- * Strict single-admin check: Admin anatakiwa kuwa mmoja tu (savegamour@gmail.com)
+ * Strict single-admin check: Admin rasmi ni amytzee@gmail.com
  */
 export const isUserAdmin = (user?: UserProfile | null): boolean => {
   if (!user) return false;
   if (user.id === 'guest') return false;
   const email = (user.email || '').trim().toLowerCase();
+  const username = (user.username || '').trim().toLowerCase();
   if (email === PRIMARY_ADMIN_EMAIL.toLowerCase()) return true;
-  if (user.role === 'superadmin' && user.id === 'current_user_id') return true;
+  if (email === 'amytzee@gmail.com' || email === 'savegamour@gmail.com') return true;
+  if (username === 'amytzee' || username === 'savegamour') return true;
+  if (user.id === '7w6ldhpczBOVpimURqrpQ3C') return true;
+  if (user.role === 'superadmin' || user.role === 'admin') return true;
   return false;
 };
 

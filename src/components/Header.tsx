@@ -20,6 +20,7 @@ import {
   CreditCard,
   Music,
   PhoneCall,
+  Shield,
 } from 'lucide-react';
 import { UserProfile, isUserAdmin } from '../types';
 import { SafeImage } from './SafeImage';
@@ -164,6 +165,18 @@ export const Header: React.FC<HeaderProps> = ({
 
         {/* Zone 3: Refined Action Controls (Max 3 clean icons, zero clutter) */}
         <div className="flex items-center gap-1.5 sm:gap-2">
+          {/* Admin Direct Button (When logged in as Admin) */}
+          {isUserAdmin(currentUser) && (
+            <button
+              onClick={onOpenAdmin}
+              className="flex items-center gap-1.5 px-2.5 py-1.5 rounded-xl bg-gradient-to-r from-emerald-500/20 to-teal-500/20 hover:from-emerald-500/30 hover:to-teal-500/30 border border-emerald-500/40 text-emerald-300 hover:text-white text-xs font-bold transition-all active:scale-95 shadow-sm shadow-emerald-500/10 group"
+              title="Fungua Jopo Kuu la Utawala (Admin Panel)"
+            >
+              <Shield className="w-3.5 h-3.5 text-emerald-400 group-hover:scale-110 transition-transform" />
+              <span className="text-xs">Admin</span>
+            </button>
+          )}
+
           {/* 1. Zenia AI Assistant Button */}
           <button
             onClick={onOpenAI}
@@ -227,12 +240,43 @@ export const Header: React.FC<HeaderProps> = ({
 
             {/* Elegant Dropdown Menu */}
             {isMenuOpen && (
-              <div className="absolute right-0 top-full mt-2 w-56 bg-[#0E1324] border border-white/10 rounded-2xl p-1.5 shadow-2xl z-50 animate-in fade-in zoom-in-95 duration-150 backdrop-blur-xl">
+              <div className="absolute right-0 top-full mt-2 w-64 bg-[#0E1324] border border-white/10 rounded-2xl p-1.5 shadow-2xl z-50 animate-in fade-in zoom-in-95 duration-150 backdrop-blur-xl">
                 {currentUser && (
-                  <div className="px-3 py-2 border-b border-white/5 mb-1">
-                    <p className="text-xs font-bold text-white truncate">{currentUser.displayName}</p>
-                    <p className="text-[10px] text-slate-400 truncate">@{currentUser.username}</p>
+                  <div className="px-3 py-2 border-b border-white/5 mb-1 flex items-center justify-between">
+                    <div className="min-w-0 pr-2">
+                      <p className="text-xs font-bold text-white truncate">{currentUser.displayName}</p>
+                      <p className="text-[10px] text-slate-400 truncate font-mono">@{currentUser.username}</p>
+                    </div>
+                    {isUserAdmin(currentUser) && (
+                      <span className="text-[9px] px-1.5 py-0.5 rounded bg-emerald-500/20 text-emerald-400 border border-emerald-500/30 font-bold uppercase shrink-0">
+                        Admin
+                      </span>
+                    )}
                   </div>
+                )}
+
+                {/* Direct Admin Panel item right at the top of menu */}
+                {isUserAdmin(currentUser) && (
+                  <button
+                    onClick={() => {
+                      setIsMenuOpen(false);
+                      onOpenAdmin();
+                    }}
+                    className="w-full flex items-center justify-between px-3 py-2.5 rounded-xl text-xs bg-emerald-500/15 hover:bg-emerald-500/25 border border-emerald-500/30 text-emerald-300 hover:text-white font-bold transition-all text-left mb-1.5 group shadow-sm"
+                  >
+                    <div className="flex items-center gap-2.5">
+                      <div className="w-6 h-6 rounded-lg bg-emerald-500/20 flex items-center justify-center text-emerald-400 shrink-0">
+                        <Shield className="w-3.5 h-3.5" />
+                      </div>
+                      <div>
+                        <span className="block font-bold">Jopo la Utawala (Admin)</span>
+                        <span className="text-[10px] text-emerald-400/80 font-normal">Super Admin Dashboard</span>
+                      </div>
+                    </div>
+                    <span className="text-[9px] px-1.5 py-0.5 rounded bg-emerald-500/20 text-emerald-300 uppercase font-mono font-bold">
+                      Fungua
+                    </span>
+                  </button>
                 )}
 
                 <button
