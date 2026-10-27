@@ -1158,6 +1158,34 @@ export const ProfileView: React.FC<ProfileViewProps> = ({
                   )}
                 </div>
 
+                {/* Super Admin Panel (Direct at Top of Menu) */}
+                {isUserAdmin(currentUser) && (
+                  <button
+                    onClick={() => {
+                      setIsOptionsMenuOpen(false);
+                      onOpenAdmin();
+                    }}
+                    className={`w-full flex items-center justify-between px-3 py-2.5 rounded-xl text-xs ${
+                      isDark
+                        ? 'text-emerald-300 hover:text-white bg-emerald-500/15 hover:bg-emerald-500/25 border-emerald-500/35'
+                        : 'text-emerald-800 hover:text-emerald-950 bg-emerald-50 hover:bg-emerald-100 border-emerald-300'
+                    } border transition-all text-left mb-1.5 font-bold shadow-xs`}
+                  >
+                    <div className="flex items-center gap-2.5">
+                      <div className="w-7 h-7 rounded-lg bg-emerald-500/25 text-emerald-400 flex items-center justify-center shrink-0">
+                        <Shield className="w-4 h-4" />
+                      </div>
+                      <div>
+                        <span className="font-bold block">Jopo Kuu la Utawala</span>
+                        <span className="text-[10px] text-emerald-400/90 font-normal">Super Admin Panel</span>
+                      </div>
+                    </div>
+                    <span className="text-[9px] px-2 py-0.5 rounded bg-emerald-500/25 text-emerald-300 font-bold uppercase font-mono">
+                      Fungua
+                    </span>
+                  </button>
+                )}
+
                 {/* 1. Pochi ya Zenia */}
                 <button
                   onClick={() => {
@@ -1225,34 +1253,6 @@ export const ProfileView: React.FC<ProfileViewProps> = ({
                     <span className="text-[10px] text-slate-400">Kiungo cha akaunti yako</span>
                   </div>
                 </button>
-
-                {/* 4. Super Admin Panel */}
-                {isUserAdmin(currentUser) && (
-                  <button
-                    onClick={() => {
-                      setIsOptionsMenuOpen(false);
-                      onOpenAdmin();
-                    }}
-                    className={`w-full flex items-center justify-between px-3 py-2 rounded-xl text-xs ${
-                      isDark
-                        ? 'text-slate-200 hover:text-white hover:bg-emerald-500/10'
-                        : 'text-slate-700 hover:text-slate-900 hover:bg-emerald-50'
-                    } border border-emerald-500/25 transition-colors text-left mt-1`}
-                  >
-                    <div className="flex items-center gap-2.5">
-                      <div className="w-7 h-7 rounded-lg bg-emerald-500/20 text-emerald-500 flex items-center justify-center shrink-0">
-                        <Shield className="w-3.5 h-3.5" />
-                      </div>
-                      <div>
-                        <span className="font-bold block">Usimamizi wa Mfumo</span>
-                        <span className="text-[10px] text-emerald-500/90">Super Admin Panel</span>
-                      </div>
-                    </div>
-                    <span className="text-[9px] px-1.5 py-0.5 rounded bg-emerald-500/20 text-emerald-500 font-bold uppercase">
-                      Admin
-                    </span>
-                  </button>
-                )}
 
                 {/* 5. Toka Kwenye Akaunti */}
                 {onSignOut && (

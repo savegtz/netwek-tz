@@ -334,6 +334,16 @@ class BusinessStatusServiceImpl {
     this.notifyListeners();
     return true;
   }
+
+  public deletePromotion(promotionId: string): boolean {
+    const index = this.promotions.findIndex((p) => p.id === promotionId);
+    if (index === -1) return false;
+
+    this.promotions.splice(index, 1);
+    this.savePromotions();
+    this.notifyListeners();
+    return true;
+  }
 }
 
 export const businessStatusService = new BusinessStatusServiceImpl();

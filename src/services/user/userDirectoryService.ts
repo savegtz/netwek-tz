@@ -349,7 +349,11 @@ class UserDirectoryServiceImpl {
             
             // First put the seed users
             FIREBASE_AUTH_USERS_SEEDS.forEach((u) => {
-              combinedMap.set(u.email.toLowerCase(), u);
+              if (u.email) {
+                combinedMap.set(u.email.toLowerCase(), u);
+              } else {
+                combinedMap.set(u.id, u);
+              }
             });
 
             // Override / enrich with real Firestore data
