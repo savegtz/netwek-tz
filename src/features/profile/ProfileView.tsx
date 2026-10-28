@@ -1079,26 +1079,26 @@ export const ProfileView: React.FC<ProfileViewProps> = ({
       {/* ============================================================== */}
       {/* 1. COVER BANNER (CLEAN, ELEGANT BACKDROP WITH CAMERA ACTION)   */}
       {/* ============================================================== */}
-      <div className="relative w-full h-32 sm:h-44 bg-gradient-to-r from-cyan-950 via-slate-900 to-indigo-950 shrink-0 z-20">
-        <div className="absolute inset-0 overflow-hidden">
+      <div className="relative w-full h-44 sm:h-56 md:h-64 bg-gradient-to-r from-cyan-950 via-slate-900 to-indigo-950 shrink-0 z-0 overflow-hidden">
+        <div className="absolute inset-0 overflow-hidden pointer-events-none">
           <SafeImage
             src={coverPhoto}
             fallbackGradient="from-cyan-900 via-indigo-950 to-purple-950"
             fallbackText="Zenia Cover"
-            className="w-full h-full object-cover opacity-80"
+            className="w-full h-full object-cover opacity-85"
           />
           <div
             className={`absolute inset-0 bg-gradient-to-t ${
               isDark
-                ? 'from-[#070A14] via-[#070A14]/25 to-transparent'
+                ? 'from-[#070A14] via-[#070A14]/30 to-transparent'
                 : 'from-slate-50 via-slate-50/20 to-transparent'
             }`}
           />
         </div>
 
         {/* Cover Photo Upload Button on Top-Left */}
-        <div className="absolute top-2.5 left-3 z-20 flex items-center gap-1.5 pointer-events-auto">
-          <label className="px-2.5 py-1.5 rounded-full bg-black/60 hover:bg-black/80 backdrop-blur-md border border-white/20 text-white text-[11px] font-semibold flex items-center gap-1.5 cursor-pointer active:scale-95 transition-all shadow-md">
+        <div className="absolute top-3 left-3 sm:left-6 z-10 flex items-center gap-1.5 pointer-events-auto">
+          <label className="px-3 py-1.5 rounded-full bg-black/60 hover:bg-black/80 backdrop-blur-md border border-white/20 text-white text-[11px] font-semibold flex items-center gap-1.5 cursor-pointer active:scale-95 transition-all shadow-md">
             <Camera className="w-3.5 h-3.5 text-cyan-400" />
             <span>Badili Jalada</span>
             <input
@@ -1111,7 +1111,7 @@ export const ProfileView: React.FC<ProfileViewProps> = ({
         </div>
 
         {/* Floating Controls at Top Right of Cover (Theme Toggle & 3-Dots Options) */}
-        <div className="absolute top-2.5 right-3 flex items-center gap-2 z-20 pointer-events-auto">
+        <div className="absolute top-3 right-3 sm:right-6 flex items-center gap-2 z-10 pointer-events-auto">
           {/* Theme Toggle Button */}
           <button
             onClick={toggleTheme}
@@ -1281,21 +1281,23 @@ export const ProfileView: React.FC<ProfileViewProps> = ({
       {/* 2. PROFILE HEADER & METRICS (CLEAN, WORLD-CLASS MOBILE LAYOUT) */}
       {/* ============================================================== */}
       <div className="max-w-4xl mx-auto w-full px-4 sm:px-6 relative z-10">
-        {/* ROW 1: AVATAR (LEFT) + 3 STATS METRICS (RIGHT) - INSTAGRAM/THREADS STANDARD */}
-        <div className="flex items-center justify-between gap-4 -mt-10 sm:-mt-12 mb-3">
-          {/* Avatar with Dynamic Shape Style & Multi-Story effect */}
-          <div className="relative shrink-0">
+        {/* ROW 1: PROMINENT AVATAR (LEFT) & ACTION BUTTONS (RIGHT) */}
+        <div className="flex items-end justify-between gap-3 -mt-14 sm:-mt-16 md:-mt-20 mb-3.5">
+          {/* Avatar with Dynamic Shape Style & High-contrast ring frame */}
+          <div className="relative shrink-0 z-20">
             <button
               type="button"
               onClick={() => setIsAvatarStyleModalOpen(true)}
-              className="group relative focus:outline-none block"
+              className={`group relative focus:outline-none block p-1 sm:p-1.5 rounded-full ${
+                isDark ? 'bg-[#070A14] ring-4 ring-[#070A14]' : 'bg-slate-50 ring-4 ring-slate-50'
+              } shadow-2xl transition-transform hover:scale-105 active:scale-95`}
               title="Bonyeza kubadili mtindo wa Avatar (Organic Blob, Squircle, Shield n.k.)"
             >
               <DynamicAvatar
                 src={currentUser.photoURL || aminaAvatar}
                 fallbackText={currentUser.displayName || 'User'}
                 alt={currentUser.displayName}
-                size="lg"
+                size="2xl"
                 hasStory={true}
                 storyCount={1}
                 showOnline={true}
@@ -1304,52 +1306,62 @@ export const ProfileView: React.FC<ProfileViewProps> = ({
             </button>
           </div>
 
-          {/* 3 STATS HORIZONTALLY ALIGNED RIGHT BESIDE AVATAR */}
-          <div
-            className={`flex-1 flex items-center justify-around py-2.5 px-3 rounded-2xl border transition-colors ${
-              isDark
-                ? 'bg-[#0D1224]/70 border-white/[0.08]'
-                : 'bg-white border-slate-200 shadow-xs'
-            }`}
-          >
-            <div className="text-center flex-1">
-              <p className={`font-black text-sm sm:text-base font-mono leading-tight ${isDark ? 'text-white' : 'text-slate-900'}`}>
-                {currentUser.postsCount || defaultUserPosts.length}
-              </p>
-              <p className={`text-[10px] sm:text-xs mt-0.5 font-medium ${isDark ? 'text-slate-400' : 'text-slate-500'}`}>
-                Machapisho
-              </p>
-            </div>
-            <div className={`h-5 w-px ${isDark ? 'bg-white/10' : 'bg-slate-200'}`} />
+          {/* Quick Actions (Aligned to Right of Avatar) */}
+          <div className="flex items-center gap-2 pb-1 flex-wrap justify-end">
+            {/* Hariri Wasifu */}
             <button
-              onClick={() => setActiveTab('friends')}
-              className="text-center flex-1 hover:opacity-80 active:scale-95 transition-all group cursor-pointer"
+              onClick={onOpenEditProfile}
+              className={`py-2 px-3 sm:px-3.5 rounded-xl font-semibold text-xs flex items-center gap-1.5 active:scale-98 transition-all shadow-xs ${
+                isDark
+                  ? 'bg-white/10 hover:bg-white/15 border border-white/10 text-white'
+                  : 'bg-slate-200/90 hover:bg-slate-300 border border-slate-300 text-slate-800'
+              }`}
             >
-              <p className="font-black text-sm sm:text-base text-emerald-500 dark:text-emerald-400 font-mono leading-tight group-hover:underline">
-                {friendshipService.getFriendsCount(currentUser.id)}
-              </p>
-              <p className={`text-[10px] sm:text-xs mt-0.5 font-medium ${isDark ? 'text-slate-400' : 'text-slate-500'}`}>
-                👥 Marafiki
-              </p>
+              <Edit className="w-3.5 h-3.5 text-cyan-400 shrink-0" />
+              <span>Hariri Wasifu</span>
             </button>
-            <div className={`h-5 w-px ${isDark ? 'bg-white/10' : 'bg-slate-200'}`} />
-            <div className="text-center flex-1">
-              <p className="font-black text-sm sm:text-base text-cyan-600 dark:text-cyan-400 font-mono leading-tight">
-                {currentUser.followersCount ? `${(currentUser.followersCount / 1000).toFixed(1)}K` : '12.4K'}
-              </p>
-              <p className={`text-[10px] sm:text-xs mt-0.5 font-medium ${isDark ? 'text-slate-400' : 'text-slate-500'}`}>
-                Wafuasi
-              </p>
-            </div>
-            <div className={`h-5 w-px ${isDark ? 'bg-white/10' : 'bg-slate-200'}`} />
-            <div className="text-center flex-1">
-              <p className={`font-black text-sm sm:text-base font-mono leading-tight ${isDark ? 'text-white' : 'text-slate-900'}`}>
-                {currentUser.followingCount || 245}
-              </p>
-              <p className={`text-[10px] sm:text-xs mt-0.5 font-medium ${isDark ? 'text-slate-400' : 'text-slate-500'}`}>
-                Wanaofuatwa
-              </p>
-            </div>
+
+            {/* Mtindo wa Avatar */}
+            <button
+              onClick={() => setIsAvatarStyleModalOpen(true)}
+              className={`py-2 px-3 rounded-xl font-semibold text-xs flex items-center gap-1.5 active:scale-98 transition-all shadow-xs shrink-0 ${
+                isDark
+                  ? 'bg-cyan-500/10 hover:bg-cyan-500/20 border border-cyan-400/30 text-cyan-300'
+                  : 'bg-cyan-50 hover:bg-cyan-100 border border-cyan-300 text-cyan-700'
+              }`}
+              title="Badili mtindo wa Avatar (Organic Blob, Squircle, Shield n.k.)"
+            >
+              <Palette className="w-3.5 h-3.5 text-cyan-400 shrink-0" />
+              <span className="hidden xs:inline">Mtindo 🎨</span>
+            </button>
+
+            {/* Pochi ya Zenia */}
+            <button
+              onClick={() => onSelectService && onSelectService('wallet')}
+              className={`py-2 px-3 rounded-xl font-semibold text-xs flex items-center gap-1.5 active:scale-98 transition-all shadow-xs ${
+                isDark
+                  ? 'bg-emerald-500/15 hover:bg-emerald-500/25 border border-emerald-500/30 text-emerald-300'
+                  : 'bg-emerald-50 hover:bg-emerald-100 border border-emerald-300 text-emerald-700'
+              }`}
+              title={`Pochi: TZS ${(currentUser.walletBalance || 120000).toLocaleString()}`}
+            >
+              <CreditCard className="w-3.5 h-3.5 text-emerald-400 shrink-0" />
+              <span>Pochi: TZS {((currentUser.walletBalance || 120000) >= 1000 ? `${Math.round((currentUser.walletBalance || 120000) / 1000)}k` : currentUser.walletBalance || 120000)}</span>
+            </button>
+
+            {/* Shiriki Wasifu */}
+            <button
+              onClick={handleShare}
+              className={`p-2 rounded-xl flex items-center justify-center active:scale-95 transition-all shadow-xs shrink-0 ${
+                isDark
+                  ? 'bg-white/5 hover:bg-white/10 border border-white/10 text-slate-300 hover:text-white'
+                  : 'bg-slate-100 hover:bg-slate-200 border border-slate-300 text-slate-700'
+              }`}
+              title="Shiriki Wasifu"
+              aria-label="Shiriki Wasifu"
+            >
+              <Share2 className="w-3.5 h-3.5" />
+            </button>
           </div>
         </div>
 
@@ -1357,10 +1369,10 @@ export const ProfileView: React.FC<ProfileViewProps> = ({
         <div className="space-y-1 mb-3">
           {/* Display Name + Verified Badge + Role Badge */}
           <div className="flex items-center gap-1.5 flex-wrap">
-            <h1 className={`font-black text-base sm:text-lg tracking-tight ${isDark ? 'text-white' : 'text-slate-900'}`}>
+            <h1 className={`font-black text-lg sm:text-xl tracking-tight ${isDark ? 'text-white' : 'text-slate-900'}`}>
               {currentUser.displayName || 'Mtumiaji wa Zenia'}
             </h1>
-            <CheckCircle2 className="w-4 h-4 text-cyan-500 fill-cyan-500 shrink-0" />
+            <CheckCircle2 className="w-4 h-4 text-cyan-400 fill-cyan-400 shrink-0" />
             <span
               className={`text-[10px] px-2 py-0.5 rounded-full font-semibold ${
                 isDark
@@ -1377,7 +1389,7 @@ export const ProfileView: React.FC<ProfileViewProps> = ({
           </div>
 
           {/* @Username */}
-          <p className="text-xs font-mono font-bold text-cyan-600 dark:text-cyan-400">
+          <p className="text-xs sm:text-sm font-mono font-bold text-cyan-400">
             @{currentUser.username || 'username'}
           </p>
 
@@ -1391,13 +1403,13 @@ export const ProfileView: React.FC<ProfileViewProps> = ({
           </p>
 
           {/* Location & Contact */}
-          <div className="flex items-center gap-3 text-[11px] text-slate-500 dark:text-slate-400 pt-0.5 flex-wrap">
+          <div className="flex items-center gap-3 text-[11px] text-slate-400 pt-0.5 flex-wrap">
             <span className="flex items-center gap-1">
-              <MapPin className="w-3 h-3 text-cyan-500 shrink-0" />
+              <MapPin className="w-3 h-3 text-cyan-400 shrink-0" />
               <span>Dar es Salaam, Tanzania 🇹🇿</span>
             </span>
             {currentUser.email && (
-              <span className="flex items-center gap-1 text-cyan-600 dark:text-cyan-400">
+              <span className="flex items-center gap-1 text-cyan-400">
                 <Mail className="w-3 h-3 shrink-0" />
                 <span>{currentUser.email}</span>
               </span>
@@ -1436,62 +1448,58 @@ export const ProfileView: React.FC<ProfileViewProps> = ({
           </div>
         )}
 
-        {/* ROW 3: ACTION BUTTONS (FULL WIDTH ROW, BALANCED & TOUCH-FRIENDLY) */}
-        <div className="flex items-center gap-2 mb-3">
-          {/* Hariri Wasifu (Primary) */}
-          <button
-            onClick={onOpenEditProfile}
-            className={`flex-1 py-2 px-3 rounded-xl font-semibold text-xs flex items-center justify-center gap-1.5 active:scale-98 transition-all shadow-xs ${
-              isDark
-                ? 'bg-white/10 hover:bg-white/15 border border-white/10 text-white'
-                : 'bg-slate-200/90 hover:bg-slate-300 border border-slate-300 text-slate-800'
-            }`}
-          >
-            <Edit className="w-3.5 h-3.5 text-cyan-500 shrink-0" />
-            <span>Hariri Wasifu</span>
-          </button>
+        {/* ROW 3: STATS METRICS CARD (DEDICATED, HIGH CONTRAST, PERFECT ON ALL DEVICES) */}
+        <div
+          className={`py-3 px-4 rounded-2xl border transition-colors mb-3.5 ${
+            isDark
+              ? 'bg-[#0E1428] border-white/10 shadow-lg shadow-black/20'
+              : 'bg-white border-slate-200 shadow-sm'
+          }`}
+        >
+          <div className="grid grid-cols-4 divide-x divide-white/10 dark:divide-white/10 text-center">
+            {/* Machapisho */}
+            <div className="px-1 sm:px-2">
+              <p className={`font-black text-sm sm:text-base font-mono leading-tight ${isDark ? 'text-white' : 'text-slate-900'}`}>
+                {currentUser.postsCount || defaultUserPosts.length}
+              </p>
+              <p className={`text-[10px] sm:text-xs mt-0.5 font-medium ${isDark ? 'text-slate-400' : 'text-slate-500'}`}>
+                Machapisho
+              </p>
+            </div>
 
-          {/* Mtindo wa Avatar Selector Button */}
-          <button
-            onClick={() => setIsAvatarStyleModalOpen(true)}
-            className={`py-2 px-3 rounded-xl font-semibold text-xs flex items-center justify-center gap-1.5 active:scale-98 transition-all shadow-xs shrink-0 ${
-              isDark
-                ? 'bg-cyan-500/10 hover:bg-cyan-500/20 border border-cyan-400/30 text-cyan-300'
-                : 'bg-cyan-50 hover:bg-cyan-100 border border-cyan-300 text-cyan-700'
-            }`}
-            title="Badili mtindo wa Avatar (Organic Blob, Squircle, Shield n.k.)"
-          >
-            <Palette className="w-3.5 h-3.5 text-cyan-400 shrink-0" />
-            <span className="hidden xs:inline">Mtindo</span>
-          </button>
+            {/* Marafiki */}
+            <button
+              onClick={() => setActiveTab('friends')}
+              className="px-1 sm:px-2 hover:opacity-80 active:scale-95 transition-all group cursor-pointer"
+            >
+              <p className="font-black text-sm sm:text-base text-emerald-400 font-mono leading-tight group-hover:underline">
+                {friendshipService.getFriendsCount(currentUser.id)}
+              </p>
+              <p className={`text-[10px] sm:text-xs mt-0.5 font-medium ${isDark ? 'text-slate-400' : 'text-slate-500'}`}>
+                👥 Marafiki
+              </p>
+            </button>
 
-          {/* Pochi ya Zenia */}
-          <button
-            onClick={() => onSelectService && onSelectService('wallet')}
-            className={`flex-1 py-2 px-3 rounded-xl font-semibold text-xs flex items-center justify-center gap-1.5 active:scale-98 transition-all shadow-xs ${
-              isDark
-                ? 'bg-cyan-500/15 hover:bg-cyan-500/25 border border-cyan-400/30 text-cyan-300'
-                : 'bg-cyan-50 hover:bg-cyan-100 border border-cyan-300 text-cyan-700'
-            }`}
-            title={`Pochi: TZS ${(currentUser.walletBalance || 120000).toLocaleString()}`}
-          >
-            <CreditCard className="w-3.5 h-3.5 text-cyan-500 shrink-0" />
-            <span>Pochi: TZS {((currentUser.walletBalance || 120000) >= 1000 ? `${Math.round((currentUser.walletBalance || 120000) / 1000)}k` : currentUser.walletBalance || 120000)}</span>
-          </button>
+            {/* Wafuasi */}
+            <div className="px-1 sm:px-2">
+              <p className="font-black text-sm sm:text-base text-cyan-400 font-mono leading-tight">
+                {currentUser.followersCount ? `${(currentUser.followersCount / 1000).toFixed(1)}K` : '12.4K'}
+              </p>
+              <p className={`text-[10px] sm:text-xs mt-0.5 font-medium ${isDark ? 'text-slate-400' : 'text-slate-500'}`}>
+                Wafuasi
+              </p>
+            </div>
 
-          {/* Shiriki Wasifu */}
-          <button
-            onClick={handleShare}
-            className={`p-2 rounded-xl flex items-center justify-center active:scale-95 transition-all shadow-xs shrink-0 ${
-              isDark
-                ? 'bg-white/5 hover:bg-white/10 border border-white/10 text-slate-300 hover:text-white'
-                : 'bg-slate-100 hover:bg-slate-200 border border-slate-300 text-slate-700'
-            }`}
-            title="Shiriki Wasifu"
-            aria-label="Shiriki Wasifu"
-          >
-            <Share2 className="w-3.5 h-3.5" />
-          </button>
+            {/* Wanaofuatwa */}
+            <div className="px-1 sm:px-2">
+              <p className={`font-black text-sm sm:text-base font-mono leading-tight ${isDark ? 'text-white' : 'text-slate-900'}`}>
+                {currentUser.followingCount || 245}
+              </p>
+              <p className={`text-[10px] sm:text-xs mt-0.5 font-medium ${isDark ? 'text-slate-400' : 'text-slate-500'}`}>
+                Wanaofuatwa
+              </p>
+            </div>
+          </div>
         </div>
 
         {/* ROW 4: STORY HIGHLIGHTS (Clean Circular Carousel) */}
