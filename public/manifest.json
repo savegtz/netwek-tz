@@ -1,0 +1,50 @@
+{
+  "id": "/",
+  "name": "Zenia - Connect • Create • Discover • Earn",
+  "short_name": "Zenia",
+  "description": "Ungana na marafiki, fuatilia biashara yako, furahia muziki na matangazo, na fanya malipo ya pochi ya Zenia.",
+  "start_url": "/",
+  "scope": "/",
+  "display": "standalone",
+  "orientation": "portrait",
+  "background_color": "#06080F",
+  "theme_color": "#06080F",
+  "categories": ["social", "shopping", "finance", "entertainment"],
+  "icons": [
+    {
+      "src": "/icon.svg",
+      "sizes": "192x192 512x512",
+      "type": "image/svg+xml",
+      "purpose": "any"
+    },
+    {
+      "src": "/icon.svg",
+      "sizes": "512x512",
+      "type": "image/svg+xml",
+      "purpose": "maskable"
+    }
+  ],
+  "shortcuts": [
+    {
+      "name": "Mazungumzo (Chats)",
+      "short_name": "Chats",
+      "description": "Fungua mazungumzo yako",
+      "url": "/?tab=chats",
+      "icons": [{ "src": "/icon.svg", "sizes": "96x96" }]
+    },
+    {
+      "name": "Pochi (Wallet)",
+      "short_name": "Pochi",
+      "description": "Angalia salio na miamala",
+      "url": "/?tab=wallet",
+      "icons": [{ "src": "/icon.svg", "sizes": "96x96" }]
+    },
+    {
+      "name": "Taarifa (Notifications)",
+      "short_name": "Taarifa",
+      "description": "Fungua taarifa zote",
+      "url": "/?tab=notifications",
+      "icons": [{ "src": "/icon.svg", "sizes": "96x96" }]
+    }
+  ]
+}

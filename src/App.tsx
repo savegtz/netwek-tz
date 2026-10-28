@@ -46,6 +46,8 @@ import { userService } from './services/user/userService';
 import { friendshipService, normalizeUserId } from './services/user/friendshipService';
 import { presenceService, isUserOnline } from './services/user/presenceService';
 import { ZeniaMiniPlayer } from './components/ZeniaMiniPlayer';
+import { NotificationHeadsUpBanner } from './components/NotificationHeadsUpBanner';
+import { pushNotificationService } from './services/notifications/pushNotificationService';
 import freshKkAvatar from './assets/images/fresh_kk_avatar_1791078365294.jpg';
 
 export default function App() {
@@ -264,6 +266,31 @@ export default function App() {
     return () => clearTimeout(timer);
   }, [appToast]);
 
+  // Listen to interactive Push Notification action clicks (Jibu, Angalia, Kubali, Kataa)
+  useEffect(() => {
+    const unsub = pushNotificationService.onAction((action, payload) => {
+      if (action === 'reply_sent' && payload.data?.replyText) {
+        setAppToast(`Jibu limetumwa kwa ${payload.data.sender || 'mtumiaji'}: "${payload.data.replyText}"`);
+      } else if (action === 'view') {
+        if (payload.tag?.includes('chat') || payload.mode === 'lock_screen') {
+          setActiveTab('chats');
+        } else if (payload.tag?.includes('wallet')) {
+          setActiveTab('wallet');
+        } else if (payload.tag?.includes('market')) {
+          setActiveTab('shop');
+        } else {
+          setIsNotificationsOpen(true);
+        }
+      } else if (action === 'accept') {
+        setAppToast('Ombi limekubaliwa kikamilifu! ✅');
+      } else if (action === 'reject') {
+        setAppToast('Ombi limekataliwa.');
+      }
+    });
+
+    return () => unsub();
+  }, []);
+
   const requireAuthToChat = (
     actionDescription?: string,
     preferMode: 'signin' | 'signup' = 'signup'
@@ -400,6 +427,25 @@ export default function App() {
                     map.set(n.id, n);
                   }
                 });
+
+                // Automatically trigger Push Notification & Banner for newly arrived remote items
+                const newItems = remoteNotifs.filter(
+                  (rn) => !rn.read && !prev.some((p) => p.id === rn.id)
+                );
+                if (newItems.length > 0) {
+                  const newest = newItems[0];
+                  pushNotificationService.sendNotification({
+                    title: newest.title || 'Taarifa Mpya ya Zenia',
+                    body: newest.message || '',
+                    image: newest.avatar,
+                    tag: `zenia-${newest.type || 'general'}`,
+                    actions: [
+                      { action: 'view', title: '👁️ Angalia' },
+                      { action: 'reply', title: '💬 Jibu' },
+                    ],
+                  });
+                }
+
                 return Array.from(map.values()).sort(
                   (a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime()
                 );
@@ -970,6 +1016,8 @@ export default function App() {
       </main>
 
       {/* Modals & Overlays */}
+      <NotificationHeadsUpBanner onNavigate={(route) => setActiveTab(route)} />
+
       <CreateMenuModal
         isOpen={isCreateMenuOpen}
         onClose={() => setIsCreateMenuOpen(false)}

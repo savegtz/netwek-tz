@@ -16,10 +16,15 @@ import {
   X,
   RotateCcw,
   AlertTriangle,
+  Sliders,
+  Sparkles,
+  Zap,
 } from 'lucide-react';
 import { NotificationItem, UserProfile } from '../../types';
 import { INITIAL_NOTIFICATIONS } from '../../services/seed/initialData';
 import { SafeImage } from '../../components/SafeImage';
+import { PushNotificationStudioModal } from './PushNotificationStudioModal';
+import { pushNotificationService } from '../../services/notifications/pushNotificationService';
 
 interface NotificationsViewProps {
   onBack?: () => void;
@@ -63,6 +68,13 @@ export const NotificationsView: React.FC<NotificationsViewProps> = ({
   };
 
   const [activeTab, setActiveTab] = useState<'All' | 'Messages' | 'Social' | 'System'>('All');
+  const [isPushStudioOpen, setIsPushStudioOpen] = useState(false);
+
+  // Synchronize native PWA App Badge with unread count
+  useEffect(() => {
+    const unread = notifications.filter((n) => !n.read).length;
+    pushNotificationService.setAppBadge(unread);
+  }, [notifications]);
 
   // Multi-selection state
   const [isSelectionMode, setIsSelectionMode] = useState(false);
@@ -324,6 +336,16 @@ export const NotificationsView: React.FC<NotificationsViewProps> = ({
           </div>
 
           <div className="flex items-center gap-2">
+            {/* Push Studio Button */}
+            <button
+              onClick={() => setIsPushStudioOpen(true)}
+              className="px-2.5 py-1.5 rounded-xl bg-gradient-to-r from-cyan-500/20 to-blue-600/20 hover:from-cyan-500/30 hover:to-blue-600/30 text-cyan-300 border border-cyan-500/30 text-xs font-bold flex items-center gap-1.5 transition-all active:scale-95 shadow-sm"
+              title="Kituo cha Push Notifications (Aina 9)"
+            >
+              <Zap className="w-3.5 h-3.5 text-cyan-400" />
+              <span>Push Studio</span>
+            </button>
+
             {notifications.length > 0 && (
               <>
                 {/* Select button for bulk actions */}
@@ -359,6 +381,33 @@ export const NotificationsView: React.FC<NotificationsViewProps> = ({
           </div>
         </div>
       )}
+
+      {/* Push Notification Feature Showcase Strip */}
+      <div className="mx-3.5 mt-2.5 p-3 rounded-2xl bg-gradient-to-r from-[#0D152C] via-[#101A36] to-[#0D152C] border border-cyan-500/30 flex items-center justify-between gap-3 shadow-md">
+        <div className="flex items-center gap-2.5 min-w-0">
+          <div className="w-8 h-8 rounded-xl bg-cyan-500/20 text-cyan-400 flex items-center justify-center shrink-0 border border-cyan-500/30">
+            <Zap className="w-4 h-4" />
+          </div>
+          <div className="min-w-0">
+            <div className="flex items-center gap-1.5 flex-wrap">
+              <span className="text-xs font-bold text-white truncate">Push Notifications Zinafanya Kazi</span>
+              <span className="text-[10px] px-1.5 py-0.2 rounded-full bg-emerald-500/20 text-emerald-300 font-bold border border-emerald-500/30">
+                Aina Zote 9
+              </span>
+            </div>
+            <p className="text-[10px] text-slate-400 truncate">
+              🔔 Lock Screen • 📱 Banner • 📥 Panel • 🔴 Badge • ⚡ Actions • ⏳ Progress
+            </p>
+          </div>
+        </div>
+
+        <button
+          onClick={() => setIsPushStudioOpen(true)}
+          className="px-3 py-1.5 rounded-xl bg-cyan-500 hover:bg-cyan-400 text-slate-950 font-bold text-[11px] flex items-center gap-1 shadow-sm transition-all active:scale-95 shrink-0"
+        >
+          <span>Jaribu Hapa</span>
+        </button>
+      </div>
 
       {/* Tabs (All, Messages, Social, System) with counts */}
       <div className="flex items-center gap-1.5 p-3 pb-2 border-b border-white/[0.04] overflow-x-auto no-scrollbar">
@@ -616,6 +665,12 @@ export const NotificationsView: React.FC<NotificationsViewProps> = ({
           </div>
         </div>
       )}
+
+      {/* Push Notification Studio Modal */}
+      <PushNotificationStudioModal
+        isOpen={isPushStudioOpen}
+        onClose={() => setIsPushStudioOpen(false)}
+      />
     </div>
   );
 };

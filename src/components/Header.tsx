@@ -342,6 +342,22 @@ export const Header: React.FC<HeaderProps> = ({
                   </span>
                 </button>
 
+                <button
+                  onClick={() => {
+                    setIsMenuOpen(false);
+                    onOpenNotifications();
+                  }}
+                  className="w-full flex items-center justify-between px-3 py-2 rounded-xl text-xs text-slate-200 hover:text-white hover:bg-white/5 transition-colors text-left"
+                >
+                  <div className="flex items-center gap-2.5">
+                    <Bell className="w-3.5 h-3.5 text-cyan-400" />
+                    <span>Push Notifications (Aina 9)</span>
+                  </div>
+                  <span className="text-[9px] px-1.5 py-0.5 rounded-full bg-cyan-500/20 text-cyan-300 font-bold border border-cyan-400/30">
+                    Mipangilio
+                  </span>
+                </button>
+
                 {onTriggerSimulatedIncomingCall && (
                   <button
                     onClick={() => {
