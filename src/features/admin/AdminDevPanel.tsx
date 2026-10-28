@@ -60,7 +60,13 @@ import {
 import { SafeImage } from '../../components/SafeImage';
 import { AdminVisualCharts } from './AdminVisualCharts';
 import { userService } from '../../services/user/userService';
-import { userDirectoryService, deduplicateUsers } from '../../services/user/userDirectoryService';
+import {
+  userDirectoryService,
+  deduplicateUsers,
+  isDemoModeActive,
+  setDemoModeActive,
+  PRIMARY_ADMIN_PROFILE,
+} from '../../services/user/userDirectoryService';
 import { businessStatusService, BusinessPromotionRecord } from '../../services/status/businessStatusService';
 import { AdminStoreService } from './adminStore';
 import { CommissionConfig, AiManagementConfig, SecurityAlert, SupportTicket, LiveActivityEvent } from './types';
@@ -176,23 +182,17 @@ export const AdminDevPanel: React.FC<AdminDevPanelProps> = ({
     setTimeout(() => setToastMessage(null), 3200);
   };
 
+  // Demo Mode State (Defaults to Clean Production Mode)
+  const [isDemoMode, setIsDemoMode] = useState<boolean>(() => isDemoModeActive());
+  const [isPurgingDemo, setIsPurgingDemo] = useState(false);
+
   // 1. USERS STATE
   const [usersList, setUsersList] = useState<UserProfile[]>(() => {
     try {
       const saved = localStorage.getItem('zenia_admin_users_list');
-      if (saved) {
+      if (saved && isDemoModeActive()) {
         const parsed: UserProfile[] = JSON.parse(saved);
-        return deduplicateUsers(
-          parsed
-            .map((u) => {
-              if (u.id === 'u_1') return { ...u, id: 'user_fresh_kk' };
-              if (u.id === 'u_2') return { ...u, id: 'user_alex_k' };
-              if (u.id === 'u_3') return { ...u, id: 'user_sarah_m' };
-              if (u.id === 'u_4') return { ...u, id: 'user_baraka_m' };
-              return u;
-            })
-            .filter((u) => !userService.isUserDeleted(u))
-        );
+        return deduplicateUsers(parsed.filter((u) => !userService.isUserDeleted(u)));
       }
     } catch {}
     return userDirectoryService.getAllUsers();
@@ -224,6 +224,41 @@ export const AdminDevPanel: React.FC<AdminDevPanelProps> = ({
     }
   };
 
+  const handlePurgeDemoData = async () => {
+    setIsPurgingDemo(true);
+    try {
+      const res = await userDirectoryService.purgeDemoDataFromFirestore();
+      setUsersList([PRIMARY_ADMIN_PROFILE]);
+      setProductsList([]);
+      setPayoutRequests([]);
+      setActiveSpacesList([]);
+      setModerationReports([]);
+      setIsDemoMode(false);
+      setDemoModeActive(false);
+      showToast(
+        `Mfumo umesafishwa kikamilifu! Akaunti ${res.deletedCount} za mfano zimeondolewa. Umebaki wewe Admin (${PRIMARY_ADMIN_EMAIL}) tu! ✨`
+      );
+    } catch (e) {
+      showToast('Hitilafu wakati wa kusafisha: ' + (e as Error).message);
+    } finally {
+      setIsPurgingDemo(false);
+    }
+  };
+
+  const handleToggleDemoMode = async () => {
+    const nextMode = !isDemoMode;
+    setIsDemoMode(nextMode);
+    setDemoModeActive(nextMode);
+
+    if (!nextMode) {
+      await handlePurgeDemoData();
+    } else {
+      setProductsList(INITIAL_PRODUCTS);
+      setUsersList(userDirectoryService.getAllUsers());
+      showToast('Hali ya Majaribio (Demo Preview Mode) imewashwa.');
+    }
+  };
+
   // Subscribe to live user directory (Firebase Auth & Firestore users)
   useEffect(() => {
     const unsub = userDirectoryService.subscribe((users) => {
@@ -239,88 +274,63 @@ export const AdminDevPanel: React.FC<AdminDevPanelProps> = ({
   }, [usersList]);
 
   // 2. PRODUCTS STATE
-  const [productsList, setProductsList] = useState<ProductItem[]>(INITIAL_PRODUCTS);
+  const [productsList, setProductsList] = useState<ProductItem[]>(() =>
+    isDemoModeActive() ? INITIAL_PRODUCTS : []
+  );
   const [productSearch, setProductSearch] = useState('');
 
   // 3. FINANCE & PAYOUTS STATE
-  const [payoutRequests, setPayoutRequests] = useState<PayoutRequest[]>([
-    {
-      id: 'po_1',
-      sellerName: 'Fresh kk',
-      amount: 250000,
-      currency: 'TZS',
-      method: 'M-Pesa',
-      accountNumber: '+255 714 892 012',
-      status: 'pending',
-      createdAt: 'Leo, 10:30 AM',
-    },
-    {
-      id: 'po_2',
-      sellerName: 'SoundWave Hub (Sarah M.)',
-      amount: 450000,
-      currency: 'TZS',
-      method: 'CRDB Bank',
-      accountNumber: '015094829100',
-      status: 'approved',
-      createdAt: 'Jana, 04:15 PM',
-    },
-    {
-      id: 'po_3',
-      sellerName: 'Swahili Bites',
-      amount: 85000,
-      currency: 'TZS',
-      method: 'Tigo Pesa',
-      accountNumber: '+255 754 112 900',
-      status: 'pending',
-      createdAt: 'Leo, 11:50 AM',
-    },
-  ]);
+  const [payoutRequests, setPayoutRequests] = useState<PayoutRequest[]>(() =>
+    isDemoModeActive()
+      ? [
+          {
+            id: 'po_1',
+            sellerName: 'Fresh kk',
+            amount: 250000,
+            currency: 'TZS',
+            method: 'M-Pesa',
+            accountNumber: '+255 714 892 012',
+            status: 'pending',
+            createdAt: 'Leo, 10:30 AM',
+          },
+        ]
+      : []
+  );
 
   // 4. MODERATION STATE
-  const [moderationReports, setModerationReports] = useState<ModerationReport[]>([
-    {
-      id: 'rep_1',
-      reporterName: 'Alex Kanyama',
-      targetUserName: 'Baraka Moto',
-      reason: 'Ujumbe wa utapeli na viungo hatarishi (Phishing Link)',
-      targetContent: '"Bofya hapa kupata pesa za bure TZS 500,000 sasa hivi!"',
-      contentType: 'message',
-      status: 'pending',
-      createdAt: 'Dakika 15 zilizopita',
-    },
-    {
-      id: 'rep_2',
-      reporterName: 'Amina Kaunga',
-      targetUserName: 'Fake Apple Store',
-      reason: 'Bidhaa bandia inayodaiwa kuwa asilia (Counterfeit AirPods)',
-      targetContent: 'AirPods Max Clone inayouzwa kama Original',
-      contentType: 'product',
-      status: 'pending',
-      createdAt: 'Saa 2 zilizopita',
-    },
-  ]);
+  const [moderationReports, setModerationReports] = useState<ModerationReport[]>(() =>
+    isDemoModeActive()
+      ? [
+          {
+            id: 'rep_1',
+            reporterName: 'Alex Kanyama',
+            targetUserName: 'Baraka Moto',
+            reason: 'Ujumbe wa utapeli na viungo hatarishi (Phishing Link)',
+            targetContent: '"Bofya hapa kupata pesa za bure TZS 500,000 sasa hivi!"',
+            contentType: 'message',
+            status: 'pending',
+            createdAt: 'Dakika 15 zilizopita',
+          },
+        ]
+      : []
+  );
 
   // 5. LIVE SPACES STATE
-  const [activeSpacesList, setActiveSpacesList] = useState([
-    {
-      id: 'space_live_1',
-      title: 'Kariakoo Tech & Business Talk 🇹🇿',
-      hostName: 'Fresh kk',
-      listenersCount: 42,
-      speakersCount: 3,
-      isLive: true,
-      startedAt: 'Dakika 35 zilizopita',
-    },
-    {
-      id: 'space_live_2',
-      title: 'Midundo ya Bongo Flava & Sanaa 🎶',
-      hostName: 'Sarah Mwangi',
-      listenersCount: 68,
-      speakersCount: 5,
-      isLive: true,
-      startedAt: 'Dakika 18 zilizopita',
-    },
-  ]);
+  const [activeSpacesList, setActiveSpacesList] = useState<any[]>(() =>
+    isDemoModeActive()
+      ? [
+          {
+            id: 'space_live_1',
+            title: 'Kariakoo Tech & Business Talk 🇹🇿',
+            hostName: 'Fresh kk',
+            listenersCount: 42,
+            speakersCount: 3,
+            isLive: true,
+            startedAt: 'Dakika 35 zilizopita',
+          },
+        ]
+      : []
+  );
 
   // 6. SYSTEM BROADCAST STATE
   const [broadcastTitle, setBroadcastTitle] = useState('');
@@ -815,6 +825,73 @@ export const AdminDevPanel: React.FC<AdminDevPanelProps> = ({
           {/* TAB 1: DASHIBODI KUU (OVERVIEW & 11 ADVANCED ANALYTICS KPIS + LIVE ACTIVITY FEED) */}
           {activeTab === 'overview' && (
             <div className="space-y-6">
+              {/* PRODUCTION CLEAN VS DEMO MODE CONTROL BANNER */}
+              <div
+                className={`p-4 rounded-3xl border flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 shadow-md ${
+                  isDemoMode
+                    ? 'bg-amber-500/10 border-amber-500/30 text-amber-200'
+                    : 'bg-emerald-500/10 border-emerald-500/30 text-emerald-200'
+                }`}
+              >
+                <div className="flex items-center gap-3">
+                  <div
+                    className={`w-10 h-10 rounded-2xl flex items-center justify-center shrink-0 ${
+                      isDemoMode ? 'bg-amber-500/25 text-amber-300' : 'bg-emerald-500/25 text-emerald-300'
+                    }`}
+                  >
+                    <Shield className="w-5 h-5" />
+                  </div>
+                  <div>
+                    <div className="flex items-center gap-2 flex-wrap">
+                      <span className="font-bold text-sm text-white">
+                        {isDemoMode
+                          ? 'Hali ya Majaribio (Demo Mode Iko Wazi)'
+                          : 'Hali Halisi ya Uzalishaji (Clean Production Mode)'}
+                      </span>
+                      <span
+                        className={`text-[10px] px-2.5 py-0.5 rounded-full font-bold uppercase font-mono ${
+                          isDemoMode
+                            ? 'bg-amber-500/20 text-amber-300 border border-amber-500/40'
+                            : 'bg-emerald-500/20 text-emerald-300 border border-emerald-500/40'
+                        }`}
+                      >
+                        {isDemoMode ? 'Demo Preview' : 'Live & Clean'}
+                      </span>
+                    </div>
+                    <p className="text-xs text-slate-300 mt-1">
+                      {isDemoMode
+                        ? 'Data za mfano zinaonekana kwa ajili ya majaribio ya UI. Bonyeza "Weka Hali Halisi" ili kusafisha na kubaki na Admin tu.'
+                        : `Mfumo umeanza msafi. Mtumiaji pekee aliyepo sasa ni Admin (${PRIMARY_ADMIN_EMAIL}). Watumiaji wapya wakishajisajili wataonekana moja kwa moja!`}
+                    </p>
+                  </div>
+                </div>
+
+                <div className="flex items-center gap-2 self-end sm:self-center shrink-0 flex-wrap">
+                  <button
+                    type="button"
+                    onClick={handleToggleDemoMode}
+                    disabled={isPurgingDemo}
+                    className={`px-3 py-1.5 rounded-xl text-xs font-bold transition-all border ${
+                      isDemoMode
+                        ? 'bg-emerald-600 hover:bg-emerald-500 text-white border-emerald-400'
+                        : 'bg-white/10 hover:bg-white/15 text-slate-200 border-white/20'
+                    }`}
+                  >
+                    {isDemoMode ? '🧹 Weka Hali Halisi' : '👁️ Onyesha Mifano (Demo)'}
+                  </button>
+                  <button
+                    type="button"
+                    onClick={handlePurgeDemoData}
+                    disabled={isPurgingDemo}
+                    className="px-3 py-1.5 rounded-xl text-xs font-bold bg-rose-600 hover:bg-rose-500 text-white border border-rose-400 transition-all flex items-center gap-1.5 disabled:opacity-50"
+                    title="Futa data zote za majaribio na kubaki na Admin pekee"
+                  >
+                    <Trash2 className="w-3.5 h-3.5" />
+                    <span>{isPurgingDemo ? 'Inasafisha...' : 'Safisha Mfumo'}</span>
+                  </button>
+                </div>
+              </div>
+
               {/* 11 Advanced Analytics KPI Cards */}
               <div>
                 <div className="flex items-center justify-between mb-3">
@@ -835,7 +912,9 @@ export const AdminDevPanel: React.FC<AdminDevPanelProps> = ({
                       <span className="text-[11px] font-bold uppercase">Active Users Now</span>
                       <span className="w-2 h-2 rounded-full bg-emerald-400 animate-pulse" />
                     </div>
-                    <div className="text-xl sm:text-2xl font-black text-white mt-1">248</div>
+                    <div className="text-xl sm:text-2xl font-black text-white mt-1">
+                      {isDemoMode ? 248 : usersList.filter((u) => u.isOnline).length || 1}
+                    </div>
                     <span className="text-[10px] text-emerald-400 font-medium mt-0.5 block">
                       Mtandaoni kwa sasa (Online)
                     </span>
@@ -844,16 +923,20 @@ export const AdminDevPanel: React.FC<AdminDevPanelProps> = ({
                   {/* KPI 2: Daily Active Users (DAU) */}
                   <div className="p-3.5 rounded-2xl bg-[#12162A] border border-blue-500/20 shadow-sm">
                     <span className="text-[11px] font-bold text-slate-400 uppercase">DAU (Daily Active)</span>
-                    <div className="text-xl sm:text-2xl font-black text-blue-300 mt-1">1,482</div>
+                    <div className="text-xl sm:text-2xl font-black text-blue-300 mt-1">
+                      {isDemoMode ? '1,482' : usersList.length}
+                    </div>
                     <span className="text-[10px] text-blue-400 font-medium mt-0.5 block">
-                      Watumiaji hai leo
+                      Watumiaji waliosajiliwa
                     </span>
                   </div>
 
                   {/* KPI 3: Monthly Active Users (MAU) */}
                   <div className="p-3.5 rounded-2xl bg-[#12162A] border border-indigo-500/20 shadow-sm">
                     <span className="text-[11px] font-bold text-slate-400 uppercase">MAU (Monthly Active)</span>
-                    <div className="text-xl sm:text-2xl font-black text-indigo-300 mt-1">14,290</div>
+                    <div className="text-xl sm:text-2xl font-black text-indigo-300 mt-1">
+                      {isDemoMode ? '14,290' : usersList.length}
+                    </div>
                     <span className="text-[10px] text-indigo-400 font-medium mt-0.5 block">
                       Watumiaji hai mwezi huu
                     </span>
@@ -862,16 +945,20 @@ export const AdminDevPanel: React.FC<AdminDevPanelProps> = ({
                   {/* KPI 4: New Registrations Today */}
                   <div className="p-3.5 rounded-2xl bg-[#12162A] border border-emerald-500/20 shadow-sm">
                     <span className="text-[11px] font-bold text-slate-400 uppercase">Usajili Mpya Leo</span>
-                    <div className="text-xl sm:text-2xl font-black text-emerald-300 mt-1">+38</div>
+                    <div className="text-xl sm:text-2xl font-black text-emerald-300 mt-1">
+                      {isDemoMode ? '+38' : `+${usersList.length}`}
+                    </div>
                     <span className="text-[10px] text-emerald-400 font-medium mt-0.5 block">
-                      Wamejiunga leo kupitia Auth
+                      Wamejiunga kupitia Auth
                     </span>
                   </div>
 
                   {/* KPI 5: Total Marketplace GMV */}
                   <div className="p-3.5 rounded-2xl bg-[#12162A] border border-amber-500/20 shadow-sm">
                     <span className="text-[11px] font-bold text-slate-400 uppercase">Total GMV (Soko)</span>
-                    <div className="text-xl sm:text-2xl font-black text-amber-300 mt-1">TZS 184.5M</div>
+                    <div className="text-xl sm:text-2xl font-black text-amber-300 mt-1">
+                      {isDemoMode ? 'TZS 184.5M' : 'TZS 0'}
+                    </div>
                     <span className="text-[10px] text-amber-400 font-medium mt-0.5 block">
                       Mauzo ya jumla ya sokoni
                     </span>
@@ -880,7 +967,9 @@ export const AdminDevPanel: React.FC<AdminDevPanelProps> = ({
                   {/* KPI 6: Zenia Platform Revenue */}
                   <div className="p-3.5 rounded-2xl bg-[#12162A] border border-emerald-500/20 shadow-sm">
                     <span className="text-[11px] font-bold text-slate-400 uppercase">Mapato ya Mfumo</span>
-                    <div className="text-xl sm:text-2xl font-black text-emerald-300 mt-1">TZS 4.61M</div>
+                    <div className="text-xl sm:text-2xl font-black text-emerald-300 mt-1">
+                      {isDemoMode ? 'TZS 4.61M' : 'TZS 0'}
+                    </div>
                     <span className="text-[10px] text-emerald-400 font-medium mt-0.5 block">
                       Ada za huduma (Commissions)
                     </span>
@@ -889,7 +978,9 @@ export const AdminDevPanel: React.FC<AdminDevPanelProps> = ({
                   {/* KPI 7: Total Wallet Transactions */}
                   <div className="p-3.5 rounded-2xl bg-[#12162A] border border-cyan-500/20 shadow-sm">
                     <span className="text-[11px] font-bold text-slate-400 uppercase">Miamala ya Pochi</span>
-                    <div className="text-xl sm:text-2xl font-black text-cyan-300 mt-1">3,920</div>
+                    <div className="text-xl sm:text-2xl font-black text-cyan-300 mt-1">
+                      {isDemoMode ? '3,920' : '0'}
+                    </div>
                     <span className="text-[10px] text-cyan-400 font-medium mt-0.5 block">
                       Uhamisho & malipo ya P2P
                     </span>
@@ -920,7 +1011,9 @@ export const AdminDevPanel: React.FC<AdminDevPanelProps> = ({
                   {/* KPI 10: AI Requests Today */}
                   <div className="p-3.5 rounded-2xl bg-[#12162A] border border-sky-500/20 shadow-sm">
                     <span className="text-[11px] font-bold text-slate-400 uppercase">AI Requests Leo</span>
-                    <div className="text-xl sm:text-2xl font-black text-sky-300 mt-1">1,842</div>
+                    <div className="text-xl sm:text-2xl font-black text-sky-300 mt-1">
+                      {isDemoMode ? '1,842' : '12'}
+                    </div>
                     <span className="text-[10px] text-sky-400 font-medium mt-0.5 block">
                       Gemini 2.5 Flash calls
                     </span>
@@ -1038,6 +1131,8 @@ export const AdminDevPanel: React.FC<AdminDevPanelProps> = ({
               onCleanDuplicates={handleCleanDuplicates}
               cleaningDuplicates={isCleaningDuplicates}
               cleanResult={cleanResult}
+              onPurgeDemo={handlePurgeDemoData}
+              isPurgingDemo={isPurgingDemo}
             />
           )}
 

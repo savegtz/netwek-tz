@@ -34,6 +34,8 @@ interface UserControlCenterProps {
   onCleanDuplicates: () => void;
   cleaningDuplicates: boolean;
   cleanResult: string | null;
+  onPurgeDemo?: () => void;
+  isPurgingDemo?: boolean;
 }
 
 export const UserControlCenter: React.FC<UserControlCenterProps> = ({
@@ -47,6 +49,8 @@ export const UserControlCenter: React.FC<UserControlCenterProps> = ({
   onCleanDuplicates,
   cleaningDuplicates,
   cleanResult,
+  onPurgeDemo,
+  isPurgingDemo,
 }) => {
   const [searchQuery, setSearchQuery] = useState('');
   const [filterRole, setFilterRole] = useState('all');
@@ -96,17 +100,35 @@ export const UserControlCenter: React.FC<UserControlCenterProps> = ({
           </h4>
           <p className="text-xs text-slate-400 mt-0.5">
             Jumla ya akaunti zilizopo kwenye mfumo: <strong className="text-white">{users.length}</strong>
+            {users.length === 1 && users[0].email?.toLowerCase() === PRIMARY_ADMIN_EMAIL.toLowerCase() && (
+              <span className="ml-2 text-emerald-400 font-semibold">(Hali Halisi: Admin Tu Aliyepo)</span>
+            )}
           </p>
         </div>
 
-        <button
-          type="button"
-          onClick={onCleanDuplicates}
-          disabled={cleaningDuplicates}
-          className="px-3.5 py-2 rounded-xl bg-purple-500/20 hover:bg-purple-500/30 text-purple-200 border border-purple-500/40 font-bold text-xs flex items-center gap-2 transition-all disabled:opacity-50"
-        >
-          <span>🧹 Ondoa Data Zilizojirudia (Safisha)</span>
-        </button>
+        <div className="flex items-center gap-2 flex-wrap">
+          {onPurgeDemo && (
+            <button
+              type="button"
+              onClick={onPurgeDemo}
+              disabled={isPurgingDemo}
+              className="px-3 py-2 rounded-xl bg-rose-500/15 hover:bg-rose-500/25 text-rose-300 border border-rose-500/40 font-bold text-xs flex items-center gap-1.5 transition-all disabled:opacity-50"
+              title="Futa akaunti zote za majaribio na kubaki na Admin pekee"
+            >
+              <Trash2 className="w-3.5 h-3.5 text-rose-400" />
+              <span>{isPurgingDemo ? 'Inasafisha...' : 'Futa Data za Majaribio'}</span>
+            </button>
+          )}
+
+          <button
+            type="button"
+            onClick={onCleanDuplicates}
+            disabled={cleaningDuplicates}
+            className="px-3 py-2 rounded-xl bg-purple-500/20 hover:bg-purple-500/30 text-purple-200 border border-purple-500/40 font-bold text-xs flex items-center gap-1.5 transition-all disabled:opacity-50"
+          >
+            <span>🧹 Ondoa Zilizojirudia</span>
+          </button>
+        </div>
       </div>
 
       {cleanResult && (

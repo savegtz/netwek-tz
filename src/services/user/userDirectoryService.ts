@@ -81,141 +81,49 @@ export function deduplicateUsers(users: UserProfile[]): UserProfile[] {
 }
 
 /**
- * Known Firebase Auth Users from the Firebase Authentication Console.
- * These ensure that accounts registered in Firebase Auth have corresponding
- * Firestore profiles so they appear in global search, contacts, and admin panels.
+ * Primary Authoritative Admin Profile for Zenia Network
  */
-export const FIREBASE_AUTH_USERS_SEEDS: UserProfile[] = [
-  {
-    id: 'FCXkMkn1moZ5Vd8SR1IZuXJL',
-    email: 'amytzee6676767@gmail.com',
-    displayName: 'Amytzee 667',
-    username: 'amytzee667',
-    bio: 'Mwanachama wa Zenia Network 🌟',
-    accountType: 'personal',
-    verified: true,
-    followersCount: 15,
-    followingCount: 30,
-    postsCount: 2,
-    isOnline: false,
-    lastSeen: 'Masaa 3 yaliyopita',
-    walletBalance: 25000,
-    role: 'user',
-  },
-  {
-    id: '3eysSI6sDmNNCfvkoZAuN7C',
-    email: 'truckingalhushoom@gmail.com',
-    displayName: 'Al-Hushoom Trucking',
-    username: 'alhushoom_trucking',
-    bio: 'Usafirishaji wa Mizigo na Malori | Dar es Salaam & Mikoani 🚛',
-    accountType: 'business',
-    verified: true,
-    followersCount: 140,
-    followingCount: 45,
-    postsCount: 12,
-    isOnline: false,
-    lastSeen: '1h ago',
-    walletBalance: 350000,
-    role: 'user',
-  },
-  {
-    id: 'PW9XSmSsmDhVnOmtBH82D',
-    email: 'amytzee22@gmail.com',
-    displayName: 'Amytzee 22',
-    username: 'amytzee22',
-    bio: 'Zenia Explorer • Karibu kwenye DM zangu 👋',
-    accountType: 'personal',
-    verified: false,
-    followersCount: 28,
-    followingCount: 60,
-    postsCount: 5,
-    isOnline: false,
-    lastSeen: 'Masaa 5 yaliyopita',
-    walletBalance: 10000,
-    role: 'user',
-  },
-  {
-    id: 'UkgR7gl8afU92vg6OCT3wHhA',
-    email: 'savegamour@gmail.com',
-    displayName: 'Amina Kaunga (Admin)',
-    username: 'savegamour',
-    photoURL: aminaAvatar,
-    bio: 'Msimamizi Mkuu (Super Admin) wa Zenia Network • Zenia Support 👑',
-    accountType: 'creator',
-    verified: true,
-    followersCount: 12400,
-    followingCount: 245,
-    postsCount: 3200,
-    isOnline: false,
-    lastSeen: 'Muda mfupi uliopita',
-    walletBalance: 500000,
-    role: 'superadmin',
-  },
-  {
-    id: 'DCgeroYuKbyI5TIXF8CtorSS',
-    email: 'savegamourmteja@gmail.com',
-    displayName: 'Savegamour Mteja',
-    username: 'savegamour_mteja',
-    bio: 'Mteja Rasmi wa Huduma na Bidhaa Zenia 🛍️',
-    accountType: 'personal',
-    verified: true,
-    followersCount: 42,
-    followingCount: 88,
-    postsCount: 8,
-    isOnline: false,
-    lastSeen: 'Masaa 4 yaliyopita',
-    walletBalance: 85000,
-    role: 'user',
-  },
-  {
-    id: 'opTSMQtbAbW7KIwuSWeKuV',
-    email: 'amytzee2@gmail.com',
-    displayName: 'Amytzee Two',
-    username: 'amytzee_2',
-    bio: 'Teknolojia, Muziki na Mawasiliano 🎶',
-    accountType: 'personal',
-    verified: false,
-    followersCount: 19,
-    followingCount: 34,
-    postsCount: 3,
-    isOnline: false,
-    lastSeen: 'Jana',
-    walletBalance: 5000,
-    role: 'user',
-  },
-  {
-    id: 'LL4mqnX1IAPtey9eXPDxRLKO',
-    email: 'savegamour22@gmail.com',
-    displayName: 'Savegamour 22',
-    username: 'savegamour22',
-    bio: 'Zenia Community Member • Dar es Salaam 🇹🇿',
-    accountType: 'personal',
-    verified: true,
-    followersCount: 65,
-    followingCount: 110,
-    postsCount: 14,
-    isOnline: false,
-    lastSeen: 'Masaa 2 yaliyopita',
-    walletBalance: 40000,
-    role: 'user',
-  },
-  {
-    id: '7w6ldhpczBOVpimURqrpQ3C',
-    email: 'amytzee@gmail.com',
-    displayName: 'Amytzee (Admin)',
-    username: 'amytzee',
-    bio: 'Msimamizi Mkuu (Super Admin) wa Zenia Network 🛡️👑',
-    accountType: 'creator',
-    verified: true,
-    followersCount: 15400,
-    followingCount: 150,
-    postsCount: 52,
-    isOnline: false,
-    lastSeen: 'Muda mfupi uliopita',
-    walletBalance: 500000,
-    role: 'superadmin',
-  },
-  // Also include the original demo profiles so they have real Firestore presence
+export const PRIMARY_ADMIN_PROFILE: UserProfile = {
+  id: '7w6ldhpczBOVpimURqrpQ3C',
+  email: 'amytzee@gmail.com',
+  displayName: 'Amytzee (Admin)',
+  username: 'amytzee',
+  bio: 'Msimamizi Mkuu (Super Admin) wa Zenia Network 🛡️👑',
+  accountType: 'creator',
+  verified: true,
+  followersCount: 0,
+  followingCount: 0,
+  postsCount: 0,
+  isOnline: true,
+  lastSeen: 'Sasa hivi',
+  walletBalance: 500000,
+  role: 'superadmin',
+};
+
+/**
+ * Check if demo/sample data mode is enabled.
+ * Defaults to FALSE (Clean Production Mode) so only real users exist.
+ */
+export const isDemoModeActive = (): boolean => {
+  try {
+    return localStorage.getItem('zenia_demo_mode_active') === 'true';
+  } catch {
+    return false;
+  }
+};
+
+export const setDemoModeActive = (active: boolean): void => {
+  try {
+    localStorage.setItem('zenia_demo_mode_active', active ? 'true' : 'false');
+    window.dispatchEvent(new Event('zenia_demo_mode_changed'));
+  } catch {}
+};
+
+/**
+ * Mock demo profiles for UI testing and visual design previews.
+ * Only loaded when Demo Mode is explicitly turned on by the Admin.
+ */
+export const DEMO_PREVIEW_USERS: UserProfile[] = [
   {
     id: 'user_fresh_kk',
     email: 'fresh.kk@zenia.app',
@@ -285,6 +193,19 @@ export const FIREBASE_AUTH_USERS_SEEDS: UserProfile[] = [
     role: 'user',
   },
 ];
+
+/**
+ * Known authoritative seeds:
+ * In clean production mode, only the Admin profile is seeded.
+ * When real users register via Firebase Authentication, they join dynamically.
+ */
+export const getActiveSeeds = (): UserProfile[] => {
+  return isDemoModeActive()
+    ? [PRIMARY_ADMIN_PROFILE, ...DEMO_PREVIEW_USERS]
+    : [PRIMARY_ADMIN_PROFILE];
+};
+
+export const FIREBASE_AUTH_USERS_SEEDS: UserProfile[] = [PRIMARY_ADMIN_PROFILE];
 
 class UserDirectoryServiceImpl {
   private users: UserProfile[] = [];
@@ -500,6 +421,82 @@ class UserDirectoryServiceImpl {
     }
 
     return { cleanedCount: deletedIds.length, deletedIds };
+  }
+
+  /**
+   * Purges all mock/demo users from Cloud Firestore and local storage,
+   * leaving ONLY the primary Admin (amytzee@gmail.com) and genuine registered users.
+   */
+  public async purgeDemoDataFromFirestore(): Promise<{ deletedCount: number }> {
+    let deletedCount = 0;
+    try {
+      const snap = await getDocs(collection(db, 'users'));
+      const demoUserIds = new Set([
+        'user_fresh_kk',
+        'user_sarah_m',
+        'user_alex_k',
+        'user_juma_rashid',
+        'user_baraka_m',
+        'FCXkMkn1moZ5Vd8SR1IZuXJL',
+        '3eysSI6sDmNNCfvkoZAuN7C',
+        'PW9XSmSsmDhVnOmtBH82D',
+        'DCgeroYuKbyI5TIXF8CtorSS',
+        'opTSMQtbAbW7KIwuSWeKuV',
+        'LL4mqnX1IAPtey9eXPDxRLKO',
+        'UkgR7gl8afU92vg6OCT3wHhA',
+      ]);
+
+      const demoEmails = new Set([
+        'fresh.kk@zenia.app',
+        'sarah@soundwave.tz',
+        'alex.kanyama@zenia.app',
+        'juma.rashid@zenia.app',
+        'truckingalhushoom@gmail.com',
+        'amytzee6676767@gmail.com',
+        'amytzee22@gmail.com',
+        'amytzee2@gmail.com',
+        'savegamourmteja@gmail.com',
+        'savegamour22@gmail.com',
+        'savegamour@gmail.com',
+      ]);
+
+      for (const d of snap.docs) {
+        const u = d.data() as UserProfile;
+        const email = (u.email || '').trim().toLowerCase();
+        const isDemo =
+          demoUserIds.has(d.id) ||
+          demoEmails.has(email) ||
+          (d.id.startsWith('user_') && email.endsWith('@zenia.app'));
+        const isAdmin = email === PRIMARY_ADMIN_PROFILE.email.toLowerCase();
+
+        if (isDemo && !isAdmin) {
+          try {
+            await deleteDoc(doc(db, 'users', d.id));
+            deletedCount++;
+          } catch (e) {
+            console.warn('Could not delete demo doc:', d.id, e);
+          }
+        }
+      }
+
+      // Ensure Admin profile is written to Firestore
+      try {
+        await setDoc(doc(db, 'users', PRIMARY_ADMIN_PROFILE.id), PRIMARY_ADMIN_PROFILE, { merge: true });
+      } catch {}
+
+      // Keep only Admin profile in local directory
+      this.users = [PRIMARY_ADMIN_PROFILE];
+      try {
+        localStorage.setItem('zenia_firestore_users_cache', JSON.stringify(this.users));
+        localStorage.removeItem('zenia_admin_users_list');
+        localStorage.setItem('zenia_demo_mode_active', 'false');
+      } catch (_) {}
+
+      this.notifyListeners();
+    } catch (e) {
+      console.error('Error purging demo data:', e);
+    }
+    return { deletedCount };
   }
 
   /**

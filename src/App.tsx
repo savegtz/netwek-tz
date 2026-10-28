@@ -48,6 +48,7 @@ import { presenceService, isUserOnline } from './services/user/presenceService';
 import { ZeniaMiniPlayer } from './components/ZeniaMiniPlayer';
 import { NotificationHeadsUpBanner } from './components/NotificationHeadsUpBanner';
 import { pushNotificationService } from './services/notifications/pushNotificationService';
+import { isDemoModeActive } from './services/user/userDirectoryService';
 import freshKkAvatar from './assets/images/fresh_kk_avatar_1791078365294.jpg';
 
 export default function App() {
@@ -97,7 +98,7 @@ export default function App() {
     });
   };
 
-  // User-scoped conversations: Defaults to INITIAL_CONVERSATIONS for initial demo experience
+  // User-scoped conversations: In clean mode, starts clean (empty); in demo mode, loads demo conversations
   const [conversations, setConversations] = useState<Conversation[]>(() => {
     const saved = localStorage.getItem('zenia_active_user');
     if (saved) {
@@ -109,7 +110,7 @@ export default function App() {
         }
       } catch {}
     }
-    return filterDeletedConversations(INITIAL_CONVERSATIONS);
+    return isDemoModeActive() ? filterDeletedConversations(INITIAL_CONVERSATIONS) : [];
   });
 
   // Listen to global user deletion events
@@ -126,10 +127,10 @@ export default function App() {
     return unsub;
   }, []);
 
-  // Sync conversations with currentUser (falls back to INITIAL_CONVERSATIONS for guest browsing)
+  // Sync conversations with currentUser
   useEffect(() => {
     if (!currentUser) {
-      setConversations(filterDeletedConversations(INITIAL_CONVERSATIONS));
+      setConversations(isDemoModeActive() ? filterDeletedConversations(INITIAL_CONVERSATIONS) : []);
     } else {
       try {
         const userConvs = localStorage.getItem(`zenia_user_conversations_${currentUser.id}`);
@@ -146,13 +147,17 @@ export default function App() {
           const fallback =
             relevant.length > 0
               ? relevant
-              : currentUser.id === INITIAL_USER.id
+              : currentUser.id === INITIAL_USER.id && isDemoModeActive()
               ? INITIAL_CONVERSATIONS
               : [];
           setConversations(filterDeletedConversations(fallback));
         }
       } catch {
-        setConversations(currentUser.id === INITIAL_USER.id ? filterDeletedConversations(INITIAL_CONVERSATIONS) : []);
+        setConversations(
+          currentUser.id === INITIAL_USER.id && isDemoModeActive()
+            ? filterDeletedConversations(INITIAL_CONVERSATIONS)
+            : []
+        );
       }
     }
   }, [currentUser?.id]);

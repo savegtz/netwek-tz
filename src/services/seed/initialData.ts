@@ -15,20 +15,20 @@ import aminaAvatar from '../../assets/images/amina_avatar_1790280951312.jpg';
 
 export const INITIAL_USER: UserProfile = {
   id: 'current_user_id',
-  email: 'savegamour@gmail.com',
-  displayName: 'Amina Kaunga',
-  username: 'amina_kaunga',
+  email: 'amytzee@gmail.com',
+  displayName: 'Amytzee (Admin)',
+  username: 'amytzee',
   photoURL: aminaAvatar,
-  bio: 'Content Creator | Fashion | Lifestyle\nDream • Create • Inspire',
+  bio: 'Msimamizi Mkuu (Super Admin) wa Zenia Network 🛡️👑',
   accountType: 'creator',
   verified: true,
   role: 'superadmin',
-  walletBalance: 120000,
-  followersCount: 12400,
-  followingCount: 245,
-  postsCount: 3200,
+  walletBalance: 500000,
+  followersCount: 0,
+  followingCount: 0,
+  postsCount: 0,
   isOnline: true,
-  lastSeen: 'Just now',
+  lastSeen: 'Sasa hivi',
 };
 
 export const INITIAL_CONVERSATIONS: Conversation[] = [
