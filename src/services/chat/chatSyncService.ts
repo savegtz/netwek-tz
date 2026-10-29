@@ -168,8 +168,13 @@ export const ChatSyncService = {
   },
 
   // Send a real-time message to Firestore and broadcast
-  async sendMessage(conversationId: string, message: ChatMessage) {
+  async sendMessage(
+    conversationId: string,
+    message: ChatMessage,
+    extraConv?: Partial<Conversation>
+  ) {
     const localKey = `zenia_msgs_${conversationId}`;
+    let foundConvObj: Conversation | null = (extraConv as Conversation) || null;
 
     // 1. Save to local storage
     try {
@@ -204,20 +209,22 @@ export const ChatSyncService = {
 
     // Update conversation previews across all stored user accounts and ensure participants have the conversation
     try {
-      // 1. Locate the conversation object
-      let currentConvObj: Conversation | null = null;
       const allKeys = Object.keys(localStorage).filter((k) =>
         k.startsWith('zenia_user_conversations_')
       );
-      for (const k of allKeys) {
-        try {
-          const list: Conversation[] = JSON.parse(localStorage.getItem(k) || '[]');
-          const found = list.find((c) => c.id === conversationId);
-          if (found) {
-            currentConvObj = found;
-            break;
-          }
-        } catch (_) {}
+
+      // 1. Locate the conversation object if not passed
+      if (!foundConvObj) {
+        for (const k of allKeys) {
+          try {
+            const list: Conversation[] = JSON.parse(localStorage.getItem(k) || '[]');
+            const found = list.find((c) => c.id === conversationId);
+            if (found) {
+              foundConvObj = found;
+              break;
+            }
+          } catch (_) {}
+        }
       }
 
       const lastMsgText =
@@ -257,12 +264,12 @@ export const ChatSyncService = {
             // If this user is a participant but doesn't have this conversation in their list yet, add it!
             if (
               !modified &&
-              currentConvObj &&
-              currentConvObj.participants &&
-              currentConvObj.participants.includes(userId)
+              foundConvObj &&
+              foundConvObj.participants &&
+              foundConvObj.participants.includes(userId)
             ) {
               updatedList.unshift({
-                ...currentConvObj,
+                ...foundConvObj,
                 lastMessage: lastMsgText,
                 lastMessageType: message.messageType,
                 lastMessageSenderId: message.senderId,
@@ -280,13 +287,13 @@ export const ChatSyncService = {
       }
 
       // If participants don't even have a zenia_user_conversations_ entry yet, create one for them!
-      if (currentConvObj && currentConvObj.participants) {
-        for (const pId of currentConvObj.participants) {
+      if (foundConvObj && foundConvObj.participants) {
+        for (const pId of foundConvObj.participants) {
           const pKey = `zenia_user_conversations_${pId}`;
           if (!localStorage.getItem(pKey)) {
             const initialList: Conversation[] = [
               {
-                ...currentConvObj,
+                ...foundConvObj,
                 lastMessage: lastMsgText,
                 lastMessageType: message.messageType,
                 lastMessageSenderId: message.senderId,
@@ -322,22 +329,210 @@ export const ChatSyncService = {
         id: conversationId,
         lastMessage:
           message.text ||
-          (message.messageType === 'audio' ? 'Ujumbe wa sauti' : 'Ujumbe mpya'),
+          (message.messageType === 'audio'
+            ? '🎙️ Ujumbe wa sauti'
+            : message.messageType === 'invoice'
+            ? '🧾 Ankara ya Malipo'
+            : message.messageType === 'poll'
+            ? '📊 Kura ya Maoni'
+            : message.messageType === 'tip_gift'
+            ? '🎁 Zawadi'
+            : 'Ujumbe mpya'),
         lastMessageType: message.messageType,
         lastMessageSenderId: message.senderId,
         updatedAt: message.createdAt,
         timestamp: Date.now(),
       };
-      if (conversationId.startsWith('conv_')) {
+
+      if (foundConvObj) {
+        if (foundConvObj.participants) updates.participants = foundConvObj.participants;
+        if (foundConvObj.participantDetails) updates.participantDetails = foundConvObj.participantDetails;
+        if (foundConvObj.isGroup !== undefined) updates.isGroup = foundConvObj.isGroup;
+        if (foundConvObj.groupName) updates.groupName = foundConvObj.groupName;
+        if (foundConvObj.groupAvatar) updates.groupAvatar = foundConvObj.groupAvatar;
+      } else if (conversationId.startsWith('conv_')) {
         const parts = conversationId.replace('conv_', '').split('_').filter(Boolean);
         if (parts.length >= 2) {
           updates.participants = parts;
         }
       }
+
       await setDoc(convRef, updates, { merge: true });
+
+      // Send real-time notification to participants in Firestore
+      const recipientIds = updates.participants
+        ? updates.participants.filter((p: string) => p !== message.senderId)
+        : [];
+
+      for (const recId of recipientIds) {
+        if (!recId || recId === 'guest') continue;
+        try {
+          const notifId = `notif_msg_${Date.now()}_${Math.random().toString(36).substring(2, 6)}`;
+          await setDoc(doc(db, 'notifications', notifId), {
+            id: notifId,
+            userId: recId,
+            title: message.senderName || 'Ujumbe Mpya',
+            message:
+              message.text ||
+              (message.messageType === 'audio'
+                ? '🎙️ Ujumbe wa sauti'
+                : message.messageType === 'invoice'
+                ? '🧾 Ankara ya Malipo'
+                : 'Ujumbe mpya'),
+            type: 'message',
+            avatar: message.senderAvatar,
+            read: false,
+            createdAt: new Date().toISOString(),
+            data: { conversationId, messageId: message.id, replyText: '' },
+          });
+        } catch (_) {}
+      }
     } catch (e) {
       console.warn('Firestore message save error:', e);
     }
+  },
+
+  // Save or sync conversation metadata directly to Firestore
+  async saveConversation(conv: Conversation) {
+    try {
+      const convRef = doc(db, 'conversations', conv.id);
+      await setDoc(
+        convRef,
+        {
+          id: conv.id,
+          participants: conv.participants || [],
+          participantDetails: conv.participantDetails || {},
+          isGroup: Boolean(conv.isGroup),
+          groupName: conv.groupName || null,
+          groupAvatar: conv.groupAvatar || null,
+          lastMessage: conv.lastMessage || '',
+          lastMessageType: conv.lastMessageType || 'text',
+          lastMessageSenderId: conv.lastMessageSenderId || null,
+          updatedAt: conv.updatedAt || 'Sasa hivi',
+          timestamp: Date.now(),
+        },
+        { merge: true }
+      );
+    } catch (e) {
+      console.warn('Firestore conversation save notice:', e);
+    }
+  },
+
+  // Real-time listener on all user's conversations across devices from Firestore
+  subscribeUserConversations(
+    userId: string,
+    userEmail: string | undefined,
+    onUpdate: (conversations: Conversation[]) => void
+  ): () => void {
+    if (!userId || userId === 'guest') {
+      return () => {};
+    }
+
+    const localKey = `zenia_user_conversations_${userId}`;
+    let currentConvs: Conversation[] = [];
+    try {
+      const saved = localStorage.getItem(localKey);
+      if (saved) {
+        currentConvs = JSON.parse(saved);
+        onUpdate(currentConvs);
+      }
+    } catch (_) {}
+
+    const normUser = userId.trim().toLowerCase();
+    const emailNorm = userEmail ? userEmail.trim().toLowerCase() : '';
+
+    const isUserParticipant = (c: any): boolean => {
+      if (c.isGroup) return true; // public / member groups
+      if (Array.isArray(c.participants)) {
+        if (c.participants.includes(userId)) return true;
+        if (c.participants.some((p: string) => p.toLowerCase() === normUser)) return true;
+        if (emailNorm && c.participants.some((p: string) => p.toLowerCase() === emailNorm)) return true;
+        if (normUser.includes('admin') || normUser === '7w6ldhpczbovpimurqrpq3c' || emailNorm === 'amytzee@gmail.com') {
+          if (c.participants.some((p: string) => p.toLowerCase().includes('amytzee') || p.toLowerCase().includes('admin'))) {
+            return true;
+          }
+        }
+      }
+      if (c.participantDetails) {
+        if (c.participantDetails[userId]) return true;
+        if (emailNorm && Object.values(c.participantDetails).some((d: any) => d?.email?.toLowerCase() === emailNorm)) {
+          return true;
+        }
+      }
+      return false;
+    };
+
+    let unsubFirestore: (() => void) | null = null;
+    try {
+      const convsColl = collection(db, 'conversations');
+      unsubFirestore = onSnapshot(
+        convsColl,
+        (snapshot) => {
+          if (!snapshot.empty) {
+            const remoteList: Conversation[] = [];
+            snapshot.forEach((snap) => {
+              const data = snap.data();
+              if (isUserParticipant(data)) {
+                remoteList.push({
+                  id: snap.id,
+                  participants: data.participants || [],
+                  participantDetails: data.participantDetails || {},
+                  isGroup: Boolean(data.isGroup),
+                  groupName: data.groupName,
+                  groupAvatar: data.groupAvatar,
+                  lastMessage: data.lastMessage || 'Ujumbe mpya',
+                  lastMessageType: data.lastMessageType || 'text',
+                  lastMessageSenderId: data.lastMessageSenderId,
+                  updatedAt: data.updatedAt || 'Sasa hivi',
+                  unreadCount: data.lastMessageSenderId && data.lastMessageSenderId !== userId ? 1 : 0,
+                });
+              }
+            });
+
+            if (remoteList.length > 0) {
+              const map = new Map<string, Conversation>();
+              // Keep local customization like custom lists, pinned state, muted
+              currentConvs.forEach((c) => map.set(c.id, c));
+              // Merge/update with remote authoritative info
+              remoteList.forEach((r) => {
+                const existing = map.get(r.id);
+                if (existing) {
+                  map.set(r.id, {
+                    ...existing,
+                    lastMessage: r.lastMessage,
+                    lastMessageType: r.lastMessageType,
+                    lastMessageSenderId: r.lastMessageSenderId,
+                    updatedAt: r.updatedAt,
+                    participantDetails: {
+                      ...existing.participantDetails,
+                      ...r.participantDetails,
+                    },
+                    participants: Array.from(new Set([...(existing.participants || []), ...(r.participants || [])])),
+                  });
+                } else {
+                  map.set(r.id, r);
+                }
+              });
+
+              currentConvs = Array.from(map.values());
+              try {
+                localStorage.setItem(localKey, JSON.stringify(currentConvs));
+              } catch (_) {}
+              onUpdate(currentConvs);
+            }
+          }
+        },
+        (err) => {
+          console.warn('Real-time conversation listener notice:', err);
+        }
+      );
+    } catch (e) {
+      console.warn('Firestore conversation listener warning:', e);
+    }
+
+    return () => {
+      if (unsubFirestore) unsubFirestore();
+    };
   },
 
   // Update a message (for edits, poll votes, opening tips, view-once)

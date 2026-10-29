@@ -372,10 +372,10 @@ class WebRTCServiceImpl {
 
     const callData: WebRTCCallData = {
       id: callId,
-      callerId: normCallerId,
+      callerId: caller.id || normCallerId,
       callerName: caller.displayName,
       callerAvatar: caller.photoURL,
-      receiverId: normReceiverId,
+      receiverId: receiver.id || normReceiverId,
       receiverName: receiver.displayName,
       receiverAvatar: receiver.photoURL,
       callType,
@@ -383,6 +383,8 @@ class WebRTCServiceImpl {
       offer: { type: offer.type, sdp: offer.sdp },
       createdAt: new Date().toISOString(),
     };
+    (callData as any).callerEmail = caller.email;
+    (callData as any).receiverEmail = (receiver as any).email;
 
     // Save to Firestore
     try {
@@ -786,22 +788,58 @@ class WebRTCServiceImpl {
    * Listen for incoming calls for a user
    */
   public subscribeIncomingCalls(
-    userId: string,
-    onIncoming: (callData: WebRTCCallData) => void
+    userTarget: string | UserProfile,
+    onIncoming: (callData: WebRTCCallData) => void,
+    optionalEmail?: string
   ): () => void {
-    const normUser = normalizeUserId(userId);
-    const isTargetUser = (rId?: string) => {
-      if (!rId) return false;
-      return rId === userId || normalizeUserId(rId) === normUser;
+    const uId = typeof userTarget === 'object' ? userTarget.id : userTarget;
+    const uEmail = typeof userTarget === 'object' ? userTarget.email : optionalEmail;
+    const uName = typeof userTarget === 'object' ? userTarget.username : undefined;
+
+    const allTargetIds = new Set<string>();
+    if (uId) {
+      allTargetIds.add(uId);
+      allTargetIds.add(uId.toLowerCase());
+      allTargetIds.add(normalizeUserId(uId));
+    }
+    if (uEmail) {
+      allTargetIds.add(uEmail);
+      allTargetIds.add(uEmail.toLowerCase());
+    }
+    if (uName) {
+      allTargetIds.add(uName);
+      allTargetIds.add(uName.toLowerCase());
+    }
+    // If admin
+    if (
+      uEmail === 'amytzee@gmail.com' ||
+      uId === '7w6ldhpczBOVpimURqrpQ3C' ||
+      (uName && uName.toLowerCase().includes('amytzee'))
+    ) {
+      allTargetIds.add('amytzee@gmail.com');
+      allTargetIds.add('amytzee');
+      allTargetIds.add('admin');
+      allTargetIds.add('admin_amytzee');
+      allTargetIds.add('7w6ldhpczBOVpimURqrpQ3C');
+      allTargetIds.add('current_user_id');
+    }
+
+    const isTargetUser = (rId?: string, rEmail?: string) => {
+      if (!rId && !rEmail) return false;
+      if (rId && allTargetIds.has(rId)) return true;
+      if (rId && allTargetIds.has(rId.toLowerCase())) return true;
+      if (rId && allTargetIds.has(normalizeUserId(rId))) return true;
+      if (rEmail && allTargetIds.has(rEmail.toLowerCase())) return true;
+      return false;
     };
 
     // 1. Initial check: check if an active incoming call is already waiting in localStorage
     try {
       const stored = localStorage.getItem('zenia_call_signal_incoming');
       if (stored) {
-        const callData = JSON.parse(stored) as WebRTCCallData & { _sigTime?: number };
+        const callData = JSON.parse(stored) as WebRTCCallData & { _sigTime?: number; receiverEmail?: string };
         if (
-          isTargetUser(callData.receiverId) &&
+          isTargetUser(callData.receiverId, callData.receiverEmail) &&
           callData.status === 'calling' &&
           callData._sigTime &&
           Date.now() - callData._sigTime < 45000
@@ -811,21 +849,15 @@ class WebRTCServiceImpl {
       }
     } catch (_) {}
 
-    // 2. Firestore query - filter by receiverId with both variants if they differ
+    // 2. Firestore query - listen to active calls
     const callsRef = collection(db, 'calls');
-    const validIds = Array.from(new Set([userId, normUser]));
-    const q =
-      validIds.length > 1
-        ? query(callsRef, where('receiverId', 'in', validIds))
-        : query(callsRef, where('receiverId', '==', validIds[0]));
-
     const firestoreUnsub = onSnapshot(
-      q,
+      callsRef,
       (snapshot) => {
         snapshot.docChanges().forEach((change) => {
           if (change.type === 'added' || change.type === 'modified') {
-            const data = { id: change.doc.id, ...change.doc.data() } as WebRTCCallData;
-            if (data.status === 'calling' && isTargetUser(data.receiverId)) {
+            const data = { id: change.doc.id, ...change.doc.data() } as WebRTCCallData & { receiverEmail?: string };
+            if (data.status === 'calling' && isTargetUser(data.receiverId, data.receiverEmail)) {
               onIncoming(data);
             }
           }
@@ -842,7 +874,7 @@ class WebRTCServiceImpl {
         event.data &&
         event.data.type === 'INCOMING_CALL' &&
         event.data.call &&
-        isTargetUser(event.data.call.receiverId)
+        isTargetUser(event.data.call.receiverId, event.data.call.receiverEmail)
       ) {
         onIncoming(event.data.call);
       }

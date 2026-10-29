@@ -43,12 +43,12 @@ import { NotificationsView } from './features/notifications/NotificationsView';
 import { AdminDevPanel } from './features/admin/AdminDevPanel';
 import { BroadcastBanner } from './components/BroadcastBanner';
 import { userService } from './services/user/userService';
-import { friendshipService, normalizeUserId } from './services/user/friendshipService';
+import { friendshipService, normalizeUserId, matchesUser } from './services/user/friendshipService';
 import { presenceService, isUserOnline } from './services/user/presenceService';
 import { ZeniaMiniPlayer } from './components/ZeniaMiniPlayer';
 import { NotificationHeadsUpBanner } from './components/NotificationHeadsUpBanner';
 import { pushNotificationService } from './services/notifications/pushNotificationService';
-import { isDemoModeActive } from './services/user/userDirectoryService';
+import { isDemoModeActive, userDirectoryService } from './services/user/userDirectoryService';
 import freshKkAvatar from './assets/images/fresh_kk_avatar_1791078365294.jpg';
 
 export default function App() {
@@ -162,9 +162,19 @@ export default function App() {
     }
   }, [currentUser?.id]);
 
-  // Live real-time listener for conversation updates across browser tabs and user switches
+  // Live real-time listener for conversation updates across Firestore, browser tabs, and user switches
   useEffect(() => {
-    if (!currentUser) return;
+    if (!currentUser || currentUser.id === 'guest_user') return;
+
+    // 1. Subscribe to Firestore real-time conversations for this user
+    const unsubFirestore = ChatSyncService.subscribeUserConversations(
+      currentUser.id,
+      currentUser.email,
+      (remoteConvs) => {
+        setConversations(filterDeletedConversations(remoteConvs));
+      }
+    );
+
     const handleStorageUpdate = (e: StorageEvent) => {
       if (e.key === `zenia_user_conversations_${currentUser.id}` && e.newValue) {
         try {
@@ -184,10 +194,11 @@ export default function App() {
     window.addEventListener('storage', handleStorageUpdate);
     window.addEventListener('zenia_conversations_updated', handleCustomUpdate);
     return () => {
+      unsubFirestore();
       window.removeEventListener('storage', handleStorageUpdate);
       window.removeEventListener('zenia_conversations_updated', handleCustomUpdate);
     };
-  }, [currentUser?.id]);
+  }, [currentUser?.id, currentUser?.email]);
 
   // Persist conversations for the current user
   useEffect(() => {
@@ -249,14 +260,18 @@ export default function App() {
   // Subscribe to real-time incoming WebRTC calls via Firestore and BroadcastChannel
   useEffect(() => {
     if (!activeUser || !activeUser.id) return;
-    const unsubscribe = webrtcService.subscribeIncomingCalls(activeUser.id, (callData) => {
-      // Ignore if we are the caller or already on an active call
-      if (callData.callerId === activeUser.id) return;
-      if (activeCallSession) return;
-      setIncomingCall(callData);
-    });
+    const unsubscribe = webrtcService.subscribeIncomingCalls(
+      activeUser,
+      (callData) => {
+        // Ignore if we are the caller or already on an active call
+        if (callData.callerId === activeUser.id) return;
+        if (activeCallSession) return;
+        setIncomingCall(callData);
+      },
+      activeUser.email
+    );
     return () => unsubscribe();
-  }, [activeUser.id, activeCallSession]);
+  }, [activeUser.id, activeUser.email, activeCallSession]);
   const [createStatusType, setCreateStatusType] = useState<StatusType | 'ai' | null>(null);
   const [customStatuses, setCustomStatuses] = useState<StatusItem[]>([]);
   const [isFrameMode, setIsFrameMode] = useState<boolean>(false); // Full-width responsive web view by default
@@ -323,20 +338,68 @@ export default function App() {
     }
 
     const convParticipants = Array.isArray(conv.participants) ? conv.participants : [];
-    const otherParticipantId =
-      convParticipants.find((p) => p !== activeUser.id) || 'user_fresh_kk';
+    let otherParticipantId =
+      convParticipants.find(
+        (p) =>
+          p !== activeUser.id &&
+          !matchesUser(activeUser.id, p) &&
+          (!activeUser.email || p.toLowerCase() !== activeUser.email.toLowerCase())
+      ) || '';
+
+    let otherDetails: any = null;
+    if (conv.participantDetails) {
+      if (otherParticipantId && conv.participantDetails[otherParticipantId]) {
+        otherDetails = conv.participantDetails[otherParticipantId];
+      } else {
+        const found = Object.entries(conv.participantDetails).find(([pId, details]) => {
+          const d = details as any;
+          if (pId === activeUser.id || matchesUser(activeUser.id, pId)) return false;
+          if (activeUser.email && pId.toLowerCase() === activeUser.email.toLowerCase()) return false;
+          if (d?.id && (d.id === activeUser.id || matchesUser(activeUser.id, d.id))) return false;
+          if (d?.email && activeUser.email && d.email.toLowerCase() === activeUser.email.toLowerCase()) return false;
+          return true;
+        });
+        if (found) {
+          if (!otherParticipantId) otherParticipantId = found[0];
+          otherDetails = found[1];
+        }
+      }
+    }
+
+    if (!otherParticipantId && conv.id.startsWith('conv_')) {
+      const parts = conv.id.replace('conv_', '').split('_');
+      const p = parts.find(
+        (part) =>
+          part &&
+          part !== activeUser.id &&
+          !matchesUser(activeUser.id, part) &&
+          (!activeUser.email || part.toLowerCase() !== activeUser.email.toLowerCase())
+      );
+      if (p) otherParticipantId = p;
+    }
+
+    const dirUser = otherParticipantId
+      ? userDirectoryService.getAllUsers().find(
+          (u: UserProfile) =>
+            u.id === otherParticipantId ||
+            matchesUser(otherParticipantId, u.id) ||
+            (u.email && (u.email.toLowerCase() === otherParticipantId.toLowerCase() || matchesUser(otherParticipantId, u.email)))
+        )
+      : null;
+
     const rName =
       (conv.isGroup
         ? conv.groupName
-        : conv?.participantDetails && otherParticipantId
-        ? conv.participantDetails[otherParticipantId]?.displayName
-        : 'Fresh kk') || 'Fresh kk';
+        : otherDetails?.displayName ||
+          dirUser?.displayName ||
+          (otherParticipantId.toLowerCase().includes('amytzee') ? 'Amytzee (Admin)' : null) ||
+          (matchesUser(otherParticipantId, 'user_fresh_kk') ? 'Fresh kk' : null)) ||
+      (conv.groupName ? conv.groupName : 'Mwanachama wa Zenia');
+
     const rAvatar =
       (conv.isGroup
         ? conv.groupAvatar
-        : conv?.participantDetails && otherParticipantId
-        ? conv.participantDetails[otherParticipantId]?.photoURL
-        : freshKkAvatar) || freshKkAvatar;
+        : otherDetails?.photoURL || dirUser?.photoURL) || undefined;
 
     // Check friendship condition
     if (!conv.isGroup && otherParticipantId) {
@@ -523,6 +586,7 @@ export default function App() {
       unreadCount: 0,
     };
     setConversations((prev) => [newConv, ...prev.filter((c) => c.id !== newConv.id)]);
+    ChatSyncService.saveConversation(newConv);
     setActiveConversation(newConv);
     setActiveTab('chats');
   };

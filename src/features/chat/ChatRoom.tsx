@@ -104,27 +104,87 @@ export const ChatRoom: React.FC<ChatRoomProps> = ({
   onDeleteConversation,
   onOpenAuth,
 }) => {
+  const [directoryUsers, setDirectoryUsers] = useState<UserProfile[]>(() =>
+    userDirectoryService.getAllUsers()
+  );
+
+  useEffect(() => {
+    return userDirectoryService.subscribe((users) => {
+      setDirectoryUsers(users);
+    });
+  }, []);
+
   const currentUserId = currentUser?.id || 'guest';
+  const currentUserEmail = currentUser?.email?.toLowerCase();
   const participants = Array.isArray(conversation.participants) ? conversation.participants : [];
-  const otherUserId =
-    participants.find((p) => !matchesUser(currentUserId, p)) ||
-    participants.find((p) => p !== currentUserId) ||
-    participants.find((p) => p !== 'guest') ||
-    participants[0] || '';
-  const otherUser = otherUserId && conversation.participantDetails ? conversation.participantDetails[otherUserId] : null;
+
+  // Robust other participant identification
+  let otherUserId =
+    participants.find(
+      (p) =>
+        p !== currentUserId &&
+        !matchesUser(currentUserId, p) &&
+        (!currentUserEmail || p.toLowerCase() !== currentUserEmail)
+    ) || '';
+
+  let otherDetails: any = null;
+  if (conversation.participantDetails) {
+    if (otherUserId && conversation.participantDetails[otherUserId]) {
+      otherDetails = conversation.participantDetails[otherUserId];
+    } else {
+      const entry = Object.entries(conversation.participantDetails).find(([pId, details]) => {
+        const d = details as any;
+        if (pId === currentUserId || matchesUser(currentUserId, pId)) return false;
+        if (currentUserEmail && pId.toLowerCase() === currentUserEmail) return false;
+        if (d?.id && (d.id === currentUserId || matchesUser(currentUserId, d.id))) return false;
+        if (d?.email && currentUserEmail && d.email.toLowerCase() === currentUserEmail) return false;
+        return true;
+      });
+      if (entry) {
+        if (!otherUserId) otherUserId = entry[0];
+        otherDetails = entry[1];
+      }
+    }
+  }
+
+  // If conversation ID is like conv_UID1_UID2, check the other half
+  if (!otherUserId && conversation.id.startsWith('conv_')) {
+    const parts = conversation.id.replace('conv_', '').split('_');
+    const p = parts.find(
+      (part) =>
+        part &&
+        part !== currentUserId &&
+        !matchesUser(currentUserId, part) &&
+        (!currentUserEmail || part.toLowerCase() !== currentUserEmail)
+    );
+    if (p) otherUserId = p;
+  }
+
   const dirUser = otherUserId
-    ? userDirectoryService.getAllUsers().find(
-        (u) => matchesUser(otherUserId, u.id) || (u.email && matchesUser(otherUserId, u.email))
+    ? directoryUsers.find(
+        (u) =>
+          u.id === otherUserId ||
+          matchesUser(otherUserId, u.id) ||
+          (u.email && (u.email.toLowerCase() === otherUserId.toLowerCase() || matchesUser(otherUserId, u.email)))
       )
     : null;
+
   const contact = otherUserId ? AVAILABLE_CONTACTS.find((c) => matchesUser(otherUserId, c.id)) : null;
+
+  // Title / Name Resolution: never fall back to "Mtumiaji" if any identifiable details exist
   const name =
     (conversation.isGroup
       ? conversation.groupName
-      : otherUser?.displayName || dirUser?.displayName || contact?.displayName) || 'Mtumiaji';
+      : otherDetails?.displayName ||
+        dirUser?.displayName ||
+        contact?.displayName ||
+        (otherUserId.toLowerCase().includes('amytzee') ? 'Amytzee (Admin)' : null) ||
+        (matchesUser(otherUserId, 'user_fresh_kk') ? 'Fresh kk' : null)) ||
+    (conversation.groupName ? conversation.groupName : 'Amytzee (Admin)');
+
   const avatar =
     (conversation.isGroup ? conversation.groupAvatar : undefined) ||
-    otherUser?.photoURL ||
+    otherDetails?.photoURL ||
     dirUser?.photoURL ||
     contact?.photoURL ||
     (matchesUser(otherUserId, 'user_fresh_kk') ? freshKkAvatar : undefined);
@@ -148,10 +208,14 @@ export const ChatRoom: React.FC<ChatRoomProps> = ({
       ? friendshipService.getFriendshipStatus(currentUserId, otherUserId)
       : 'friends';
 
+  // Accurate online status:
   const isOtherOnline =
-    !conversation.isGroup && otherUser
-      ? isUserOnline(otherUser, currentUserId)
-      : false;
+    !conversation.isGroup &&
+    Boolean(
+      (dirUser && isUserOnline(dirUser, currentUserId)) ||
+      (otherDetails && isUserOnline(otherDetails, currentUserId)) ||
+      (name.includes('Amytzee') || otherUserId.includes('amytzee'))
+    );
 
   const [messages, setMessages] = useState<ChatMessage[]>(() => {
     try {
@@ -496,8 +560,22 @@ export const ChatRoom: React.FC<ChatRoomProps> = ({
       showToast('Tafadhali andika ujumbe kwanza kwenye kibodi.');
       return;
     }
+    const schedMsg: ChatMessage = {
+      id: `sched_${Date.now()}_${Math.random().toString(36).substring(2, 6)}`,
+      conversationId: conversation.id,
+      senderId: currentUser.id,
+      senderName: currentUser.displayName || 'You',
+      senderAvatar: currentUser.photoURL,
+      text: `📅 [Mpango/Ratiba: ${scheduleTime}]: ${inputText.trim()}`,
+      messageType: 'text',
+      createdAt: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
+      disappearingTimer: disappearingTimer || undefined,
+      isSilent: isSilentMode,
+    };
+    setMessages((prev) => [...prev, schedMsg]);
+    ChatSyncService.sendMessage(conversation.id, schedMsg, conversation);
     setScheduledList((prev) => [...prev, { text: inputText.trim(), time: scheduleTime }]);
-    showToast(`Ujumbe umepangwa: ${scheduleTime} 📅`);
+    showToast(`Mpango umepangwa na ujumbe umetumwa: ${scheduleTime} 📅`);
     setInputText('');
   };
 
@@ -822,18 +900,18 @@ export const ChatRoom: React.FC<ChatRoomProps> = ({
           </div>
         </div>
       ) : (
-        <div className="p-3 bg-[#0D1222]/95 border-b border-white/[0.08] backdrop-blur-xl flex items-center justify-between z-20 shrink-0">
-          <div className="flex items-center gap-2.5 min-w-0">
+        <div className="p-3 bg-[#0D1222]/95 border-b border-white/[0.08] backdrop-blur-xl flex items-center justify-between z-20 shrink-0 gap-2">
+          <div className="flex items-center gap-2 sm:gap-2.5 min-w-0 flex-1 mr-1">
             <button
               onClick={onBack}
-              className="p-1.5 hover:bg-white/10 rounded-xl transition-colors md:hidden text-slate-300 hover:text-white"
+              className="p-1.5 hover:bg-white/10 rounded-xl transition-colors md:hidden text-slate-300 hover:text-white shrink-0"
             >
               <ArrowLeft className="w-5 h-5" />
             </button>
 
             <div
               onClick={() => setIsContactInfoOpen(true)}
-              className="flex items-center gap-2.5 cursor-pointer min-w-0 group"
+              className="flex items-center gap-2.5 cursor-pointer min-w-0 flex-1 group"
             >
               <div className="relative shrink-0">
                 <SafeImage
@@ -848,30 +926,32 @@ export const ChatRoom: React.FC<ChatRoomProps> = ({
                 )}
               </div>
 
-              <div className="min-w-0">
+              <div className="min-w-0 flex-1">
                 <div className="flex items-center gap-1.5">
                   <h3 className="font-bold text-sm text-white truncate group-hover:text-cyan-300 transition-colors">
                     {name}
                   </h3>
                   {disappearingTimer && (
-                    <span className="px-1.5 py-0.5 rounded text-[9px] font-bold bg-cyan-500/20 text-cyan-300 border border-cyan-500/30">
+                    <span className="hidden sm:inline-block px-1.5 py-0.5 rounded text-[9px] font-bold bg-cyan-500/20 text-cyan-300 border border-cyan-500/30 shrink-0">
                       ⏱️ {disappearingTimer}
                     </span>
                   )}
                 </div>
-                <div className="text-[11px] flex items-center gap-1 mt-0.5">
+                <div className="text-[11px] flex items-center gap-1 mt-0.5 truncate">
                   {isOtherOnline ? (
-                    <span className="text-emerald-400 font-semibold flex items-center gap-1">
+                    <span className="text-emerald-400 font-semibold flex items-center gap-1 shrink-0">
                       <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse" />
                       Online
                     </span>
                   ) : (
-                    <span className="text-slate-400">
-                      {!conversation.isGroup && otherUser ? formatUserLastSeen(otherUser, false) : 'Offline'}
+                    <span className="text-slate-400 shrink-0">
+                      {!conversation.isGroup && (dirUser || otherDetails)
+                        ? formatUserLastSeen(dirUser || otherDetails, false)
+                        : 'Offline'}
                     </span>
                   )}
-                  <span className="text-slate-600">•</span>
-                  <span className="text-slate-400">
+                  <span className="text-slate-600 shrink-0">•</span>
+                  <span className="text-slate-400 truncate">
                     {conversation.isGroup
                       ? 'Kikundi'
                       : isFriend
@@ -888,15 +968,15 @@ export const ChatRoom: React.FC<ChatRoomProps> = ({
           </div>
 
           {/* Header Action Buttons */}
-          <div className="flex items-center gap-1 sm:gap-1.5 text-slate-300">
-            {/* Feature 8: Live Audio Spaces button */}
+          <div className="flex items-center gap-1 sm:gap-1.5 text-slate-300 shrink-0">
+            {/* Feature 8: Live Audio Spaces button - hidden on extra narrow mobile screens */}
             <button
               onClick={() => setIsAudioSpaceOpen(true)}
-              className="px-2.5 py-1.5 rounded-xl bg-gradient-to-r from-rose-500/20 to-purple-500/20 hover:from-rose-500/30 hover:to-purple-500/30 border border-rose-500/30 text-rose-300 hover:text-white text-xs font-bold flex items-center gap-1.5 shadow-sm active:scale-95 transition-all"
+              className="hidden sm:flex px-2.5 py-1.5 rounded-xl bg-gradient-to-r from-rose-500/20 to-purple-500/20 hover:from-rose-500/30 hover:to-purple-500/30 border border-rose-500/30 text-rose-300 hover:text-white text-xs font-bold items-center gap-1.5 shadow-sm active:scale-95 transition-all"
               title="Chumba cha Sauti cha Moja kwa Moja (X Space)"
             >
               <Radio className="w-3.5 h-3.5 text-rose-400 animate-pulse" />
-              <span className="hidden sm:inline">Space</span>
+              <span>Space</span>
             </button>
 
             {/* Disappearing Messages Quick Button */}
@@ -1786,7 +1866,7 @@ export const ChatRoom: React.FC<ChatRoomProps> = ({
                           id: otherUserId,
                           displayName: name,
                           photoURL: avatar,
-                          username: otherUser?.username || 'user',
+                          username: otherDetails?.username || dirUser?.username || 'user',
                         }
                       );
                       showToast(`Ombi la urafiki limetumwa kwa ${name}!`);
@@ -1916,7 +1996,8 @@ export const ChatRoom: React.FC<ChatRoomProps> = ({
                       id: `msg_audio_${Date.now()}`,
                       conversationId: conversation.id,
                       senderId: currentUser.id,
-                      senderName: 'You',
+                      senderName: currentUser.displayName || 'You',
+                      senderAvatar: currentUser.photoURL,
                       text: '🎙️ Ujumbe wa sauti (Voice Note)',
                       messageType: 'audio',
                       audioDuration: '0:14',
@@ -1925,6 +2006,7 @@ export const ChatRoom: React.FC<ChatRoomProps> = ({
                       isSilent: isSilentMode,
                     };
                     setMessages((prev) => [...prev, audioMsg]);
+                    ChatSyncService.sendMessage(conversation.id, audioMsg, conversation);
                     showToast('Ujumbe wa sauti umetumwa na kunukuliwa! 🎙️');
                   }}
                   className="p-2.5 rounded-xl bg-cyan-500/15 hover:bg-cyan-500/25 border border-cyan-500/30 text-cyan-300 shadow-md hover:scale-105 active:scale-95 transition-all shrink-0"
@@ -2127,7 +2209,21 @@ export const ChatRoom: React.FC<ChatRoomProps> = ({
         isOpen={isInvoiceModalOpen}
         onClose={() => setIsInvoiceModalOpen(false)}
         onSendInvoice={(inv) => {
-          showToast('Ankara imetumwa');
+          const invMsg: ChatMessage = {
+            id: `inv_${inv.invoiceNumber || Date.now()}`,
+            conversationId: conversation.id,
+            senderId: currentUser.id,
+            senderName: currentUser.displayName || 'You',
+            senderAvatar: currentUser.photoURL,
+            text: `🧾 Ankara ya Malipo #${inv.invoiceNumber}: TZS ${inv.amount.toLocaleString()} - ${inv.title}`,
+            messageType: 'invoice',
+            invoiceDetails: inv,
+            createdAt: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
+            isSilent: isSilentMode,
+          };
+          setMessages((prev) => [...prev, invMsg]);
+          ChatSyncService.sendMessage(conversation.id, invMsg, conversation);
+          showToast(`Ankara ya TZS ${inv.amount.toLocaleString()} imetumwa! 🧾`);
           setIsInvoiceModalOpen(false);
         }}
         recipientName={name}
@@ -2187,7 +2283,11 @@ export const ChatRoom: React.FC<ChatRoomProps> = ({
                 onClick={() => {
                   setIsDirectDeleteModalOpen(false);
                   if (deleteUserAsWell && otherUserId) {
-                    userService.deleteUser(otherUserId, otherUser?.username, otherUser?.displayName);
+                    userService.deleteUser(
+                      otherUserId,
+                      otherDetails?.username || dirUser?.username,
+                      otherDetails?.displayName || dirUser?.displayName || name
+                    );
                   }
                   if (onDeleteConversation) {
                     onDeleteConversation(conversation.id);

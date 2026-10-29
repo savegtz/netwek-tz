@@ -23,7 +23,7 @@ class PresenceServiceImpl {
    * 3. Seed users or accounts without a recent heartbeat are offline.
    */
   public isUserOnline(
-    user?: UserProfile | { id?: string; email?: string; isOnline?: boolean; lastActiveAt?: number } | null,
+    user?: UserProfile | { id?: string; email?: string; isOnline?: boolean; lastActiveAt?: number; lastSeen?: string } | null,
     currentUserId?: string
   ): boolean {
     if (!user) return false;
@@ -33,15 +33,28 @@ class PresenceServiceImpl {
       currentUserId &&
       (user.id === currentUserId ||
         (user.email && currentUserId.includes('@') && user.email.toLowerCase() === currentUserId.toLowerCase()) ||
-        (currentUserId === 'current_user_id' && user.id === 'current_user_id'))
+        (currentUserId === 'current_user_id' && (user.id === 'current_user_id' || user.id === 'admin' || user.email === 'amytzee@gmail.com')))
     ) {
       return true;
     }
 
-    // Remote user check: Requires valid recent heartbeat
-    if (user.isOnline && typeof user.lastActiveAt === 'number') {
-      const timeSinceHeartbeat = Date.now() - user.lastActiveAt;
-      return timeSinceHeartbeat >= 0 && timeSinceHeartbeat < ONLINE_THRESHOLD_MS;
+    // Admin user is always online by default on the platform
+    if (user.email === 'amytzee@gmail.com' || user.id === '7w6ldhpczBOVpimURqrpQ3C') {
+      return true;
+    }
+
+    // Remote user check: If explicitly marked isOnline === true
+    if (user.isOnline) {
+      if (typeof user.lastActiveAt === 'number') {
+        const timeSinceHeartbeat = Date.now() - user.lastActiveAt;
+        return timeSinceHeartbeat >= 0 && timeSinceHeartbeat < ONLINE_THRESHOLD_MS;
+      }
+      return true;
+    }
+
+    // Check lastSeen string
+    if (user.lastSeen === 'Sasa hivi' || user.lastSeen === 'Online sasa hivi') {
+      return true;
     }
 
     // Default to false (no ghost green dots)
@@ -55,7 +68,7 @@ class PresenceServiceImpl {
     user?: UserProfile | { isOnline?: boolean; lastActiveAt?: number; lastSeen?: string } | null,
     isOnline = false
   ): string {
-    if (isOnline) {
+    if (isOnline || user?.isOnline || user?.lastSeen === 'Sasa hivi' || user?.lastSeen === 'Online sasa hivi') {
       return 'Online sasa hivi';
     }
 
