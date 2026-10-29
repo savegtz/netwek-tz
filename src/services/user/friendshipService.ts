@@ -12,8 +12,8 @@ const friendshipBroadcast =
     ? new BroadcastChannel('zenia_friendship_channel')
     : null;
 
-export function normalizeUserId(id: string): string {
-  if (!id) return id;
+export function normalizeUserId(id?: string | null): string {
+  if (!id || typeof id !== 'string') return '';
   const clean = id.trim();
   if (clean === 'user_sarah' || clean === 'u_3' || clean === 'sarah_m' || clean === 'user_sarah_mwangi' || clean === 'sarah@soundwave.tz') return 'user_sarah_m';
   if (clean === 'user_alex' || clean === 'u_2' || clean === 'alex_k' || clean === 'user_alex_kanyama' || clean === 'alex.kanyama@zenia.app') return 'user_alex_k';
@@ -34,28 +34,28 @@ export function normalizeUserId(id: string): string {
 }
 
 export function matchesUser(
-  query: string,
-  fieldId?: string,
-  details?: { id?: string; email?: string; username?: string; displayName?: string }
+  query?: string | null,
+  fieldId?: string | null,
+  details?: { id?: string; email?: string; username?: string; displayName?: string } | null
 ): boolean {
-  if (!query) return false;
+  if (!query || typeof query !== 'string') return false;
   const q = query.trim().toLowerCase();
   const normQ = normalizeUserId(query);
 
-  if (fieldId) {
+  if (fieldId && typeof fieldId === 'string') {
     const fId = fieldId.trim().toLowerCase();
     if (fId === q) return true;
-    if (normalizeUserId(fieldId) === normQ) return true;
+    if (normQ && normalizeUserId(fieldId) === normQ) return true;
   }
 
-  if (details) {
-    if (details.id) {
+  if (details && typeof details === 'object') {
+    if (details.id && typeof details.id === 'string') {
       const dId = details.id.trim().toLowerCase();
       if (dId === q) return true;
-      if (normalizeUserId(details.id) === normQ) return true;
+      if (normQ && normalizeUserId(details.id) === normQ) return true;
     }
-    if (details.email && details.email.trim().toLowerCase() === q) return true;
-    if (details.username && details.username.trim().toLowerCase() === q) return true;
+    if (details.email && typeof details.email === 'string' && details.email.trim().toLowerCase() === q) return true;
+    if (details.username && typeof details.username === 'string' && details.username.trim().toLowerCase() === q) return true;
   }
 
   return false;

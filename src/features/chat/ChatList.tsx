@@ -1387,14 +1387,15 @@ export const ChatList: React.FC<ChatListProps> = ({
                             const matchedConv = propConversations?.find(
                               (c) => !c.isGroup && Array.isArray(c.participants) && c.participants.includes(log.remoteUserId)
                             );
+                            const safeRemoteName = log.remoteUserName || 'Mtumiaji';
                             const syntheticConv: Conversation = matchedConv || {
                               id: `conv_${log.remoteUserId}`,
                               participants: [effectiveUser.id, log.remoteUserId],
                               participantDetails: {
                                 [log.remoteUserId]: {
-                                  displayName: log.remoteUserName,
+                                  displayName: safeRemoteName,
                                   photoURL: log.remoteUserAvatar,
-                                  username: log.remoteUserName.toLowerCase().replace(/\s+/g, '_'),
+                                  username: safeRemoteName.toLowerCase().replace(/\s+/g, '_'),
                                 },
                               },
                               isGroup: false,
@@ -1403,14 +1404,14 @@ export const ChatList: React.FC<ChatListProps> = ({
                             };
 
                             if (!friendshipService.areFriends(effectiveUser.id, log.remoteUserId)) {
-                              if (window.confirm(`Huwezi kumpigia simu ${log.remoteUserName} kwa sababu si rafiki yako bado! Je, ungependa kumtumia ombi la urafiki sasa hivi?`)) {
+                              if (window.confirm(`Huwezi kumpigia simu ${safeRemoteName} kwa sababu si rafiki yako bado! Je, ungependa kumtumia ombi la urafiki sasa hivi?`)) {
                                 friendshipService.sendFriendRequest(effectiveUser as any, {
                                   id: log.remoteUserId,
-                                  displayName: log.remoteUserName,
+                                  displayName: safeRemoteName,
                                   photoURL: log.remoteUserAvatar,
-                                  username: log.remoteUserName.toLowerCase().replace(/\s+/g, '_'),
+                                  username: safeRemoteName.toLowerCase().replace(/\s+/g, '_'),
                                 });
-                                alert(`Ombi la urafiki limetumwa kwa ${log.remoteUserName}!`);
+                                alert(`Ombi la urafiki limetumwa kwa ${safeRemoteName}!`);
                               }
                               return;
                             }
@@ -1418,7 +1419,7 @@ export const ChatList: React.FC<ChatListProps> = ({
                             onStartCall?.('voice', syntheticConv);
                           }}
                           className="p-2.5 rounded-xl bg-white/5 hover:bg-emerald-500/20 text-slate-300 hover:text-emerald-300 transition-colors"
-                          title={`Piga simu ya sauti kwa ${log.remoteUserName}`}
+                          title={`Piga simu ya sauti kwa ${log.remoteUserName || 'mtumiaji'}`}
                         >
                           <Phone className="w-4 h-4" />
                         </button>
@@ -1433,14 +1434,15 @@ export const ChatList: React.FC<ChatListProps> = ({
                             const matchedConv = propConversations?.find(
                               (c) => !c.isGroup && Array.isArray(c.participants) && c.participants.includes(log.remoteUserId)
                             );
+                            const safeRemoteName = log.remoteUserName || 'Mtumiaji';
                             const syntheticConv: Conversation = matchedConv || {
                               id: `conv_${log.remoteUserId}`,
                               participants: [effectiveUser.id, log.remoteUserId],
                               participantDetails: {
                                 [log.remoteUserId]: {
-                                  displayName: log.remoteUserName,
+                                  displayName: safeRemoteName,
                                   photoURL: log.remoteUserAvatar,
-                                  username: log.remoteUserName.toLowerCase().replace(/\s+/g, '_'),
+                                  username: safeRemoteName.toLowerCase().replace(/\s+/g, '_'),
                                 },
                               },
                               isGroup: false,
@@ -1579,19 +1581,23 @@ export const ChatList: React.FC<ChatListProps> = ({
         ) : (
           filteredConversations.map((conv) => {
             const currentUserId = currentUser ? currentUser.id : 'guest';
-            const participants = Array.isArray(conv.participants) ? conv.participants : [];
+            const rawParticipants = Array.isArray(conv.participants) ? conv.participants : [];
+            const participants = rawParticipants.filter(
+              (p): p is string => typeof p === 'string' && Boolean(p && p.trim())
+            );
             const otherUserId =
-              participants.find((p) => !matchesUser(currentUserId, p)) ||
-              participants.find((p) => p !== currentUserId) ||
+              participants.find((p) => p && !matchesUser(currentUserId, p)) ||
+              participants.find((p) => p && p !== currentUserId) ||
               participants[0] || '';
             const otherUser = otherUserId && conv.participantDetails ? conv.participantDetails[otherUserId] : null;
             const dirUser = otherUserId
               ? directoryUsers.find(
-                  (u) => matchesUser(otherUserId, u.id) || (u.email && matchesUser(otherUserId, u.email))
+                  (u) => matchesUser(otherUserId, u.id) || (u.email && typeof u.email === 'string' && matchesUser(otherUserId, u.email))
                 )
               : null;
             const title: string =
-              (conv.isGroup ? conv.groupName : otherUser?.displayName || dirUser?.displayName) || 'Direct Chat';
+              (conv.isGroup ? conv.groupName : otherUser?.displayName || dirUser?.displayName) ||
+              (matchesUser(otherUserId, 'user_fresh_kk') ? 'Fresh kk' : 'Direct Chat');
             const otherUserAvatar =
               otherUser?.photoURL ||
               dirUser?.photoURL ||
@@ -1605,7 +1611,7 @@ export const ChatList: React.FC<ChatListProps> = ({
               : otherUserAvatar;
             const isOnline = !conv.isGroup && otherUser ? isUserOnline(otherUser, currentUserId) : false;
             const isSelected = activeConversationId === conv.id;
-            const hasStatus = conv.id === 'conv_fresh_kk' || title.toLowerCase().includes('fresh');
+            const hasStatus = conv.id === 'conv_fresh_kk' || (typeof title === 'string' && title.toLowerCase().includes('fresh'));
 
             return (
               <div

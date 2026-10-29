@@ -337,26 +337,34 @@ export default function App() {
       return;
     }
 
-    const convParticipants = Array.isArray(conv.participants) ? conv.participants : [];
+    const rawParticipants = Array.isArray(conv.participants) ? conv.participants : [];
+    const convParticipants = rawParticipants.filter(
+      (p): p is string => typeof p === 'string' && Boolean(p && p.trim())
+    );
+    const activeEmail =
+      activeUser.email && typeof activeUser.email === 'string'
+        ? activeUser.email.toLowerCase()
+        : '';
+
     let otherParticipantId =
       convParticipants.find(
         (p) =>
           p !== activeUser.id &&
           !matchesUser(activeUser.id, p) &&
-          (!activeUser.email || p.toLowerCase() !== activeUser.email.toLowerCase())
+          (!activeEmail || p.toLowerCase() !== activeEmail)
       ) || '';
 
     let otherDetails: any = null;
-    if (conv.participantDetails) {
+    if (conv.participantDetails && typeof conv.participantDetails === 'object') {
       if (otherParticipantId && conv.participantDetails[otherParticipantId]) {
         otherDetails = conv.participantDetails[otherParticipantId];
       } else {
         const found = Object.entries(conv.participantDetails).find(([pId, details]) => {
           const d = details as any;
-          if (pId === activeUser.id || matchesUser(activeUser.id, pId)) return false;
-          if (activeUser.email && pId.toLowerCase() === activeUser.email.toLowerCase()) return false;
+          if (!pId || typeof pId !== 'string' || pId === activeUser.id || matchesUser(activeUser.id, pId)) return false;
+          if (activeEmail && pId.toLowerCase() === activeEmail) return false;
           if (d?.id && (d.id === activeUser.id || matchesUser(activeUser.id, d.id))) return false;
-          if (d?.email && activeUser.email && d.email.toLowerCase() === activeUser.email.toLowerCase()) return false;
+          if (d?.email && typeof d.email === 'string' && activeEmail && d.email.toLowerCase() === activeEmail) return false;
           return true;
         });
         if (found) {
@@ -366,24 +374,29 @@ export default function App() {
       }
     }
 
-    if (!otherParticipantId && conv.id.startsWith('conv_')) {
+    if (!otherParticipantId && typeof conv.id === 'string' && conv.id.startsWith('conv_')) {
       const parts = conv.id.replace('conv_', '').split('_');
       const p = parts.find(
         (part) =>
           part &&
+          typeof part === 'string' &&
           part !== activeUser.id &&
           !matchesUser(activeUser.id, part) &&
-          (!activeUser.email || part.toLowerCase() !== activeUser.email.toLowerCase())
+          (!activeEmail || part.toLowerCase() !== activeEmail)
       );
       if (p) otherParticipantId = p;
     }
+
+    const otherLower = typeof otherParticipantId === 'string' ? otherParticipantId.toLowerCase() : '';
 
     const dirUser = otherParticipantId
       ? userDirectoryService.getAllUsers().find(
           (u: UserProfile) =>
             u.id === otherParticipantId ||
             matchesUser(otherParticipantId, u.id) ||
-            (u.email && (u.email.toLowerCase() === otherParticipantId.toLowerCase() || matchesUser(otherParticipantId, u.email)))
+            (u.email &&
+              typeof u.email === 'string' &&
+              (u.email.toLowerCase() === otherLower || matchesUser(otherParticipantId, u.email)))
         )
       : null;
 
@@ -392,7 +405,7 @@ export default function App() {
         ? conv.groupName
         : otherDetails?.displayName ||
           dirUser?.displayName ||
-          (otherParticipantId.toLowerCase().includes('amytzee') ? 'Amytzee (Admin)' : null) ||
+          (otherLower.includes('amytzee') ? 'Amytzee (Admin)' : null) ||
           (matchesUser(otherParticipantId, 'user_fresh_kk') ? 'Fresh kk' : null)) ||
       (conv.groupName ? conv.groupName : 'Mwanachama wa Zenia');
 

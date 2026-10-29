@@ -115,8 +115,14 @@ export const ChatRoom: React.FC<ChatRoomProps> = ({
   }, []);
 
   const currentUserId = currentUser?.id || 'guest';
-  const currentUserEmail = currentUser?.email?.toLowerCase();
-  const participants = Array.isArray(conversation.participants) ? conversation.participants : [];
+  const currentUserEmail =
+    currentUser?.email && typeof currentUser.email === 'string'
+      ? currentUser.email.toLowerCase()
+      : '';
+  const rawParticipants = Array.isArray(conversation.participants) ? conversation.participants : [];
+  const participants = rawParticipants.filter(
+    (p): p is string => typeof p === 'string' && Boolean(p && p.trim())
+  );
 
   // Robust other participant identification
   let otherUserId =
@@ -128,16 +134,16 @@ export const ChatRoom: React.FC<ChatRoomProps> = ({
     ) || '';
 
   let otherDetails: any = null;
-  if (conversation.participantDetails) {
+  if (conversation.participantDetails && typeof conversation.participantDetails === 'object') {
     if (otherUserId && conversation.participantDetails[otherUserId]) {
       otherDetails = conversation.participantDetails[otherUserId];
     } else {
       const entry = Object.entries(conversation.participantDetails).find(([pId, details]) => {
         const d = details as any;
-        if (pId === currentUserId || matchesUser(currentUserId, pId)) return false;
+        if (!pId || typeof pId !== 'string' || pId === currentUserId || matchesUser(currentUserId, pId)) return false;
         if (currentUserEmail && pId.toLowerCase() === currentUserEmail) return false;
         if (d?.id && (d.id === currentUserId || matchesUser(currentUserId, d.id))) return false;
-        if (d?.email && currentUserEmail && d.email.toLowerCase() === currentUserEmail) return false;
+        if (d?.email && typeof d.email === 'string' && currentUserEmail && d.email.toLowerCase() === currentUserEmail) return false;
         return true;
       });
       if (entry) {
@@ -148,11 +154,12 @@ export const ChatRoom: React.FC<ChatRoomProps> = ({
   }
 
   // If conversation ID is like conv_UID1_UID2, check the other half
-  if (!otherUserId && conversation.id.startsWith('conv_')) {
+  if (!otherUserId && typeof conversation.id === 'string' && conversation.id.startsWith('conv_')) {
     const parts = conversation.id.replace('conv_', '').split('_');
     const p = parts.find(
       (part) =>
         part &&
+        typeof part === 'string' &&
         part !== currentUserId &&
         !matchesUser(currentUserId, part) &&
         (!currentUserEmail || part.toLowerCase() !== currentUserEmail)
@@ -160,12 +167,16 @@ export const ChatRoom: React.FC<ChatRoomProps> = ({
     if (p) otherUserId = p;
   }
 
+  const otherUserLower = typeof otherUserId === 'string' ? otherUserId.toLowerCase() : '';
+
   const dirUser = otherUserId
     ? directoryUsers.find(
         (u) =>
           u.id === otherUserId ||
           matchesUser(otherUserId, u.id) ||
-          (u.email && (u.email.toLowerCase() === otherUserId.toLowerCase() || matchesUser(otherUserId, u.email)))
+          (u.email &&
+            typeof u.email === 'string' &&
+            (u.email.toLowerCase() === otherUserLower || matchesUser(otherUserId, u.email)))
       )
     : null;
 
@@ -178,7 +189,7 @@ export const ChatRoom: React.FC<ChatRoomProps> = ({
       : otherDetails?.displayName ||
         dirUser?.displayName ||
         contact?.displayName ||
-        (otherUserId.toLowerCase().includes('amytzee') ? 'Amytzee (Admin)' : null) ||
+        (otherUserLower.includes('amytzee') ? 'Amytzee (Admin)' : null) ||
         (matchesUser(otherUserId, 'user_fresh_kk') ? 'Fresh kk' : null)) ||
     (conversation.groupName ? conversation.groupName : 'Amytzee (Admin)');
 
@@ -214,7 +225,8 @@ export const ChatRoom: React.FC<ChatRoomProps> = ({
     Boolean(
       (dirUser && isUserOnline(dirUser, currentUserId)) ||
       (otherDetails && isUserOnline(otherDetails, currentUserId)) ||
-      (name.includes('Amytzee') || otherUserId.includes('amytzee'))
+      (typeof name === 'string' && name.includes('Amytzee')) ||
+      (otherUserLower.includes('amytzee'))
     );
 
   const [messages, setMessages] = useState<ChatMessage[]>(() => {
