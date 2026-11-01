@@ -405,11 +405,7 @@ export const ProfileView: React.FC<ProfileViewProps> = ({
           createdAt: new Date().toISOString(),
         };
 
-        try {
-          await setDoc(doc(db, 'users', uid), newUser);
-        } catch (dbErr) {
-          console.warn('Firestore store notice:', dbErr);
-        }
+        await userDirectoryService.registerUser(newUser);
 
         localStorage.setItem('zenia_active_user', JSON.stringify(newUser));
         if (onLoginSuccess) onLoginSuccess(newUser);

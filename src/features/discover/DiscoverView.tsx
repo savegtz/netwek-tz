@@ -134,9 +134,34 @@ export const DiscoverView: React.FC<DiscoverViewProps> = ({
     },
   ];
 
+  // Ensure any confirmed friend or pending request sender is also included in directory
+  const extraKnownPeople: UserProfile[] = [];
+  friendshipService.getConfirmedFriendships(effectiveCurrentUserId).forEach(({ friendId, details }) => {
+    if (!directoryUsers.some((u) => matchesUser(friendId, u.id, u))) {
+      const dName = details?.displayName || 'Mwanachama wa Zenia';
+      const p: UserProfile = {
+        id: friendId,
+        displayName: dName,
+        username: details?.username || dName.toLowerCase().replace(/[^a-z0-9_]/g, '_'),
+        email: details?.email || `${friendId}@zenia.social`,
+        photoURL: details?.photoURL,
+        bio: 'Mwanachama wa Zenia Network 🌟',
+        accountType: 'personal',
+        verified: false,
+        followersCount: 1,
+        followingCount: 1,
+        postsCount: 0,
+        isOnline: false,
+        lastSeen: 'Muda mfupi uliopita',
+      };
+      extraKnownPeople.push(p);
+      userDirectoryService.upsertUser(p);
+    }
+  });
+
   // Filter people list based on active subfilter and search query, strictly deduplicated
   const allActivePeople = deduplicateUsers(
-    directoryUsers.filter(
+    [...directoryUsers, ...extraKnownPeople].filter(
       (p) =>
         !userService.isUserDeleted(p) &&
         !matchesUser(effectiveCurrentUserId, p.id, p) &&
@@ -162,11 +187,11 @@ export const DiscoverView: React.FC<DiscoverViewProps> = ({
         return matched;
       }
 
-      return {
+      const p: UserProfile = {
         id: senderId,
         displayName: req.senderDetails?.displayName || 'Mwanachama wa Zenia',
         username: req.senderDetails?.username || senderId.replace(/[^a-z0-9_]/g, '_'),
-        email: req.senderDetails?.email,
+        email: req.senderDetails?.email || `${senderId}@zenia.social`,
         photoURL: req.senderDetails?.photoURL,
         bio: 'Amekuomba muwe marafiki kwenye Zenia Network 👋',
         accountType: 'personal',
@@ -176,21 +201,62 @@ export const DiscoverView: React.FC<DiscoverViewProps> = ({
         postsCount: 0,
         isOnline: false,
         lastSeen: 'Muda mfupi uliopita',
-      } as UserProfile;
+      };
+      userDirectoryService.upsertUser(p);
+      return p;
     });
     peopleToDisplay = deduplicateUsers(mappedRequests);
   } else if (peopleFilter === 'friends') {
     // Filter active confirmed friends
-    peopleToDisplay = deduplicateUsers(
-      allActivePeople.filter((p) => {
-        const relStatus = friendshipService.getFriendshipStatus(effectiveCurrentUserId, p.id);
-        return (
-          relStatus === 'friends' ||
-          friendsList.includes(p.id) ||
-          (p.email && friendsList.includes(p.email))
-        );
-      })
-    );
+    const confirmedFriendships = friendshipService.getConfirmedFriendships(effectiveCurrentUserId);
+    const confirmedProfiles: UserProfile[] = [];
+
+    confirmedFriendships.forEach(({ friendId, details }) => {
+      // 1. Try finding in directory
+      const matched = [...directoryUsers, ...extraKnownPeople].find(
+        (u) =>
+          matchesUser(friendId, u.id, u) ||
+          (details?.email && u.email && u.email.toLowerCase() === details.email.toLowerCase()) ||
+          (details?.username && u.username && u.username.toLowerCase() === details.username.toLowerCase())
+      );
+
+      if (matched) {
+        confirmedProfiles.push(matched);
+      } else {
+        // 2. Build profile from relationship details so friend is ALWAYS 100% visible
+        const dName = details?.displayName || 'Mwanachama wa Zenia';
+        const fallbackProfile: UserProfile = {
+          id: friendId,
+          displayName: dName,
+          username: details?.username || dName.toLowerCase().replace(/[^a-z0-9_]/g, '_'),
+          email: details?.email || `${friendId}@zenia.social`,
+          photoURL: details?.photoURL,
+          bio: 'Rafiki yako aliyethibitishwa kwenye Zenia Network 🤝',
+          accountType: 'personal',
+          verified: false,
+          followersCount: 1,
+          followingCount: 1,
+          postsCount: 0,
+          isOnline: false,
+          lastSeen: 'Muda mfupi uliopita',
+        };
+        confirmedProfiles.push(fallbackProfile);
+        userDirectoryService.upsertUser(fallbackProfile);
+      }
+    });
+
+    // Also include any friends in allActivePeople
+    allActivePeople.forEach((p) => {
+      if (
+        friendshipService.areFriends(effectiveCurrentUserId, p.id) ||
+        friendsList.includes(p.id) ||
+        (p.email && friendsList.includes(p.email))
+      ) {
+        confirmedProfiles.push(p);
+      }
+    });
+
+    peopleToDisplay = deduplicateUsers(confirmedProfiles);
   } else {
     // All users
     peopleToDisplay = allActivePeople;

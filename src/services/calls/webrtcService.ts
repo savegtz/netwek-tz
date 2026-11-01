@@ -814,6 +814,8 @@ class WebRTCServiceImpl {
     if (
       uEmail === 'amytzee@gmail.com' ||
       uId === '7w6ldhpczBOVpimURqrpQ3C' ||
+      uId === 'current_user_id' ||
+      normalizeUserId(uId) === '7w6ldhpczBOVpimURqrpQ3C' ||
       (uName && uName.toLowerCase().includes('amytzee'))
     ) {
       allTargetIds.add('amytzee@gmail.com');

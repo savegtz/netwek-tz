@@ -11,6 +11,7 @@ import {
 } from 'firebase/firestore';
 import { db } from '../firebase/config';
 import { ChatMessage, Conversation } from '../../types';
+import { normalizeUserId, matchesUser, ADMIN_CANONICAL_ID } from '../user/friendshipService';
 
 // Browser-level BroadcastChannel for zero-latency instant cross-tab sync
 const chatChannel =
@@ -28,11 +29,24 @@ export const ChatSyncService = {
     const localKey = `zenia_msgs_${conversationId}`;
     let currentMsgs: ChatMessage[] = [];
 
+    // Derive alternate conversation ID (e.g. swapping ADMIN_CANONICAL_ID and current_user_id)
+    const altConversationId = conversationId.includes(ADMIN_CANONICAL_ID)
+      ? conversationId.replace(ADMIN_CANONICAL_ID, 'current_user_id')
+      : conversationId.includes('current_user_id')
+      ? conversationId.replace('current_user_id', ADMIN_CANONICAL_ID)
+      : null;
+    const altLocalKey = altConversationId ? `zenia_msgs_${altConversationId}` : null;
+
     // 1. Try reading from localStorage first for instant display
     try {
       const cached = localStorage.getItem(localKey);
-      if (cached) {
-        currentMsgs = JSON.parse(cached);
+      const cachedAlt = altLocalKey ? localStorage.getItem(altLocalKey) : null;
+      if (cached || cachedAlt) {
+        const primaryList: ChatMessage[] = cached ? JSON.parse(cached) : [];
+        const altList: ChatMessage[] = cachedAlt ? JSON.parse(cachedAlt) : [];
+        const mergedMap = new Map<string, ChatMessage>();
+        [...altList, ...primaryList].forEach((m) => mergedMap.set(m.id, m));
+        currentMsgs = Array.from(mergedMap.values());
         onUpdate(currentMsgs);
       } else if (initialMessages && initialMessages.length > 0) {
         currentMsgs = initialMessages;
@@ -47,12 +61,17 @@ export const ChatSyncService = {
 
     // 2. Listen to BroadcastChannel for instant same-browser cross-tab updates
     const handleBroadcast = (event: MessageEvent) => {
-      if (event.data && event.data.conversationId === conversationId && event.data.type === 'NEW_MESSAGE') {
+      if (
+        event.data &&
+        (event.data.conversationId === conversationId || (altConversationId && event.data.conversationId === altConversationId)) &&
+        event.data.type === 'NEW_MESSAGE'
+      ) {
         const incomingMsg: ChatMessage = event.data.message;
         if (!currentMsgs.some((m) => m.id === incomingMsg.id)) {
           currentMsgs = [...currentMsgs, incomingMsg];
           try {
             localStorage.setItem(localKey, JSON.stringify(currentMsgs));
+            if (altLocalKey) localStorage.setItem(altLocalKey, JSON.stringify(currentMsgs));
           } catch (_) {}
           onUpdate(currentMsgs);
         }
@@ -60,11 +79,12 @@ export const ChatSyncService = {
     };
 
     const handleNewMessageDirect = (incomingMsg: ChatMessage, targetConvId: string) => {
-      if (targetConvId !== conversationId) return;
+      if (targetConvId !== conversationId && (!altConversationId || targetConvId !== altConversationId)) return;
       if (!currentMsgs.some((m) => m.id === incomingMsg.id)) {
         currentMsgs = [...currentMsgs, incomingMsg];
         try {
           localStorage.setItem(localKey, JSON.stringify(currentMsgs));
+          if (altLocalKey) localStorage.setItem(altLocalKey, JSON.stringify(currentMsgs));
         } catch (_) {}
         onUpdate(currentMsgs);
       }
@@ -261,13 +281,15 @@ export const ChatSyncService = {
               return c;
             });
 
-            // If this user is a participant but doesn't have this conversation in their list yet, add it!
-            if (
-              !modified &&
+            const isUserInParticipants =
               foundConvObj &&
               foundConvObj.participants &&
-              foundConvObj.participants.includes(userId)
-            ) {
+              (foundConvObj.participants.includes(userId) ||
+                foundConvObj.participants.some((p) => matchesUser(userId, p)) ||
+                (userId === 'current_user_id' && foundConvObj.participants.some((p) => matchesUser(ADMIN_CANONICAL_ID, p))));
+
+            // If this user is a participant but doesn't have this conversation in their list yet, add it!
+            if (!modified && isUserInParticipants && foundConvObj) {
               updatedList.unshift({
                 ...foundConvObj,
                 lastMessage: lastMsgText,
@@ -306,11 +328,37 @@ export const ChatSyncService = {
             } catch (_) {}
           }
         }
+
+        // Special handling for Admin dual-keys
+        if (foundConvObj.participants.some((p) => matchesUser(ADMIN_CANONICAL_ID, p))) {
+          ['current_user_id', ADMIN_CANONICAL_ID].forEach((admKeyId) => {
+            const admKey = `zenia_user_conversations_${admKeyId}`;
+            try {
+              const raw = localStorage.getItem(admKey);
+              const list: Conversation[] = raw ? JSON.parse(raw) : [];
+              const idx = list.findIndex((c) => c.id === conversationId);
+              const convToSave = {
+                ...foundConvObj!,
+                lastMessage: lastMsgText,
+                lastMessageType: message.messageType,
+                lastMessageSenderId: message.senderId,
+                updatedAt: message.createdAt,
+                unreadCount: matchesUser(ADMIN_CANONICAL_ID, message.senderId) ? 0 : 1,
+              };
+              if (idx >= 0) {
+                list[idx] = { ...list[idx], ...convToSave };
+              } else {
+                list.unshift(convToSave);
+              }
+              localStorage.setItem(admKey, JSON.stringify(list));
+            } catch (_) {}
+          });
+        }
       }
 
       window.dispatchEvent(
         new CustomEvent('zenia_conversations_updated', {
-          detail: { conversationId, message },
+          detail: { conversationId, message, conversation: foundConvObj },
         })
       );
     } catch (_) {}
@@ -361,7 +409,7 @@ export const ChatSyncService = {
 
       // Send real-time notification to participants in Firestore
       const recipientIds = updates.participants
-        ? updates.participants.filter((p: string) => p !== message.senderId)
+        ? updates.participants.filter((p: string) => !matchesUser(message.senderId, p))
         : [];
 
       for (const recId of recipientIds) {
@@ -435,30 +483,92 @@ export const ChatSyncService = {
       if (saved) {
         currentConvs = JSON.parse(saved);
         onUpdate(currentConvs);
+      } else if (userId === 'current_user_id' || userId === ADMIN_CANONICAL_ID) {
+        const altKey = `zenia_user_conversations_${userId === 'current_user_id' ? ADMIN_CANONICAL_ID : 'current_user_id'}`;
+        const altSaved = localStorage.getItem(altKey);
+        if (altSaved) {
+          currentConvs = JSON.parse(altSaved);
+          onUpdate(currentConvs);
+        }
       }
     } catch (_) {}
 
-    const normUser = userId.trim().toLowerCase();
+    const normUser = normalizeUserId(userId);
     const emailNorm = userEmail ? userEmail.trim().toLowerCase() : '';
+    const isAdmin =
+      normUser === ADMIN_CANONICAL_ID ||
+      userId === 'current_user_id' ||
+      userId === ADMIN_CANONICAL_ID ||
+      emailNorm === 'amytzee@gmail.com' ||
+      userId.toLowerCase().includes('amytzee');
 
     const isUserParticipant = (c: any): boolean => {
+      if (!c) return false;
       if (c.isGroup) return true; // public / member groups
+
       if (Array.isArray(c.participants)) {
-        if (c.participants.includes(userId)) return true;
-        if (c.participants.some((p: string) => p.toLowerCase() === normUser)) return true;
-        if (emailNorm && c.participants.some((p: string) => p.toLowerCase() === emailNorm)) return true;
-        if (normUser.includes('admin') || normUser === '7w6ldhpczbovpimurqrpq3c' || emailNorm === 'amytzee@gmail.com') {
-          if (c.participants.some((p: string) => p.toLowerCase().includes('amytzee') || p.toLowerCase().includes('admin'))) {
-            return true;
+        for (const p of c.participants) {
+          if (!p) continue;
+          if (p === userId || normalizeUserId(p) === normUser || matchesUser(userId, p)) return true;
+          if (emailNorm && typeof p === 'string' && p.toLowerCase() === emailNorm) return true;
+          if (isAdmin) {
+            const pNorm = normalizeUserId(p);
+            if (
+              pNorm === ADMIN_CANONICAL_ID ||
+              p === 'current_user_id' ||
+              p === ADMIN_CANONICAL_ID ||
+              p.toLowerCase().includes('amytzee') ||
+              p.toLowerCase().includes('admin') ||
+              p.toLowerCase() === 'amytzee@gmail.com'
+            ) {
+              return true;
+            }
           }
         }
       }
-      if (c.participantDetails) {
-        if (c.participantDetails[userId]) return true;
-        if (emailNorm && Object.values(c.participantDetails).some((d: any) => d?.email?.toLowerCase() === emailNorm)) {
-          return true;
+
+      if (c.participantDetails && typeof c.participantDetails === 'object') {
+        for (const [pId, details] of Object.entries(c.participantDetails)) {
+          if (pId === userId || normalizeUserId(pId) === normUser || matchesUser(userId, pId, details as any)) return true;
+          const d = details as any;
+          if (emailNorm && d?.email && d.email.toLowerCase() === emailNorm) return true;
+          if (isAdmin) {
+            const pNorm = normalizeUserId(pId);
+            if (
+              pNorm === ADMIN_CANONICAL_ID ||
+              pId === 'current_user_id' ||
+              pId === ADMIN_CANONICAL_ID ||
+              pId.toLowerCase().includes('amytzee') ||
+              pId.toLowerCase().includes('admin') ||
+              d?.email === 'amytzee@gmail.com' ||
+              d?.username === 'amytzee' ||
+              (d?.displayName && d.displayName.toLowerCase().includes('amytzee'))
+            ) {
+              return true;
+            }
+          }
         }
       }
+
+      // Check conversation ID if conv_ID1_ID2
+      if (typeof c.id === 'string' && c.id.startsWith('conv_')) {
+        const parts = c.id.replace('conv_', '').split('_');
+        for (const part of parts) {
+          if (part === userId || normalizeUserId(part) === normUser || matchesUser(userId, part)) return true;
+          if (isAdmin) {
+            const partNorm = normalizeUserId(part);
+            if (
+              partNorm === ADMIN_CANONICAL_ID ||
+              part === 'current_user_id' ||
+              part === ADMIN_CANONICAL_ID ||
+              part.toLowerCase().includes('amytzee')
+            ) {
+              return true;
+            }
+          }
+        }
+      }
+
       return false;
     };
 

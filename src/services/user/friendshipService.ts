@@ -12,25 +12,39 @@ const friendshipBroadcast =
     ? new BroadcastChannel('zenia_friendship_channel')
     : null;
 
+export const ADMIN_CANONICAL_ID = '7w6ldhpczBOVpimURqrpQ3C';
+
 export function normalizeUserId(id?: string | null): string {
   if (!id || typeof id !== 'string') return '';
   const clean = id.trim();
-  if (clean === 'user_sarah' || clean === 'u_3' || clean === 'sarah_m' || clean === 'user_sarah_mwangi' || clean === 'sarah@soundwave.tz') return 'user_sarah_m';
-  if (clean === 'user_alex' || clean === 'u_2' || clean === 'alex_k' || clean === 'user_alex_kanyama' || clean === 'alex.kanyama@zenia.app') return 'user_alex_k';
-  if (clean === 'u_1' || clean === 'fresh_kk' || clean === 'user_freshkk' || clean === 'fresh.kk@zenia.app') return 'user_fresh_kk';
-  if (clean === 'u_4' || clean === 'baraka_moto' || clean === 'user_baraka') return 'user_baraka_m';
+  const lower = clean.toLowerCase();
+
+  // Primary Admin unified aliases:
   if (
+    clean === 'current_user_id' ||
+    clean === ADMIN_CANONICAL_ID ||
+    lower === ADMIN_CANONICAL_ID.toLowerCase() ||
+    lower === 'amytzee@gmail.com' ||
+    lower === 'amytzee' ||
+    lower === 'user_amytzee' ||
     clean === 'user_amina_1' ||
     clean === 'user_amina_kaunga' ||
-    clean === 'amina_kaunga' ||
-    clean === 'savegamour@gmail.com' ||
-    clean === 'UkgR7gl8afU92vg6OCT3wHhA' ||
-    clean === 'savegamour' ||
-    clean === 'admin'
+    clean === 'amina_kaunga'
   ) {
-    return 'current_user_id';
+    return ADMIN_CANONICAL_ID;
   }
+
+  if (lower === 'user_sarah' || lower === 'u_3' || lower === 'sarah_m' || lower === 'user_sarah_mwangi' || lower === 'sarah@soundwave.tz') return 'user_sarah_m';
+  if (lower === 'user_alex' || lower === 'u_2' || lower === 'alex_k' || lower === 'user_alex_kanyama' || lower === 'alex.kanyama@zenia.app') return 'user_alex_k';
+  if (lower === 'u_1' || lower === 'fresh_kk' || lower === 'user_freshkk' || lower === 'fresh.kk@zenia.app') return 'user_fresh_kk';
+  if (lower === 'u_4' || lower === 'baraka_moto' || lower === 'user_baraka') return 'user_baraka_m';
   return clean;
+}
+
+export function buildCanonicalConversationId(id1: string, id2: string): string {
+  const norm1 = normalizeUserId(id1);
+  const norm2 = normalizeUserId(id2);
+  return `conv_${[norm1, norm2].sort().join('_')}`;
 }
 
 export function matchesUser(
@@ -42,10 +56,26 @@ export function matchesUser(
   const q = query.trim().toLowerCase();
   const normQ = normalizeUserId(query);
 
+  // Both match admin canonical identity
+  const isQueryAdmin =
+    normQ === ADMIN_CANONICAL_ID ||
+    q === 'current_user_id' ||
+    q === 'amytzee' ||
+    q === 'amytzee@gmail.com';
+
   if (fieldId && typeof fieldId === 'string') {
     const fId = fieldId.trim().toLowerCase();
     if (fId === q) return true;
     if (normQ && normalizeUserId(fieldId) === normQ) return true;
+    if (
+      isQueryAdmin &&
+      (normalizeUserId(fieldId) === ADMIN_CANONICAL_ID ||
+        fId === 'current_user_id' ||
+        fId === 'amytzee' ||
+        fId === 'amytzee@gmail.com')
+    ) {
+      return true;
+    }
   }
 
   if (details && typeof details === 'object') {
@@ -53,9 +83,29 @@ export function matchesUser(
       const dId = details.id.trim().toLowerCase();
       if (dId === q) return true;
       if (normQ && normalizeUserId(details.id) === normQ) return true;
+      if (
+        isQueryAdmin &&
+        (normalizeUserId(details.id) === ADMIN_CANONICAL_ID ||
+          dId === 'current_user_id' ||
+          dId === 'amytzee' ||
+          dId === 'amytzee@gmail.com')
+      ) {
+        return true;
+      }
     }
-    if (details.email && typeof details.email === 'string' && details.email.trim().toLowerCase() === q) return true;
-    if (details.username && typeof details.username === 'string' && details.username.trim().toLowerCase() === q) return true;
+    if (details.email && typeof details.email === 'string') {
+      const dEmail = details.email.trim().toLowerCase();
+      if (dEmail === q) return true;
+      if (isQueryAdmin && dEmail === 'amytzee@gmail.com') return true;
+    }
+    if (details.username && typeof details.username === 'string') {
+      const dUser = details.username.trim().toLowerCase();
+      if (dUser === q) return true;
+      if (isQueryAdmin && (dUser === 'amytzee' || dUser.includes('amytzee'))) return true;
+    }
+    if (details.displayName && typeof details.displayName === 'string' && isQueryAdmin) {
+      if (details.displayName.toLowerCase().includes('amytzee')) return true;
+    }
   }
 
   return false;
@@ -587,6 +637,47 @@ class FriendshipServiceImpl {
     });
 
     return Array.from(new Set(friends));
+  }
+
+  /**
+   * Get all active relationships dictionary
+   */
+  public getAllRelationships(): Record<string, FriendRelationship> {
+    return { ...this.relationships };
+  }
+
+  /**
+   * Get all confirmed friend relationships for a given user with their rich details
+   */
+  public getConfirmedFriendships(userId: string): Array<{
+    friendId: string;
+    details?: { id?: string; displayName?: string; photoURL?: string; username?: string; email?: string };
+    relationship: FriendRelationship;
+  }> {
+    if (!userId || userId === 'guest') return [];
+    const results: Array<{
+      friendId: string;
+      details?: { id?: string; displayName?: string; photoURL?: string; username?: string; email?: string };
+      relationship: FriendRelationship;
+    }> = [];
+
+    Object.values(this.relationships).forEach((rel) => {
+      if (rel.status !== 'friends') return;
+
+      const isUserA = matchesUser(userId, rel.userA, rel.senderDetails);
+      const isUserB = matchesUser(userId, rel.userB, rel.receiverDetails);
+
+      if (!isUserA && !isUserB) return;
+
+      const friendId = isUserA ? rel.userB : rel.userA;
+      const details = isUserA ? rel.receiverDetails : rel.senderDetails;
+
+      if (!userService.isIdentifierDeleted(friendId)) {
+        results.push({ friendId, details, relationship: rel });
+      }
+    });
+
+    return results;
   }
 
   /**

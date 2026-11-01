@@ -43,7 +43,7 @@ import { NotificationsView } from './features/notifications/NotificationsView';
 import { AdminDevPanel } from './features/admin/AdminDevPanel';
 import { BroadcastBanner } from './components/BroadcastBanner';
 import { userService } from './services/user/userService';
-import { friendshipService, normalizeUserId, matchesUser } from './services/user/friendshipService';
+import { friendshipService, normalizeUserId, matchesUser, ADMIN_CANONICAL_ID, buildCanonicalConversationId } from './services/user/friendshipService';
 import { presenceService, isUserOnline } from './services/user/presenceService';
 import { ZeniaMiniPlayer } from './components/ZeniaMiniPlayer';
 import { NotificationHeadsUpBanner } from './components/NotificationHeadsUpBanner';
@@ -52,14 +52,16 @@ import { isDemoModeActive, userDirectoryService } from './services/user/userDire
 import freshKkAvatar from './assets/images/fresh_kk_avatar_1791078365294.jpg';
 
 export default function App() {
-  // Default to INITIAL_USER (Amina Kaunga) so profile and story avatars are immediately accessible and active
+  // Default to INITIAL_USER (Amytzee Admin) so profile and story avatars are immediately accessible and active
   const [currentUser, setCurrentUser] = useState<UserProfile | null>(() => {
     const saved = localStorage.getItem('zenia_active_user');
     if (saved) {
       try {
         const u = JSON.parse(saved);
-        if (u && u.id === 'user_fresh_kk') {
-          return INITIAL_USER;
+        if (u && (u.id === 'user_fresh_kk' || u.id === 'current_user_id' || u.email === 'amytzee@gmail.com')) {
+          const canonical = { ...INITIAL_USER, ...u, id: ADMIN_CANONICAL_ID, email: 'amytzee@gmail.com' };
+          localStorage.setItem('zenia_active_user', JSON.stringify(canonical));
+          return canonical;
         }
         return u;
       } catch {
@@ -564,32 +566,45 @@ export default function App() {
     displayName: string;
     username: string;
     photoURL?: string;
+    email?: string;
   }) => {
     if (!currentUser) {
       requireAuthToChat(`Ili uweze kuanza kuchati na ${targetUser.displayName}, tafadhali jisajili kama huna akaunti au ingia.`);
       return;
     }
-    const convId = `conv_${[currentUser.id, targetUser.id].sort().join('_')}`;
-    const existing = conversations.find((c) => c.id === convId);
+    const convId = buildCanonicalConversationId(currentUser.id, targetUser.id);
+    const existing = conversations.find(
+      (c) =>
+        c.id === convId ||
+        (!c.isGroup &&
+          Array.isArray(c.participants) &&
+          c.participants.some((p) => matchesUser(currentUser.id, p)) &&
+          c.participants.some((p) => matchesUser(targetUser.id, p)))
+    );
     if (existing) {
       setActiveConversation(existing);
       setActiveTab('chats');
       return;
     }
+    const targetEmail = targetUser.email || (matchesUser(targetUser.id, ADMIN_CANONICAL_ID) ? 'amytzee@gmail.com' : undefined);
     const newConv: Conversation = {
       id: convId,
       participants: [currentUser.id, targetUser.id],
       participantDetails: {
         [targetUser.id]: {
+          id: targetUser.id,
           displayName: targetUser.displayName,
           username: targetUser.username,
           photoURL: targetUser.photoURL,
+          email: targetEmail,
           isOnline: isUserOnline(targetUser, currentUser.id),
         },
         [currentUser.id]: {
+          id: currentUser.id,
           displayName: currentUser.displayName,
           username: currentUser.username,
           photoURL: currentUser.photoURL,
+          email: currentUser.email,
           isOnline: true,
         },
       },

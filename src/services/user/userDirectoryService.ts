@@ -2,7 +2,7 @@ import { collection, doc, onSnapshot, getDocs, setDoc, deleteDoc, query } from '
 import { db } from '../firebase/config';
 import { UserProfile } from '../../types';
 import { userService } from './userService';
-import { normalizeUserId } from './friendshipService';
+import { normalizeUserId, friendshipService } from './friendshipService';
 import freshKkAvatar from '../../assets/images/fresh_kk_avatar_1791078365294.jpg';
 import aminaAvatar from '../../assets/images/amina_avatar_1790280951312.jpg';
 
@@ -27,16 +27,26 @@ export function deduplicateUsers(users: UserProfile[]): UserProfile[] {
 
     // Look for existing profile matching this user
     const existingIndex = result.findIndex((existing) => {
-      // 1. Email match (most authoritative)
+      // 1. Exact Email match (most authoritative)
       if (emailKey && existing.email && existing.email.trim().toLowerCase() === emailKey) {
         return true;
       }
-      // 2. Normalized User ID match
-      if (normId && normalizeUserId(existing.id) === normId) {
+      // 2. Exact User ID match
+      if (user.id && existing.id && user.id === existing.id) {
         return true;
       }
-      // 3. Normalized Username match
-      if (usernameKey && existing.username && existing.username.trim().toLowerCase().replace(/[^a-z0-9_]/g, '_') === usernameKey) {
+      // 3. Normalized User ID match (strictly for known demo aliases)
+      if (normId && (normId.startsWith('user_') || normId === 'current_user_id') && normalizeUserId(existing.id) === normId) {
+        return true;
+      }
+      // 4. Exact Normalized Username match (only if non-empty and not generic)
+      if (
+        usernameKey &&
+        usernameKey !== 'user' &&
+        usernameKey !== 'admin' &&
+        existing.username &&
+        existing.username.trim().toLowerCase().replace(/[^a-z0-9_]/g, '_') === usernameKey
+      ) {
         return true;
       }
       return false;
@@ -207,6 +217,14 @@ export const getActiveSeeds = (): UserProfile[] => {
 
 export const FIREBASE_AUTH_USERS_SEEDS: UserProfile[] = [PRIMARY_ADMIN_PROFILE];
 
+export const REGISTERED_USERS_REGISTRY_KEY = 'zenia_registered_users_registry_v2';
+const USERS_DIRECTORY_CHANNEL = 'zenia_users_directory_channel';
+
+const usersDirectoryBroadcast =
+  typeof window !== 'undefined' && 'BroadcastChannel' in window
+    ? new BroadcastChannel(USERS_DIRECTORY_CHANNEL)
+    : null;
+
 class UserDirectoryServiceImpl {
   private users: UserProfile[] = [];
   private listeners: Set<(users: UserProfile[]) => void> = new Set();
@@ -221,20 +239,130 @@ class UserDirectoryServiceImpl {
     if (this.hasInitialized) return;
     this.hasInitialized = true;
 
-    // Load from local storage cache initially
+    // 1. Cross-tab real-time sync via BroadcastChannel
+    if (usersDirectoryBroadcast) {
+      usersDirectoryBroadcast.onmessage = (event) => {
+        if (event.data?.type === 'USER_REGISTERED' && event.data.user) {
+          const u = event.data.user as UserProfile;
+          this.upsertLocalMemoryUser(u);
+        }
+      };
+    }
+
+    // 2. Storage event listener for multi-tab updates
+    if (typeof window !== 'undefined') {
+      window.addEventListener('storage', (e) => {
+        if (e.key === REGISTERED_USERS_REGISTRY_KEY && e.newValue) {
+          try {
+            const list = JSON.parse(e.newValue) as UserProfile[];
+            list.forEach((u) => this.upsertLocalMemoryUser(u));
+          } catch (_) {}
+        }
+      });
+
+      window.addEventListener('zenia_users_directory_updated', (e: any) => {
+        if (e.detail) {
+          this.upsertLocalMemoryUser(e.detail);
+        }
+      });
+    }
+
+    // 3. Load from local storage cache, registered registry, and active friendships
     try {
       const cached = localStorage.getItem('zenia_firestore_users_cache');
+      const regRaw = localStorage.getItem(REGISTERED_USERS_REGISTRY_KEY);
+      const combinedInitial: UserProfile[] = [PRIMARY_ADMIN_PROFILE];
+      if (regRaw) {
+        try {
+          combinedInitial.push(...(JSON.parse(regRaw) as UserProfile[]));
+        } catch (_) {}
+      }
       if (cached) {
-        const parsed = JSON.parse(cached) as UserProfile[];
-        this.users = parsed.map((u) => ({
+        try {
+          combinedInitial.push(...(JSON.parse(cached) as UserProfile[]));
+        } catch (_) {}
+      }
+
+      // Also harvest users from any confirmed/pending friendships
+      try {
+        const allRels = friendshipService.getAllRelationships();
+        Object.values(allRels).forEach((rel) => {
+          [rel.senderDetails, rel.receiverDetails].forEach((d) => {
+            if (d && d.id && !userService.isIdentifierDeleted(d.id)) {
+              combinedInitial.push({
+                id: d.id,
+                displayName: d.displayName || 'Mwanachama wa Zenia',
+                username: d.username || d.id.replace(/[^a-z0-9_]/g, '_'),
+                email: d.email || `${d.id}@zenia.social`,
+                photoURL: d.photoURL,
+                bio: 'Mwanachama wa Zenia Network 🌟',
+                accountType: 'personal',
+                verified: false,
+                followersCount: 1,
+                followingCount: 1,
+                postsCount: 0,
+                isOnline: false,
+                lastSeen: 'Muda mfupi uliopita',
+              });
+            }
+          });
+        });
+      } catch (_) {}
+
+      this.users = deduplicateUsers(
+        combinedInitial.map((u) => ({
           ...u,
           isOnline:
             u.isOnline === true &&
             typeof u.lastActiveAt === 'number' &&
             Date.now() - u.lastActiveAt < 3 * 60 * 1000,
-        }));
-        this.notifyListeners();
-      }
+        })).filter((u) => !userService.isUserDeleted(u))
+      );
+      this.notifyListeners();
+    } catch (_) {}
+
+    // Subscribe to ongoing friendship changes to harvest new contacts dynamically
+    try {
+      friendshipService.subscribe(() => {
+        const rels = friendshipService.getAllRelationships();
+        let added = false;
+        Object.values(rels).forEach((rel) => {
+          [rel.senderDetails, rel.receiverDetails].forEach((d) => {
+            if (d && d.id && !userService.isIdentifierDeleted(d.id)) {
+              const alreadyKnown = this.users.some(
+                (u) =>
+                  u.id === d.id ||
+                  (d.email && u.email && u.email.toLowerCase() === d.email.toLowerCase())
+              );
+              if (!alreadyKnown) {
+                const newProfile: UserProfile = {
+                  id: d.id,
+                  displayName: d.displayName || 'Mwanachama wa Zenia',
+                  username: d.username || d.id.replace(/[^a-z0-9_]/g, '_'),
+                  email: d.email || `${d.id}@zenia.social`,
+                  photoURL: d.photoURL,
+                  bio: 'Mwanachama wa Zenia Network 🌟',
+                  accountType: 'personal',
+                  verified: false,
+                  followersCount: 1,
+                  followingCount: 1,
+                  postsCount: 0,
+                  isOnline: false,
+                  lastSeen: 'Muda mfupi uliopita',
+                };
+                this.users = deduplicateUsers([newProfile, ...this.users]);
+                added = true;
+              }
+            }
+          });
+        });
+        if (added) {
+          try {
+            localStorage.setItem('zenia_firestore_users_cache', JSON.stringify(this.users));
+          } catch (_) {}
+          this.notifyListeners();
+        }
+      });
     } catch (_) {}
 
     // Attach real-time Firestore listener to 'users' collection
@@ -247,17 +375,41 @@ class UserDirectoryServiceImpl {
             const firestoreUsers: UserProfile[] = [];
             snapshot.forEach((docSnap) => {
               const data = docSnap.data() as UserProfile;
-              // User is genuinely online ONLY if they sent an active heartbeat within 3 minutes
               const isActuallyOnline =
                 data.isOnline === true &&
                 typeof data.lastActiveAt === 'number' &&
                 Date.now() - data.lastActiveAt < 3 * 60 * 1000;
 
+              const rawDisplayName = data.displayName?.trim() || '';
+              const rawUsername = data.username?.trim() || '';
+              const rawEmail = data.email?.trim().toLowerCase() || '';
+              const emailPrefix = rawEmail ? rawEmail.split('@')[0] : '';
+              const isAdmin =
+                docSnap.id === PRIMARY_ADMIN_PROFILE.id ||
+                rawEmail === 'amytzee@gmail.com' ||
+                docSnap.id === 'current_user_id';
+
+              const resolvedUsername = isAdmin
+                ? 'amytzee'
+                : rawUsername || emailPrefix || docSnap.id.replace(/[^a-z0-9_]/g, '_');
+              const resolvedDisplayName = isAdmin
+                ? 'Amytzee (Admin)'
+                : rawDisplayName && rawDisplayName !== 'Mtumiaji'
+                ? rawDisplayName
+                : resolvedUsername
+                ? resolvedUsername.charAt(0).toUpperCase() + resolvedUsername.slice(1)
+                : 'Mwanachama wa Zenia';
+
               firestoreUsers.push({
                 ...data,
                 id: docSnap.id,
-                isOnline: isActuallyOnline,
-                lastSeen: isActuallyOnline
+                displayName: resolvedDisplayName,
+                username: resolvedUsername,
+                email: rawEmail || data.email,
+                role: isAdmin ? 'superadmin' : data.role || 'user',
+                verified: isAdmin ? true : Boolean(data.verified),
+                isOnline: isAdmin ? true : isActuallyOnline,
+                lastSeen: (isAdmin || isActuallyOnline)
                   ? 'Sasa hivi'
                   : data.lastSeen && data.lastSeen !== 'Sasa hivi'
                   ? data.lastSeen
@@ -265,25 +417,31 @@ class UserDirectoryServiceImpl {
               });
             });
 
-            // Merge with seeded users if any are missing from Firestore
+            // Merge with seeded users & registered users registry
             const combinedMap = new Map<string, UserProfile>();
             
             // First put the seed users
             FIREBASE_AUTH_USERS_SEEDS.forEach((u) => {
-              if (u.email) {
-                combinedMap.set(u.email.toLowerCase(), u);
-              } else {
-                combinedMap.set(u.id, u);
-              }
+              const key = u.email ? u.email.toLowerCase() : u.id;
+              combinedMap.set(key, u);
             });
+
+            // Then put locally registered users
+            try {
+              const regRaw = localStorage.getItem(REGISTERED_USERS_REGISTRY_KEY);
+              if (regRaw) {
+                const regList = JSON.parse(regRaw) as UserProfile[];
+                regList.forEach((u) => {
+                  const key = u.email ? u.email.toLowerCase() : u.id;
+                  combinedMap.set(key, u);
+                });
+              }
+            } catch (_) {}
 
             // Override / enrich with real Firestore data
             firestoreUsers.forEach((u) => {
-              if (u.email) {
-                combinedMap.set(u.email.toLowerCase(), u);
-              } else {
-                combinedMap.set(u.id, u);
-              }
+              const key = u.email ? u.email.toLowerCase() : u.id;
+              combinedMap.set(key, u);
             });
 
             this.users = deduplicateUsers(
@@ -302,7 +460,6 @@ class UserDirectoryServiceImpl {
         },
         async (error) => {
           console.warn('Firestore users collection listener notice:', error);
-          // Fallback to seeds if offline or permissions issue
           if (this.users.length === 0) {
             this.users = deduplicateUsers(
               FIREBASE_AUTH_USERS_SEEDS.filter((u) => !userService.isUserDeleted(u))
@@ -319,6 +476,81 @@ class UserDirectoryServiceImpl {
         );
         this.notifyListeners();
       }
+    }
+  }
+
+  /**
+   * Internal helper to upsert a user into in-memory array and notify
+   */
+  private upsertLocalMemoryUser(u: UserProfile) {
+    if (!u || !u.id || userService.isUserDeleted(u)) return;
+    this.users = deduplicateUsers([u, ...this.users]);
+    try {
+      localStorage.setItem('zenia_firestore_users_cache', JSON.stringify(this.users));
+    } catch (_) {}
+    this.notifyListeners();
+  }
+
+  /**
+   * Register a user dynamically:
+   * 1. Writes to Firestore 'users' collection
+   * 2. Saves to local persistent registry
+   * 3. Unmarks deleted in userService
+   * 4. Broadcasts to all open tabs and notifies all subscribers
+   */
+  public async registerUser(newUser: UserProfile): Promise<void> {
+    if (!newUser || !newUser.id) return;
+
+    // Unmark in deleted records if any
+    userService.unmarkDeleted(newUser.id, newUser.email, newUser.username);
+
+    // Save to persistent registry in localStorage
+    try {
+      const regRaw = localStorage.getItem(REGISTERED_USERS_REGISTRY_KEY);
+      const registry: UserProfile[] = regRaw ? JSON.parse(regRaw) : [];
+      const updatedRegistry = deduplicateUsers([newUser, ...registry]);
+      localStorage.setItem(REGISTERED_USERS_REGISTRY_KEY, JSON.stringify(updatedRegistry));
+    } catch (_) {}
+
+    // Add to in-memory users list
+    this.upsertLocalMemoryUser(newUser);
+
+    // Broadcast across tabs
+    if (usersDirectoryBroadcast) {
+      usersDirectoryBroadcast.postMessage({ type: 'USER_REGISTERED', user: newUser });
+    }
+    window.dispatchEvent(new CustomEvent('zenia_users_directory_updated', { detail: newUser }));
+
+    // Write to Firestore in real time
+    try {
+      await setDoc(doc(db, 'users', newUser.id), newUser, { merge: true });
+    } catch (e) {
+      console.warn('Firestore write notice in registerUser:', e);
+    }
+  }
+
+  /**
+   * Upserts a user profile into directory (e.g. from confirmed friendship or contact interaction)
+   */
+  public upsertUser(user: UserProfile) {
+    if (!user || !user.id || userService.isUserDeleted(user)) return;
+    userService.unmarkDeleted(user.id, user.email, user.username);
+
+    const exists = this.users.some(
+      (u) =>
+        u.id === user.id ||
+        (user.email && u.email && u.email.toLowerCase() === user.email.toLowerCase())
+    );
+    if (!exists) {
+      this.upsertLocalMemoryUser(user);
+      try {
+        const regRaw = localStorage.getItem(REGISTERED_USERS_REGISTRY_KEY);
+        const registry: UserProfile[] = regRaw ? JSON.parse(regRaw) : [];
+        localStorage.setItem(
+          REGISTERED_USERS_REGISTRY_KEY,
+          JSON.stringify(deduplicateUsers([...registry, user]))
+        );
+      } catch (_) {}
     }
   }
 
@@ -451,13 +683,6 @@ class UserDirectoryServiceImpl {
         'sarah@soundwave.tz',
         'alex.kanyama@zenia.app',
         'juma.rashid@zenia.app',
-        'truckingalhushoom@gmail.com',
-        'amytzee6676767@gmail.com',
-        'amytzee22@gmail.com',
-        'amytzee2@gmail.com',
-        'savegamourmteja@gmail.com',
-        'savegamour22@gmail.com',
-        'savegamour@gmail.com',
       ]);
 
       for (const d of snap.docs) {
@@ -484,8 +709,13 @@ class UserDirectoryServiceImpl {
         await setDoc(doc(db, 'users', PRIMARY_ADMIN_PROFILE.id), PRIMARY_ADMIN_PROFILE, { merge: true });
       } catch {}
 
-      // Keep only Admin profile in local directory
-      this.users = [PRIMARY_ADMIN_PROFILE];
+      // Keep Admin profile and genuine registered users
+      const regRaw = localStorage.getItem(REGISTERED_USERS_REGISTRY_KEY);
+      const registeredList: UserProfile[] = regRaw ? JSON.parse(regRaw) : [];
+      this.users = deduplicateUsers([
+        PRIMARY_ADMIN_PROFILE,
+        ...registeredList.filter((u) => !demoUserIds.has(u.id) && !demoEmails.has((u.email || '').toLowerCase())),
+      ]);
       try {
         localStorage.setItem('zenia_firestore_users_cache', JSON.stringify(this.users));
         localStorage.removeItem('zenia_admin_users_list');

@@ -56,7 +56,7 @@ import { GuestChatPromptModal } from './components/GuestChatPromptModal';
 import freshKkAvatar from '../../assets/images/fresh_kk_avatar_1791078365294.jpg';
 import aminaAvatar from '../../assets/images/amina_avatar_1790280951312.jpg';
 import { userService } from '../../services/user/userService';
-import { friendshipService, matchesUser } from '../../services/user/friendshipService';
+import { friendshipService, matchesUser, ADMIN_CANONICAL_ID } from '../../services/user/friendshipService';
 import { isUserOnline, formatUserLastSeen } from '../../services/user/presenceService';
 
 interface ChatListProps {
@@ -802,12 +802,16 @@ export const ChatList: React.FC<ChatListProps> = ({
 
       const effectiveUserId = currentUser ? currentUser.id : 'guest';
       const participants = Array.isArray(c.participants) ? c.participants : [];
-      const otherId = participants.find((p) => p !== effectiveUserId) || participants[0] || '';
+      const otherId =
+        participants.find((p) => p && !matchesUser(effectiveUserId, p)) ||
+        participants.find((p) => p && p !== effectiveUserId) ||
+        participants[0] ||
+        '';
       const other = otherId && c.participantDetails ? c.participantDetails[otherId] : null;
 
       // Exclude conversations with permanently deleted users
       if (!c.isGroup) {
-        if (participants.some((p) => p !== effectiveUserId && userService.isIdentifierDeleted(p))) {
+        if (participants.some((p) => !matchesUser(effectiveUserId, p) && userService.isIdentifierDeleted(p))) {
           return false;
         }
         if (other && userService.isUserDeleted(other)) {
@@ -815,7 +819,28 @@ export const ChatList: React.FC<ChatListProps> = ({
         }
       }
 
-      const name = c.isGroup ? c.groupName || '' : other?.displayName || 'Chat';
+      const dirUser = otherId
+        ? directoryUsers.find(
+            (u) =>
+              matchesUser(otherId, u.id) ||
+              (u.email && typeof u.email === 'string' && matchesUser(otherId, u.email))
+          )
+        : null;
+
+      const isOtherAdmin =
+        matchesUser(otherId, ADMIN_CANONICAL_ID) ||
+        otherId === 'current_user_id' ||
+        otherId === ADMIN_CANONICAL_ID;
+
+      const name = c.isGroup
+        ? c.groupName || ''
+        : isOtherAdmin
+        ? 'Amytzee (Admin)'
+        : (other?.displayName && other.displayName !== 'Mtumiaji' ? other.displayName : null) ||
+          (dirUser?.displayName && dirUser.displayName !== 'Mtumiaji' ? dirUser.displayName : null) ||
+          other?.displayName ||
+          dirUser?.displayName ||
+          'Chat';
       const matchesSearch =
         name.toLowerCase().includes(searchQuery.toLowerCase()) ||
         (c.lastMessage || '').toLowerCase().includes(searchQuery.toLowerCase());
@@ -1595,21 +1620,47 @@ export const ChatList: React.FC<ChatListProps> = ({
                   (u) => matchesUser(otherUserId, u.id) || (u.email && typeof u.email === 'string' && matchesUser(otherUserId, u.email))
                 )
               : null;
-            const title: string =
-              (conv.isGroup ? conv.groupName : otherUser?.displayName || dirUser?.displayName) ||
-              (matchesUser(otherUserId, 'user_fresh_kk') ? 'Fresh kk' : 'Direct Chat');
+            const isOtherAdmin =
+              matchesUser(otherUserId, ADMIN_CANONICAL_ID) ||
+              otherUserId === 'current_user_id' ||
+              otherUserId === ADMIN_CANONICAL_ID;
+            let rawTitle =
+              (conv.isGroup
+                ? conv.groupName
+                : isOtherAdmin
+                ? 'Amytzee (Admin)'
+                : (otherUser?.displayName && otherUser.displayName !== 'Mtumiaji' ? otherUser.displayName : null) ||
+                  (dirUser?.displayName && dirUser.displayName !== 'Mtumiaji' ? dirUser.displayName : null) ||
+                  otherUser?.displayName ||
+                  dirUser?.displayName ||
+                  (matchesUser(otherUserId, 'user_fresh_kk') ? 'Fresh kk' : null)) || null;
+
+            if (!rawTitle || rawTitle === 'Mtumiaji') {
+              if (otherUser?.username && otherUser.username !== 'user') {
+                rawTitle = otherUser.username.charAt(0).toUpperCase() + otherUser.username.slice(1);
+              } else if (dirUser?.username && dirUser.username !== 'user') {
+                rawTitle = dirUser.username.charAt(0).toUpperCase() + dirUser.username.slice(1);
+              } else if (isOtherAdmin) {
+                rawTitle = 'Amytzee (Admin)';
+              } else if (otherUserId && otherUserId.length > 2) {
+                const clean = otherUserId.replace(/^user_/, '');
+                rawTitle = clean.charAt(0).toUpperCase() + clean.slice(1);
+              } else {
+                rawTitle = 'Direct Chat';
+              }
+            }
+            const title: string = rawTitle;
             const otherUserAvatar =
+              (isOtherAdmin ? aminaAvatar : undefined) ||
               otherUser?.photoURL ||
               dirUser?.photoURL ||
               (matchesUser(otherUserId, 'user_fresh_kk')
                 ? freshKkAvatar
-                : matchesUser(otherUserId, 'current_user_id')
-                ? aminaAvatar
                 : undefined);
             const avatar = conv.isGroup
               ? conv.groupAvatar || aminaAvatar
               : otherUserAvatar;
-            const isOnline = !conv.isGroup && otherUser ? isUserOnline(otherUser, currentUserId) : false;
+            const isOnline = !conv.isGroup ? (isOtherAdmin ? true : isUserOnline(otherUser || dirUser, currentUserId)) : false;
             const isSelected = activeConversationId === conv.id;
             const hasStatus = conv.id === 'conv_fresh_kk' || (typeof title === 'string' && title.toLowerCase().includes('fresh'));
 

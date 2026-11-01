@@ -80,9 +80,10 @@ import { ChatSyncService } from '../../services/chat/chatSyncService';
 import { AVAILABLE_CONTACTS } from './components/StartNewChatModal';
 import { ArrowLeftRight } from 'lucide-react';
 import freshKkAvatar from '../../assets/images/fresh_kk_avatar_1791078365294.jpg';
+import aminaAvatar from '../../assets/images/amina_avatar_1790280951312.jpg';
 import { userService } from '../../services/user/userService';
 import { userDirectoryService } from '../../services/user/userDirectoryService';
-import { friendshipService, matchesUser } from '../../services/user/friendshipService';
+import { friendshipService, matchesUser, ADMIN_CANONICAL_ID } from '../../services/user/friendshipService';
 import { isUserOnline, formatUserLastSeen } from '../../services/user/presenceService';
 
 interface ChatRoomProps {
@@ -182,19 +183,48 @@ export const ChatRoom: React.FC<ChatRoomProps> = ({
 
   const contact = otherUserId ? AVAILABLE_CONTACTS.find((c) => matchesUser(otherUserId, c.id)) : null;
 
+  const isOtherAdmin =
+    matchesUser(otherUserId, ADMIN_CANONICAL_ID) ||
+    otherUserLower.includes('amytzee') ||
+    otherUserId === 'current_user_id' ||
+    otherUserId === ADMIN_CANONICAL_ID ||
+    (otherDetails?.email && otherDetails.email.toLowerCase() === 'amytzee@gmail.com');
+
   // Title / Name Resolution: never fall back to "Mtumiaji" if any identifiable details exist
-  const name =
+  let resolvedName =
     (conversation.isGroup
       ? conversation.groupName
-      : otherDetails?.displayName ||
-        dirUser?.displayName ||
+      : isOtherAdmin
+      ? 'Amytzee (Admin)'
+      : (otherDetails?.displayName && otherDetails.displayName !== 'Mtumiaji' ? otherDetails.displayName : null) ||
+        (dirUser?.displayName && dirUser.displayName !== 'Mtumiaji' ? dirUser.displayName : null) ||
         contact?.displayName ||
-        (otherUserLower.includes('amytzee') ? 'Amytzee (Admin)' : null) ||
-        (matchesUser(otherUserId, 'user_fresh_kk') ? 'Fresh kk' : null)) ||
-    (conversation.groupName ? conversation.groupName : 'Amytzee (Admin)');
+        (matchesUser(otherUserId, 'user_fresh_kk') ? 'Fresh kk' : null)) || null;
+
+  if (!resolvedName || resolvedName === 'Mtumiaji') {
+    if (otherDetails?.username && otherDetails.username !== 'user') {
+      resolvedName = otherDetails.username.charAt(0).toUpperCase() + otherDetails.username.slice(1);
+    } else if (dirUser?.username && dirUser.username !== 'user') {
+      resolvedName = dirUser.username.charAt(0).toUpperCase() + dirUser.username.slice(1);
+    } else if (otherDetails?.email) {
+      resolvedName = otherDetails.email.split('@')[0];
+    } else if (dirUser?.email) {
+      resolvedName = dirUser.email.split('@')[0];
+    } else if (isOtherAdmin) {
+      resolvedName = 'Amytzee (Admin)';
+    } else if (otherUserId && otherUserId.length > 2) {
+      const clean = otherUserId.replace(/^user_/, '');
+      resolvedName = clean.charAt(0).toUpperCase() + clean.slice(1);
+    } else {
+      resolvedName = 'Mwanachama wa Zenia';
+    }
+  }
+
+  const name = resolvedName;
 
   const avatar =
     (conversation.isGroup ? conversation.groupAvatar : undefined) ||
+    (isOtherAdmin ? aminaAvatar : undefined) ||
     otherDetails?.photoURL ||
     dirUser?.photoURL ||
     contact?.photoURL ||
@@ -223,10 +253,10 @@ export const ChatRoom: React.FC<ChatRoomProps> = ({
   const isOtherOnline =
     !conversation.isGroup &&
     Boolean(
+      isOtherAdmin ||
       (dirUser && isUserOnline(dirUser, currentUserId)) ||
       (otherDetails && isUserOnline(otherDetails, currentUserId)) ||
-      (typeof name === 'string' && name.includes('Amytzee')) ||
-      (otherUserLower.includes('amytzee'))
+      (typeof name === 'string' && name.includes('Amytzee'))
     );
 
   const [messages, setMessages] = useState<ChatMessage[]>(() => {
@@ -431,7 +461,7 @@ export const ChatRoom: React.FC<ChatRoomProps> = ({
       createdAt: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
     };
     setMessages((prev) => [...prev, newMsg]);
-    ChatSyncService.sendMessage(conversation.id, newMsg);
+    ChatSyncService.sendMessage(conversation.id, newMsg, conversation);
     if (onUpdateConversation) {
       onUpdateConversation({
         ...conversation,
@@ -562,7 +592,7 @@ export const ChatRoom: React.FC<ChatRoomProps> = ({
       createdAt: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
       isSilent: isSilentMode,
     };
-    ChatSyncService.sendMessage(conversation.id, newVideoNote);
+    ChatSyncService.sendMessage(conversation.id, newVideoNote, conversation);
     showToast('Video fupi ya duara imetumwa! ⭕📹');
   };
 
@@ -604,7 +634,7 @@ export const ChatRoom: React.FC<ChatRoomProps> = ({
       createdAt: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
       isSilent: isSilentMode,
     };
-    ChatSyncService.sendMessage(conversation.id, tipMsg);
+    ChatSyncService.sendMessage(conversation.id, tipMsg, conversation);
     showToast(`Pesa ya Chai ya TZS ${tip.amount.toLocaleString()} imetumwa! 🎁`);
   };
 
@@ -666,7 +696,7 @@ export const ChatRoom: React.FC<ChatRoomProps> = ({
       createdAt: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
       isSilent: isSilentMode,
     };
-    ChatSyncService.sendMessage(conversation.id, pollMsg);
+    ChatSyncService.sendMessage(conversation.id, pollMsg, conversation);
     showToast('Kura ya maoni imechapishwa! 📊');
   };
 
@@ -755,7 +785,7 @@ export const ChatRoom: React.FC<ChatRoomProps> = ({
     };
 
     // Save and sync in real time across Firestore and all tabs/devices
-    ChatSyncService.sendMessage(conversation.id, newMsg);
+    ChatSyncService.sendMessage(conversation.id, newMsg, conversation);
     setInputText('');
     setReplyingToMessage(null);
     showToast('Ujumbe umetumwa! 🚀');

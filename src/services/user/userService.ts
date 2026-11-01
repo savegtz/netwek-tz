@@ -2,6 +2,30 @@ const DELETED_USERS_STORAGE_KEY = 'zenia_deleted_user_identifiers';
 const USERS_UPDATED_EVENT = 'zenia_users_deleted_updated';
 
 class UserServiceImpl {
+  constructor() {
+    this.cleanProtectedAccounts();
+  }
+
+  private cleanProtectedAccounts() {
+    try {
+      const current = this.getDeletedUserIdentifiers();
+      const protectedItems = ['amytzee@gmail.com', 'amytzee', 'savegamour@gmail.com', 'savegamour'];
+      let changed = false;
+      protectedItems.forEach((item) => {
+        if (current.has(item)) {
+          current.delete(item);
+          changed = true;
+        }
+      });
+      if (changed) {
+        localStorage.setItem(
+          DELETED_USERS_STORAGE_KEY,
+          JSON.stringify(Array.from(current))
+        );
+      }
+    } catch (_) {}
+  }
+
   /**
    * Get set of all deleted user identifiers (IDs, usernames, display names, and variants)
    */
@@ -19,11 +43,48 @@ class UserServiceImpl {
   }
 
   /**
+   * Unmark a user from being deleted (e.g. when they register or re-activate)
+   */
+  public unmarkDeleted(...identifiers: (string | undefined)[]) {
+    try {
+      const currentSet = this.getDeletedUserIdentifiers();
+      let changed = false;
+      identifiers.forEach((ident) => {
+        if (!ident) return;
+        const clean = ident.toLowerCase().trim();
+        if (currentSet.has(clean)) {
+          currentSet.delete(clean);
+          changed = true;
+        }
+        const noUser = clean.replace(/^user_/, '');
+        if (currentSet.has(noUser)) {
+          currentSet.delete(noUser);
+          changed = true;
+        }
+      });
+      if (changed) {
+        localStorage.setItem(
+          DELETED_USERS_STORAGE_KEY,
+          JSON.stringify(Array.from(currentSet))
+        );
+        window.dispatchEvent(new CustomEvent(USERS_UPDATED_EVENT));
+      }
+    } catch (e) {
+      console.warn('Failed to unmark deleted user:', e);
+    }
+  }
+
+  /**
    * Permanently delete / remove a user from the entire application.
    * Completely purges them from conversations, contacts, calls, and local state.
    */
   public deleteUser(identifier: string, secondaryIdentifier?: string, displayName?: string) {
     if (!identifier) return;
+    const cleanId = identifier.toLowerCase().trim();
+    if (cleanId === 'amytzee@gmail.com' || cleanId === 'amytzee') {
+      console.warn('Cannot delete primary admin account');
+      return;
+    }
 
     try {
       const currentSet = this.getDeletedUserIdentifiers();

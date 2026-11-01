@@ -184,7 +184,7 @@ export interface ChatMessage {
 export interface Conversation {
   id: string;
   participants: string[];
-  participantDetails?: Record<string, { displayName: string; photoURL?: string; username?: string; isOnline?: boolean }>;
+  participantDetails?: Record<string, { id?: string; displayName: string; photoURL?: string; username?: string; email?: string; isOnline?: boolean }>;
   isGroup: boolean;
   groupName?: string;
   groupAvatar?: string;

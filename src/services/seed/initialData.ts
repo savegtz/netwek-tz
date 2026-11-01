@@ -14,7 +14,7 @@ import freshKkAvatar from '../../assets/images/fresh_kk_avatar_1791078365294.jpg
 import aminaAvatar from '../../assets/images/amina_avatar_1790280951312.jpg';
 
 export const INITIAL_USER: UserProfile = {
-  id: 'current_user_id',
+  id: '7w6ldhpczBOVpimURqrpQ3C',
   email: 'amytzee@gmail.com',
   displayName: 'Amytzee (Admin)',
   username: 'amytzee',
@@ -33,8 +33,8 @@ export const INITIAL_USER: UserProfile = {
 
 export const INITIAL_CONVERSATIONS: Conversation[] = [
   {
-    id: 'conv_fresh_kk',
-    participants: ['current_user_id', 'user_fresh_kk'],
+    id: 'conv_7w6ldhpczBOVpimURqrpQ3C_user_fresh_kk',
+    participants: ['7w6ldhpczBOVpimURqrpQ3C', 'user_fresh_kk'],
     participantDetails: {
       user_fresh_kk: {
         displayName: 'Fresh kk',
@@ -42,10 +42,11 @@ export const INITIAL_CONVERSATIONS: Conversation[] = [
         username: 'fresh_kk',
         isOnline: false,
       },
-      current_user_id: {
-        displayName: 'Amina Kaunga',
+      '7w6ldhpczBOVpimURqrpQ3C': {
+        displayName: 'Amytzee (Admin)',
         photoURL: aminaAvatar,
-        username: 'amina_kaunga',
+        username: 'amytzee',
+        email: 'amytzee@gmail.com',
         isOnline: true,
       },
     },
