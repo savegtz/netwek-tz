@@ -159,6 +159,7 @@ export interface ChatMessage {
   };
   reactions?: Record<string, string[]>; // emoji -> array of userIds
   readBy?: string[];
+  status?: 'sent' | 'delivered' | 'seen';
   createdAt: string;
   editedAt?: string;
   isEdited?: boolean;

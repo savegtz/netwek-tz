@@ -61,11 +61,13 @@ export const ChatSyncService = {
 
     // 2. Listen to BroadcastChannel for instant same-browser cross-tab updates
     const handleBroadcast = (event: MessageEvent) => {
-      if (
-        event.data &&
-        (event.data.conversationId === conversationId || (altConversationId && event.data.conversationId === altConversationId)) &&
-        event.data.type === 'NEW_MESSAGE'
-      ) {
+      if (!event.data) return;
+      const targetMatches =
+        event.data.conversationId === conversationId ||
+        (altConversationId && event.data.conversationId === altConversationId);
+      if (!targetMatches) return;
+
+      if (event.data.type === 'NEW_MESSAGE') {
         const incomingMsg: ChatMessage = event.data.message;
         if (!currentMsgs.some((m) => m.id === incomingMsg.id)) {
           currentMsgs = [...currentMsgs, incomingMsg];
@@ -75,8 +77,67 @@ export const ChatSyncService = {
           } catch (_) {}
           onUpdate(currentMsgs);
         }
+      } else if (event.data.type === 'MESSAGES_SEEN') {
+        let modified = false;
+        currentMsgs = currentMsgs.map((m) => {
+          if (m.senderId !== event.data.userId && m.status !== 'seen') {
+            modified = true;
+            return { ...m, status: 'seen' as const };
+          }
+          return m;
+        });
+        if (modified) {
+          try {
+            localStorage.setItem(localKey, JSON.stringify(currentMsgs));
+            if (altLocalKey) localStorage.setItem(altLocalKey, JSON.stringify(currentMsgs));
+          } catch (_) {}
+          onUpdate(currentMsgs);
+        }
+      } else if (event.data.type === 'UPDATE_MESSAGE') {
+        const { messageId, updates } = event.data;
+        let modified = false;
+        currentMsgs = currentMsgs.map((m) => {
+          if (m.id === messageId) {
+            modified = true;
+            return { ...m, ...updates };
+          }
+          return m;
+        });
+        if (modified) {
+          try {
+            localStorage.setItem(localKey, JSON.stringify(currentMsgs));
+            if (altLocalKey) localStorage.setItem(altLocalKey, JSON.stringify(currentMsgs));
+          } catch (_) {}
+          onUpdate(currentMsgs);
+        }
       }
     };
+
+    const handleSeenDirect = (targetConvId: string, seenUserId: string) => {
+      if (targetConvId !== conversationId && (!altConversationId || targetConvId !== altConversationId)) return;
+      let modified = false;
+      currentMsgs = currentMsgs.map((m) => {
+        if (m.senderId !== seenUserId && m.status !== 'seen') {
+          modified = true;
+          return { ...m, status: 'seen' as const };
+        }
+        return m;
+      });
+      if (modified) {
+        try {
+          localStorage.setItem(localKey, JSON.stringify(currentMsgs));
+          if (altLocalKey) localStorage.setItem(altLocalKey, JSON.stringify(currentMsgs));
+        } catch (_) {}
+        onUpdate(currentMsgs);
+      }
+    };
+
+    const handleCustomSeenEvent = (e: any) => {
+      if (e.detail && e.detail.conversationId) {
+        handleSeenDirect(e.detail.conversationId, e.detail.userId);
+      }
+    };
+    window.addEventListener('zenia_messages_seen_event', handleCustomSeenEvent);
 
     const handleNewMessageDirect = (incomingMsg: ChatMessage, targetConvId: string) => {
       if (targetConvId !== conversationId && (!altConversationId || targetConvId !== altConversationId)) return;
@@ -176,6 +237,7 @@ export const ChatSyncService = {
 
     // Return cleanup function
     return () => {
+      window.removeEventListener('zenia_messages_seen_event', handleCustomSeenEvent);
       window.removeEventListener('zenia_new_message_event', handleCustomMsgEvent);
       window.removeEventListener('storage', handleStorageMsg);
       if (chatChannel) {
@@ -710,5 +772,117 @@ export const ChatSyncService = {
         });
       } catch (_) {}
     }
+  },
+
+  // WhatsApp / Coding Cafe Real-time Typing Indicator
+  setTyping(
+    conversationId: string,
+    userId: string,
+    isTypingOrName: boolean | string,
+    optionalParam?: boolean | string
+  ) {
+    if (!conversationId || !userId) return;
+    const isTyping =
+      typeof isTypingOrName === 'boolean'
+        ? isTypingOrName
+        : typeof optionalParam === 'boolean'
+        ? optionalParam
+        : false;
+    const userName =
+      typeof isTypingOrName === 'string'
+        ? isTypingOrName
+        : typeof optionalParam === 'string'
+        ? optionalParam
+        : 'Mtu';
+    const detail = { conversationId, userId, userName, isTyping, _sigTime: Date.now() };
+
+    if (chatChannel) {
+      try {
+        chatChannel.postMessage({ type: 'TYPING', ...detail });
+      } catch (_) {}
+    }
+
+    try {
+      localStorage.setItem(`zenia_typing_${conversationId}`, JSON.stringify(detail));
+      window.dispatchEvent(new CustomEvent('zenia_typing_event', { detail }));
+    } catch (_) {}
+  },
+
+  // Subscribe to partner typing state
+  subscribeTyping(
+    conversationId: string,
+    currentUserId: string,
+    onTyping: (isTyping: boolean, userName?: string) => void
+  ): () => void {
+    const handleBroadcast = (event: MessageEvent) => {
+      if (
+        event.data &&
+        event.data.type === 'TYPING' &&
+        event.data.conversationId === conversationId &&
+        event.data.userId !== currentUserId
+      ) {
+        onTyping(Boolean(event.data.isTyping), event.data.userName);
+      }
+    };
+
+    const handleCustom = (e: any) => {
+      const d = e.detail;
+      if (d && d.conversationId === conversationId && d.userId !== currentUserId) {
+        onTyping(Boolean(d.isTyping), d.userName);
+      }
+    };
+
+    const handleStorage = (e: StorageEvent) => {
+      if (e.key === `zenia_typing_${conversationId}` && e.newValue) {
+        try {
+          const parsed = JSON.parse(e.newValue);
+          if (parsed.userId !== currentUserId) {
+            onTyping(Boolean(parsed.isTyping), parsed.userName);
+          }
+        } catch (_) {}
+      }
+    };
+
+    if (chatChannel) {
+      chatChannel.addEventListener('message', handleBroadcast);
+    }
+    window.addEventListener('zenia_typing_event', handleCustom);
+    window.addEventListener('storage', handleStorage);
+
+    return () => {
+      if (chatChannel) {
+        chatChannel.removeEventListener('message', handleBroadcast);
+      }
+      window.removeEventListener('zenia_typing_event', handleCustom);
+      window.removeEventListener('storage', handleStorage);
+    };
+  },
+
+  // Mark all incoming messages in a conversation as seen (Blue double ticks)
+  markMessagesAsSeen(conversationId: string, currentUserId: string) {
+    const localKey = `zenia_msgs_${conversationId}`;
+    try {
+      const cached = localStorage.getItem(localKey);
+      if (cached) {
+        const msgs: ChatMessage[] = JSON.parse(cached);
+        let changed = false;
+        const updated = msgs.map((m) => {
+          if (m.senderId !== currentUserId && m.status !== 'seen') {
+            changed = true;
+            return { ...m, status: 'seen' as const };
+          }
+          return m;
+        });
+        if (changed) {
+          localStorage.setItem(localKey, JSON.stringify(updated));
+          if (chatChannel) {
+            chatChannel.postMessage({ type: 'MESSAGES_SEEN', conversationId, userId: currentUserId });
+          }
+          window.dispatchEvent(
+            new CustomEvent('zenia_messages_seen_event', { detail: { conversationId, userId: currentUserId } })
+          );
+        }
+      }
+    } catch (_) {}
   },
 };

@@ -155,7 +155,6 @@ export const DiscoverView: React.FC<DiscoverViewProps> = ({
         lastSeen: 'Muda mfupi uliopita',
       };
       extraKnownPeople.push(p);
-      userDirectoryService.upsertUser(p);
     }
   });
 
@@ -202,7 +201,6 @@ export const DiscoverView: React.FC<DiscoverViewProps> = ({
         isOnline: false,
         lastSeen: 'Muda mfupi uliopita',
       };
-      userDirectoryService.upsertUser(p);
       return p;
     });
     peopleToDisplay = deduplicateUsers(mappedRequests);
@@ -241,7 +239,6 @@ export const DiscoverView: React.FC<DiscoverViewProps> = ({
           lastSeen: 'Muda mfupi uliopita',
         };
         confirmedProfiles.push(fallbackProfile);
-        userDirectoryService.upsertUser(fallbackProfile);
       }
     });
 

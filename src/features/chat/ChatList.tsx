@@ -198,6 +198,53 @@ export const ChatList: React.FC<ChatListProps> = ({
   // Unlocked conversations in the current active session
   const [unlockedConversationIds, setUnlockedConversationIds] = useState<Set<string>>(new Set());
 
+  // Coding Cafe live typing indicator per conversation in chat list
+  const [typingConversations, setTypingConversations] = useState<Record<string, string>>({});
+
+  useEffect(() => {
+    const handleTypingEvent = (e: any) => {
+      const d = e.detail;
+      if (d && d.conversationId) {
+        if (d.userId !== effectiveUser.id && d.isTyping) {
+          setTypingConversations((prev) => ({ ...prev, [d.conversationId]: d.userName || 'Mtu' }));
+        } else {
+          setTypingConversations((prev) => {
+            const next = { ...prev };
+            delete next[d.conversationId];
+            return next;
+          });
+        }
+      }
+    };
+
+    const handleStorageTyping = (e: StorageEvent) => {
+      if (e.key && e.key.startsWith('zenia_typing_')) {
+        const convId = e.key.replace('zenia_typing_', '');
+        if (e.newValue) {
+          try {
+            const parsed = JSON.parse(e.newValue);
+            if (parsed.userId !== effectiveUser.id && parsed.isTyping) {
+              setTypingConversations((prev) => ({ ...prev, [convId]: parsed.userName || 'Mtu' }));
+            } else {
+              setTypingConversations((prev) => {
+                const next = { ...prev };
+                delete next[convId];
+                return next;
+              });
+            }
+          } catch (_) {}
+        }
+      }
+    };
+
+    window.addEventListener('zenia_typing_event', handleTypingEvent);
+    window.addEventListener('storage', handleStorageTyping);
+    return () => {
+      window.removeEventListener('zenia_typing_event', handleTypingEvent);
+      window.removeEventListener('storage', handleStorageTyping);
+    };
+  }, [effectiveUser.id]);
+
   // PIN Modal State
   const [pinModalState, setPinModalState] = useState<{
     isOpen: boolean;
@@ -1832,13 +1879,18 @@ export const ChatList: React.FC<ChatListProps> = ({
                         <Lock className="w-3 h-3 text-cyan-400 shrink-0" />
                         <span className="italic">Ujumbe umefungwa kwa PIN</span>
                       </p>
+                    ) : typingConversations[conv.id] ? (
+                      <p className="text-xs text-cyan-400 truncate flex items-center gap-1.5 font-medium animate-pulse">
+                        <span className="inline-block w-1.5 h-1.5 rounded-full bg-cyan-400" />
+                        <span className="italic">anaandika...</span>
+                      </p>
                     ) : (
                       <p className="text-xs text-slate-400 truncate flex items-center gap-1">
                         {currentUser && conv.lastMessageSenderId === currentUser.id && (
                           <CheckCheck className="w-3.5 h-3.5 text-cyan-400 shrink-0" />
                         )}
                         {conv.lastMessage === 'Typing...' ? (
-                          <span className="text-cyan-400 font-medium italic">Typing...</span>
+                          <span className="text-cyan-400 font-medium italic">anaandika...</span>
                         ) : (
                           conv.lastMessage
                         )}

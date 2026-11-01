@@ -553,6 +553,162 @@ export const ChatRoom: React.FC<ChatRoomProps> = ({
     return () => unsub();
   }, [conversation.id]);
 
+  // Coding Cafe: Auto-scroll to bottom ref & effects
+  const messagesEndRef = useRef<HTMLDivElement | null>(null);
+  const scrollToBottom = (smooth = true) => {
+    if (messagesEndRef.current) {
+      messagesEndRef.current.scrollIntoView({ behavior: smooth ? 'smooth' : 'auto' });
+    }
+  };
+
+  useEffect(() => {
+    scrollToBottom(true);
+  }, [messages.length, isContactTyping]);
+
+  useEffect(() => {
+    scrollToBottom(false);
+  }, []);
+
+  // Coding Cafe: Real-time partner typing indicator listener
+  useEffect(() => {
+    const unsub = ChatSyncService.subscribeTyping(
+      conversation.id,
+      currentUser.id,
+      (typing) => {
+        setIsContactTyping(typing);
+      }
+    );
+    return unsub;
+  }, [conversation.id, currentUser.id]);
+
+  // Coding Cafe: Read receipts - automatically mark incoming messages as seen
+  useEffect(() => {
+    if (messages.some((m) => m.senderId !== currentUser.id && m.status !== 'seen')) {
+      ChatSyncService.markMessagesAsSeen(conversation.id, currentUser.id);
+    }
+  }, [conversation.id, currentUser.id, messages]);
+
+  // Typing debounce sender
+  const typingTimeoutRef = useRef<NodeJS.Timeout | null>(null);
+  const handleInputChange = (val: string) => {
+    setInputText(val);
+    if (val.endsWith('/') && !isQuickRepliesOpen) {
+      setIsQuickRepliesOpen(true);
+    }
+    if (typingTimeoutRef.current) clearTimeout(typingTimeoutRef.current);
+    if (val.trim()) {
+      ChatSyncService.setTyping(conversation.id, currentUser.id, true, currentUser.displayName || 'You');
+      typingTimeoutRef.current = setTimeout(() => {
+        ChatSyncService.setTyping(conversation.id, currentUser.id, false);
+      }, 2500);
+    } else {
+      ChatSyncService.setTyping(conversation.id, currentUser.id, false);
+    }
+  };
+
+  // Coding Cafe: WhatsApp-style live audio recording bar
+  const [isRecordingAudio, setIsRecordingAudio] = useState(false);
+  const [recordDuration, setRecordDuration] = useState(0);
+  const recordTimerRef = useRef<NodeJS.Timeout | null>(null);
+  const mediaRecorderRef = useRef<MediaRecorder | null>(null);
+  const audioChunksRef = useRef<Blob[]>([]);
+
+  const startAudioRecording = async () => {
+    setIsRecordingAudio(true);
+    setRecordDuration(0);
+    audioChunksRef.current = [];
+    if (recordTimerRef.current) clearInterval(recordTimerRef.current);
+    recordTimerRef.current = setInterval(() => {
+      setRecordDuration((prev) => prev + 1);
+    }, 1000);
+
+    try {
+      if (navigator.mediaDevices && navigator.mediaDevices.getUserMedia) {
+        const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+        const mediaRecorder = new MediaRecorder(stream);
+        mediaRecorderRef.current = mediaRecorder;
+        mediaRecorder.ondataavailable = (event) => {
+          if (event.data.size > 0) {
+            audioChunksRef.current.push(event.data);
+          }
+        };
+        mediaRecorder.start();
+      }
+    } catch (err) {
+      console.warn('Microphone stream access notice:', err);
+    }
+  };
+
+  const cancelAudioRecording = () => {
+    if (recordTimerRef.current) {
+      clearInterval(recordTimerRef.current);
+      recordTimerRef.current = null;
+    }
+    if (mediaRecorderRef.current && mediaRecorderRef.current.state !== 'inactive') {
+      try {
+        mediaRecorderRef.current.stop();
+        mediaRecorderRef.current.stream.getTracks().forEach((track) => track.stop());
+      } catch (_) {}
+    }
+    setIsRecordingAudio(false);
+    setRecordDuration(0);
+    showToast('Kurekodi sauti kumeghairiwa 🗑️');
+  };
+
+  const finishAndSendAudioRecording = () => {
+    const durationSec = Math.max(recordDuration, 1);
+    const minutes = Math.floor(durationSec / 60);
+    const seconds = durationSec % 60;
+    const formattedDuration = `${minutes}:${seconds < 10 ? '0' : ''}${seconds}`;
+
+    let audioBlobUrl: string | undefined = undefined;
+    if (mediaRecorderRef.current && mediaRecorderRef.current.state !== 'inactive') {
+      try {
+        mediaRecorderRef.current.stop();
+        mediaRecorderRef.current.stream.getTracks().forEach((track) => track.stop());
+        if (audioChunksRef.current.length > 0) {
+          const audioBlob = new Blob(audioChunksRef.current, { type: 'audio/webm' });
+          audioBlobUrl = URL.createObjectURL(audioBlob);
+        }
+      } catch (_) {}
+    }
+
+    if (recordTimerRef.current) {
+      clearInterval(recordTimerRef.current);
+      recordTimerRef.current = null;
+    }
+    setIsRecordingAudio(false);
+    setRecordDuration(0);
+
+    const audioMsg: ChatMessage = {
+      id: `msg_audio_${Date.now()}_${Math.random().toString(36).substring(2, 6)}`,
+      conversationId: conversation.id,
+      senderId: currentUser.id,
+      senderName: currentUser.displayName || 'You',
+      senderAvatar: currentUser.photoURL,
+      text: '🎙️ Ujumbe wa sauti (Voice Note)',
+      messageType: 'audio',
+      mediaUrl: audioBlobUrl,
+      audioDuration: formattedDuration,
+      transcription: 'Habari kiongozi! Ujumbe wangu wa sauti umefika.',
+      createdAt: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
+      status: 'delivered',
+      isSilent: isSilentMode,
+    };
+
+    setMessages((prev) => [...prev, audioMsg]);
+    ChatSyncService.sendMessage(conversation.id, audioMsg, conversation);
+    if (onUpdateConversation) {
+      onUpdateConversation({
+        ...conversation,
+        lastMessage: '🎙️ Ujumbe wa sauti',
+        lastMessageType: 'audio',
+        updatedAt: 'Sasa hivi',
+      });
+    }
+    showToast(`Ujumbe wa sauti (${formattedDuration}) umetumwa! 🎙️`);
+  };
+
   const activeTheme = CHAT_THEMES.find((t) => t.id === currentThemeId) || CHAT_THEMES[0];
 
   // Feature 1: Open and dismiss View-Once media
@@ -773,6 +929,7 @@ export const ChatRoom: React.FC<ChatRoomProps> = ({
       text: inputText.trim(),
       messageType: 'text',
       createdAt: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
+      status: 'delivered',
       disappearingTimer: disappearingTimer || undefined,
       isSilent: isSilentMode,
       replyTo: replyingToMessage
@@ -786,6 +943,7 @@ export const ChatRoom: React.FC<ChatRoomProps> = ({
 
     // Save and sync in real time across Firestore and all tabs/devices
     ChatSyncService.sendMessage(conversation.id, newMsg, conversation);
+    ChatSyncService.setTyping(conversation.id, currentUser.id, false);
     setInputText('');
     setReplyingToMessage(null);
     showToast('Ujumbe umetumwa! 🚀');
@@ -980,7 +1138,12 @@ export const ChatRoom: React.FC<ChatRoomProps> = ({
                   )}
                 </div>
                 <div className="text-[11px] flex items-center gap-1 mt-0.5 truncate">
-                  {isOtherOnline ? (
+                  {isContactTyping ? (
+                    <span className="text-cyan-400 font-bold flex items-center gap-1 shrink-0 animate-pulse">
+                      <span className="w-1.5 h-1.5 rounded-full bg-cyan-400 animate-ping" />
+                      anaandika...
+                    </span>
+                  ) : isOtherOnline ? (
                     <span className="text-emerald-400 font-semibold flex items-center gap-1 shrink-0">
                       <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse" />
                       Online
@@ -1601,7 +1764,26 @@ export const ChatRoom: React.FC<ChatRoomProps> = ({
                   {msg.isPinned && <Pin className="w-3 h-3 text-cyan-300 rotate-45 shrink-0" />}
 
                   <span>{msg.createdAt}</span>
-                  {isMe && <CheckCheck className="w-3.5 h-3.5 text-cyan-200 shrink-0" />}
+                  {isMe && (
+                    <span
+                      className="inline-flex items-center ml-0.5"
+                      title={
+                        msg.status === 'seen'
+                          ? 'Imesomwa (Seen)'
+                          : msg.status === 'delivered'
+                          ? 'Imefika (Delivered)'
+                          : 'Imetumwa (Sent)'
+                      }
+                    >
+                      {msg.status === 'seen' ? (
+                        <CheckCheck className="w-3.5 h-3.5 text-cyan-400 stroke-[2.5]" />
+                      ) : msg.status === 'delivered' ? (
+                        <CheckCheck className="w-3.5 h-3.5 text-slate-400 stroke-[2]" />
+                      ) : (
+                        <Check className="w-3.5 h-3.5 text-slate-400 stroke-[2]" />
+                      )}
+                    </span>
+                  )}
                 </div>
 
                 {/* Reaction Badges */}
@@ -1629,6 +1811,9 @@ export const ChatRoom: React.FC<ChatRoomProps> = ({
             <span className="text-[11px] text-cyan-300 font-medium">{name} anaandika...</span>
           </div>
         )}
+
+        {/* Coding Cafe Auto-Scroll Target */}
+        <div ref={messagesEndRef} />
       </div>
 
       {/* Editing Message Banner */}
@@ -1922,6 +2107,57 @@ export const ChatRoom: React.FC<ChatRoomProps> = ({
               )}
             </div>
           </div>
+        ) : isRecordingAudio ? (
+          /* Coding Cafe / WhatsApp Live Voice Recording Bar */
+          <div className="p-2 sm:p-2.5 bg-[#0A0F1D] border-t border-cyan-500/40 flex items-center justify-between gap-2.5 animate-in slide-in-from-bottom-2 duration-150">
+            {/* Cancel (Trash) Button */}
+            <button
+              type="button"
+              onClick={cancelAudioRecording}
+              className="p-2 sm:p-2.5 rounded-xl bg-white/5 hover:bg-rose-500/25 text-slate-400 hover:text-rose-400 border border-white/5 hover:border-rose-500/30 transition-all shrink-0 active:scale-90"
+              title="Ghairi kurekodi (Cancel)"
+            >
+              <Trash2 className="w-4 h-4 text-rose-400" />
+            </button>
+
+            {/* Live Recording Dot, Timer, and Frequency Waves */}
+            <div className="flex-1 flex items-center justify-center gap-2.5 min-w-0 px-2 py-1.5 rounded-xl bg-white/[0.03] border border-white/5">
+              <span className="w-2.5 h-2.5 rounded-full bg-rose-500 animate-ping shrink-0" />
+              <span className="text-xs font-mono font-bold text-rose-400 shrink-0">
+                {Math.floor(recordDuration / 60)}:
+                {(recordDuration % 60) < 10 ? '0' : ''}
+                {recordDuration % 60}
+              </span>
+
+              {/* Pulsing frequency bars */}
+              <div className="flex items-center gap-1 h-5 overflow-hidden">
+                {[35, 65, 90, 50, 80, 100, 60, 45, 85, 70, 95, 40].map((h, i) => (
+                  <span
+                    key={i}
+                    className="w-1 rounded-full bg-cyan-400 transition-all duration-150"
+                    style={{
+                      height: `${Math.max(25, (h * ((recordDuration % 4) + 1)) % 100)}%`,
+                      opacity: 0.7 + ((i % 3) * 0.1),
+                    }}
+                  />
+                ))}
+              </div>
+
+              <span className="text-[11px] text-slate-400 hidden sm:inline-block truncate">
+                Inarekodi sauti...
+              </span>
+            </div>
+
+            {/* Finish & Send Voice Note Button */}
+            <button
+              type="button"
+              onClick={finishAndSendAudioRecording}
+              className="p-2.5 rounded-xl bg-gradient-to-r from-cyan-400 to-blue-500 text-slate-950 font-bold shadow-lg shadow-cyan-500/20 hover:scale-105 active:scale-95 transition-all shrink-0 flex items-center justify-center gap-1"
+              title="Tuma Ujumbe wa Sauti (Send Voice Note)"
+            >
+              <Send className="w-4 h-4 fill-slate-950 stroke-[2.5]" />
+            </button>
+          </div>
         ) : (
           <form
             onSubmit={handleSend}
@@ -1987,18 +2223,12 @@ export const ChatRoom: React.FC<ChatRoomProps> = ({
               {isSilentMode ? <BellOff className="w-4 h-4" /> : <Bell className="w-4 h-4" />}
             </button>
 
-            {/* Text Input */}
+            {/* Text Input with Coding Cafe Typing Broadcaster */}
             <div className="relative flex-1">
               <input
                 type="text"
                 value={inputText}
-                onChange={(e) => {
-                  const val = e.target.value;
-                  setInputText(val);
-                  if (val.endsWith('/') && !isQuickRepliesOpen) {
-                    setIsQuickRepliesOpen(true);
-                  }
-                }}
+                onChange={(e) => handleInputChange(e.target.value)}
                 placeholder={
                   isSilentMode
                     ? 'Andika ujumbe wa kimya (bila mlio)...'
@@ -2033,26 +2263,9 @@ export const ChatRoom: React.FC<ChatRoomProps> = ({
               recorderMode === 'voice' ? (
                 <button
                   type="button"
-                  onClick={() => {
-                    const audioMsg: ChatMessage = {
-                      id: `msg_audio_${Date.now()}`,
-                      conversationId: conversation.id,
-                      senderId: currentUser.id,
-                      senderName: currentUser.displayName || 'You',
-                      senderAvatar: currentUser.photoURL,
-                      text: '🎙️ Ujumbe wa sauti (Voice Note)',
-                      messageType: 'audio',
-                      audioDuration: '0:14',
-                      transcription: 'Habari kiongozi! Nimepokea na nakamilisha sasa hivi.',
-                      createdAt: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
-                      isSilent: isSilentMode,
-                    };
-                    setMessages((prev) => [...prev, audioMsg]);
-                    ChatSyncService.sendMessage(conversation.id, audioMsg, conversation);
-                    showToast('Ujumbe wa sauti umetumwa na kunukuliwa! 🎙️');
-                  }}
+                  onClick={startAudioRecording}
                   className="p-2.5 rounded-xl bg-cyan-500/15 hover:bg-cyan-500/25 border border-cyan-500/30 text-cyan-300 shadow-md hover:scale-105 active:scale-95 transition-all shrink-0"
-                  title="Tuma Ujumbe wa Sauti"
+                  title="Anza Kurekodi Ujumbe wa Sauti (Voice Note)"
                 >
                   <Mic className="w-4 h-4" />
                 </button>
