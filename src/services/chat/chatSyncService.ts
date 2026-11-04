@@ -11,7 +11,13 @@ import {
 } from 'firebase/firestore';
 import { db } from '../firebase/config';
 import { ChatMessage, Conversation } from '../../types';
-import { normalizeUserId, matchesUser, ADMIN_CANONICAL_ID } from '../user/friendshipService';
+import {
+  normalizeUserId,
+  matchesUser,
+  ADMIN_CANONICAL_ID,
+  SAVEGAMOUR_CANONICAL_ID,
+  buildCanonicalConversationId,
+} from '../user/friendshipService';
 
 // Browser-level BroadcastChannel for zero-latency instant cross-tab sync
 const chatChannel =
@@ -19,33 +25,87 @@ const chatChannel =
     ? new BroadcastChannel('zenia_live_chat_sync')
     : null;
 
+export function getAllEquivalentConversationIds(conversationId: string): string[] {
+  const set = new Set<string>();
+  if (!conversationId) return [];
+  set.add(conversationId);
+
+  if (conversationId.startsWith('conv_')) {
+    const raw = conversationId.replace('conv_', '');
+    const rawParts = raw.split('_');
+    if (rawParts.length >= 2) {
+      const partA = rawParts[0];
+      const partB = rawParts.slice(1).join('_');
+
+      const aliasesFor = (p: string): string[] => {
+        const norm = normalizeUserId(p);
+        const list = [p, norm];
+        if (norm === ADMIN_CANONICAL_ID || p === 'current_user_id' || p.toLowerCase().includes('amytzee')) {
+          list.push(ADMIN_CANONICAL_ID, 'current_user_id', 'amytzee@gmail.com', 'amytzee');
+        }
+        if (norm === SAVEGAMOUR_CANONICAL_ID || p.toLowerCase().includes('savegamour')) {
+          list.push(SAVEGAMOUR_CANONICAL_ID, 'savegamour@gmail.com', 'savegamour');
+        }
+        return Array.from(new Set(list.filter(Boolean)));
+      };
+
+      const aliasesA = aliasesFor(partA);
+      const aliasesB = aliasesFor(partB);
+
+      for (const a of aliasesA) {
+        for (const b of aliasesB) {
+          set.add(`conv_${[a, b].sort().join('_')}`);
+          set.add(`conv_${a}_${b}`);
+          set.add(`conv_${b}_${a}`);
+        }
+      }
+    }
+  }
+
+  return Array.from(set);
+}
+
+export function getCanonicalConversationId(conversationId: string): string {
+  if (!conversationId) return '';
+  if (conversationId.startsWith('conv_')) {
+    const raw = conversationId.replace('conv_', '');
+    const rawParts = raw.split('_');
+    if (rawParts.length >= 2) {
+      const partA = rawParts[0];
+      const partB = rawParts.slice(1).join('_');
+      return buildCanonicalConversationId(partA, partB);
+    }
+  }
+  return conversationId;
+}
+
 export const ChatSyncService = {
-  // Subscribe to live messages for a conversation
+  // Subscribe to live messages for a conversation across canonical and alias IDs
   subscribeMessages(
     conversationId: string,
     initialMessages: ChatMessage[],
-    onUpdate: (messages: ChatMessage[]) => void
+    onUpdate: (messages: ChatMessage[]) => void,
+    currentUserId?: string
   ) {
+    const canonicalId = getCanonicalConversationId(conversationId);
+    const equivalentIds = getAllEquivalentConversationIds(conversationId);
     const localKey = `zenia_msgs_${conversationId}`;
+    const canonicalLocalKey = `zenia_msgs_${canonicalId}`;
     let currentMsgs: ChatMessage[] = [];
-
-    // Derive alternate conversation ID (e.g. swapping ADMIN_CANONICAL_ID and current_user_id)
-    const altConversationId = conversationId.includes(ADMIN_CANONICAL_ID)
-      ? conversationId.replace(ADMIN_CANONICAL_ID, 'current_user_id')
-      : conversationId.includes('current_user_id')
-      ? conversationId.replace('current_user_id', ADMIN_CANONICAL_ID)
-      : null;
-    const altLocalKey = altConversationId ? `zenia_msgs_${altConversationId}` : null;
 
     // 1. Try reading from localStorage first for instant display
     try {
-      const cached = localStorage.getItem(localKey);
-      const cachedAlt = altLocalKey ? localStorage.getItem(altLocalKey) : null;
-      if (cached || cachedAlt) {
-        const primaryList: ChatMessage[] = cached ? JSON.parse(cached) : [];
-        const altList: ChatMessage[] = cachedAlt ? JSON.parse(cachedAlt) : [];
-        const mergedMap = new Map<string, ChatMessage>();
-        [...altList, ...primaryList].forEach((m) => mergedMap.set(m.id, m));
+      const mergedMap = new Map<string, ChatMessage>();
+      for (const eId of equivalentIds) {
+        const k = `zenia_msgs_${eId}`;
+        const raw = localStorage.getItem(k);
+        if (raw) {
+          const list: ChatMessage[] = JSON.parse(raw);
+          list.forEach((m) => mergedMap.set(m.id, m));
+        }
+      }
+
+      if (mergedMap.size > 0) {
         currentMsgs = Array.from(mergedMap.values());
         onUpdate(currentMsgs);
       } else if (initialMessages && initialMessages.length > 0) {
@@ -59,38 +119,38 @@ export const ChatSyncService = {
       }
     }
 
+    const persistLocal = (msgs: ChatMessage[]) => {
+      try {
+        const json = JSON.stringify(msgs);
+        localStorage.setItem(localKey, json);
+        localStorage.setItem(canonicalLocalKey, json);
+      } catch (_) {}
+    };
+
     // 2. Listen to BroadcastChannel for instant same-browser cross-tab updates
     const handleBroadcast = (event: MessageEvent) => {
       if (!event.data) return;
-      const targetMatches =
-        event.data.conversationId === conversationId ||
-        (altConversationId && event.data.conversationId === altConversationId);
+      const targetMatches = equivalentIds.includes(event.data.conversationId);
       if (!targetMatches) return;
 
       if (event.data.type === 'NEW_MESSAGE') {
         const incomingMsg: ChatMessage = event.data.message;
         if (!currentMsgs.some((m) => m.id === incomingMsg.id)) {
           currentMsgs = [...currentMsgs, incomingMsg];
-          try {
-            localStorage.setItem(localKey, JSON.stringify(currentMsgs));
-            if (altLocalKey) localStorage.setItem(altLocalKey, JSON.stringify(currentMsgs));
-          } catch (_) {}
+          persistLocal(currentMsgs);
           onUpdate(currentMsgs);
         }
       } else if (event.data.type === 'MESSAGES_SEEN') {
         let modified = false;
         currentMsgs = currentMsgs.map((m) => {
-          if (m.senderId !== event.data.userId && m.status !== 'seen') {
+          if (!matchesUser(event.data.userId, m.senderId) && m.status !== 'seen') {
             modified = true;
             return { ...m, status: 'seen' as const };
           }
           return m;
         });
         if (modified) {
-          try {
-            localStorage.setItem(localKey, JSON.stringify(currentMsgs));
-            if (altLocalKey) localStorage.setItem(altLocalKey, JSON.stringify(currentMsgs));
-          } catch (_) {}
+          persistLocal(currentMsgs);
           onUpdate(currentMsgs);
         }
       } else if (event.data.type === 'UPDATE_MESSAGE') {
@@ -104,30 +164,24 @@ export const ChatSyncService = {
           return m;
         });
         if (modified) {
-          try {
-            localStorage.setItem(localKey, JSON.stringify(currentMsgs));
-            if (altLocalKey) localStorage.setItem(altLocalKey, JSON.stringify(currentMsgs));
-          } catch (_) {}
+          persistLocal(currentMsgs);
           onUpdate(currentMsgs);
         }
       }
     };
 
     const handleSeenDirect = (targetConvId: string, seenUserId: string) => {
-      if (targetConvId !== conversationId && (!altConversationId || targetConvId !== altConversationId)) return;
+      if (!equivalentIds.includes(targetConvId)) return;
       let modified = false;
       currentMsgs = currentMsgs.map((m) => {
-        if (m.senderId !== seenUserId && m.status !== 'seen') {
+        if (!matchesUser(seenUserId, m.senderId) && m.status !== 'seen') {
           modified = true;
           return { ...m, status: 'seen' as const };
         }
         return m;
       });
       if (modified) {
-        try {
-          localStorage.setItem(localKey, JSON.stringify(currentMsgs));
-          if (altLocalKey) localStorage.setItem(altLocalKey, JSON.stringify(currentMsgs));
-        } catch (_) {}
+        persistLocal(currentMsgs);
         onUpdate(currentMsgs);
       }
     };
@@ -140,19 +194,16 @@ export const ChatSyncService = {
     window.addEventListener('zenia_messages_seen_event', handleCustomSeenEvent);
 
     const handleNewMessageDirect = (incomingMsg: ChatMessage, targetConvId: string) => {
-      if (targetConvId !== conversationId && (!altConversationId || targetConvId !== altConversationId)) return;
+      if (!equivalentIds.includes(targetConvId)) return;
       if (!currentMsgs.some((m) => m.id === incomingMsg.id)) {
         currentMsgs = [...currentMsgs, incomingMsg];
-        try {
-          localStorage.setItem(localKey, JSON.stringify(currentMsgs));
-          if (altLocalKey) localStorage.setItem(altLocalKey, JSON.stringify(currentMsgs));
-        } catch (_) {}
+        persistLocal(currentMsgs);
         onUpdate(currentMsgs);
       }
     };
 
     const handleCustomMsgEvent = (e: any) => {
-      if (e.detail && e.detail.message && e.detail.conversationId === conversationId) {
+      if (e.detail && e.detail.message && equivalentIds.includes(e.detail.conversationId)) {
         handleNewMessageDirect(e.detail.message, e.detail.conversationId);
       }
     };
@@ -162,7 +213,7 @@ export const ChatSyncService = {
       if (e.key === 'zenia_live_msg_signal' && e.newValue) {
         try {
           const parsed = JSON.parse(e.newValue);
-          if (parsed.conversationId === conversationId && parsed.message) {
+          if (equivalentIds.includes(parsed.conversationId) && parsed.message) {
             handleNewMessageDirect(parsed.message, parsed.conversationId);
           }
         } catch (_) {}
@@ -174,65 +225,81 @@ export const ChatSyncService = {
       chatChannel.addEventListener('message', handleBroadcast);
     }
 
-    // 3. Listen to Firestore collection in real-time
-    let unsubscribeFirestore: (() => void) | null = null;
-    try {
-      const messagesRef = collection(db, 'conversations', conversationId, 'messages');
-      const q = query(messagesRef);
+    // 3. Listen to Firestore collection in real-time on all target IDs
+    const unsubsFirestore: (() => void)[] = [];
+    const listenTargetIds = Array.from(new Set([canonicalId, conversationId].filter(Boolean)));
 
-      unsubscribeFirestore = onSnapshot(
-        q,
-        (snapshot) => {
-          if (!snapshot.empty) {
-            const remoteMsgs: ChatMessage[] = [];
-            snapshot.forEach((docSnap) => {
-              const data = docSnap.data();
-              remoteMsgs.push({
-                id: docSnap.id,
-                conversationId,
-                senderId: data.senderId,
-                senderName: data.senderName,
-                text: data.text || '',
-                messageType: data.messageType || 'text',
-                createdAt: data.createdAt || '12:00 PM',
-                mediaUrl: data.mediaUrl,
-                audioDuration: data.audioDuration,
-                transcription: data.transcription,
-                pollDetails: data.pollDetails,
-                tipDetails: data.tipDetails,
-                isViewOnce: data.isViewOnce,
-                isViewedOnce: data.isViewedOnce,
-                isSilent: data.isSilent,
-                isEdited: data.isEdited,
-                disappearingTimer: data.disappearingTimer,
-                replyTo: data.replyTo,
+    for (const cId of listenTargetIds) {
+      try {
+        const messagesRef = collection(db, 'conversations', cId, 'messages');
+        const q = query(messagesRef);
+
+        const unsub = onSnapshot(
+          q,
+          (snapshot) => {
+            if (!snapshot.empty) {
+              const remoteMsgs: ChatMessage[] = [];
+              snapshot.forEach((docSnap) => {
+                const data = docSnap.data();
+                const msgStatus = data.status || 'sent';
+
+                // Real-time Delivery Acknowledgement (WhatsApp / Coding Cafe standard):
+                // When recipient receives a sent message, mark it as delivered so sender gets double ticks
+                if (currentUserId && !matchesUser(currentUserId, data.senderId) && msgStatus === 'sent') {
+                  try {
+                    setDoc(doc(db, 'conversations', cId, 'messages', docSnap.id), { status: 'delivered' }, { merge: true });
+                  } catch (_) {}
+                }
+
+                remoteMsgs.push({
+                  id: docSnap.id,
+                  conversationId,
+                  senderId: data.senderId,
+                  senderName: data.senderName,
+                  senderAvatar: data.senderAvatar,
+                  text: data.text || '',
+                  messageType: data.messageType || 'text',
+                  createdAt: data.createdAt || '12:00 PM',
+                  status: currentUserId && !matchesUser(currentUserId, data.senderId) && msgStatus === 'sent' ? 'delivered' : msgStatus,
+                  reactions: data.reactions || {},
+                  mediaUrl: data.mediaUrl,
+                  audioDuration: data.audioDuration,
+                  transcription: data.transcription,
+                  pollDetails: data.pollDetails,
+                  tipDetails: data.tipDetails,
+                  isViewOnce: data.isViewOnce,
+                  isViewedOnce: data.isViewedOnce,
+                  isSilent: data.isSilent,
+                  isEdited: data.isEdited,
+                  disappearingTimer: data.disappearingTimer,
+                  replyTo: data.replyTo,
+                });
               });
-            });
 
-            // Merge with local messages, keeping newest
-            const merged = [...currentMsgs];
-            for (const r of remoteMsgs) {
-              const idx = merged.findIndex((m) => m.id === r.id);
-              if (idx >= 0) {
-                merged[idx] = r;
-              } else {
-                merged.push(r);
+              // Merge with local messages, keeping newest/remote updates
+              const merged = [...currentMsgs];
+              for (const r of remoteMsgs) {
+                const idx = merged.findIndex((m) => m.id === r.id);
+                if (idx >= 0) {
+                  merged[idx] = { ...merged[idx], ...r };
+                } else {
+                  merged.push(r);
+                }
               }
-            }
 
-            currentMsgs = merged;
-            try {
-              localStorage.setItem(localKey, JSON.stringify(currentMsgs));
-            } catch (_) {}
-            onUpdate(currentMsgs);
+              currentMsgs = merged;
+              persistLocal(currentMsgs);
+              onUpdate(currentMsgs);
+            }
+          },
+          (error) => {
+            console.warn('Firestore live message listener notice for', cId, error.message);
           }
-        },
-        (error) => {
-          console.warn('Firestore live message listener notice:', error.message);
-        }
-      );
-    } catch (err) {
-      console.warn('Firestore subscription failed, continuing with Broadcast & local storage:', err);
+        );
+        unsubsFirestore.push(unsub);
+      } catch (err) {
+        console.warn('Firestore subscription failed for', cId, err);
+      }
     }
 
     // Return cleanup function
@@ -243,9 +310,11 @@ export const ChatSyncService = {
       if (chatChannel) {
         chatChannel.removeEventListener('message', handleBroadcast);
       }
-      if (unsubscribeFirestore) {
-        unsubscribeFirestore();
-      }
+      unsubsFirestore.forEach((u) => {
+        try {
+          u();
+        } catch (_) {}
+      });
     };
   },
 
@@ -425,53 +494,114 @@ export const ChatSyncService = {
       );
     } catch (_) {}
 
-    // 3. Write to Firestore so other devices & remote users receive it live
+    // 3. Write to Firestore so other devices & remote users receive it live across canonical and alias paths
     try {
-      const msgRef = doc(db, 'conversations', conversationId, 'messages', message.id);
-      await setDoc(msgRef, {
+      const canonicalId = getCanonicalConversationId(conversationId);
+      const targetIds = Array.from(new Set([canonicalId, conversationId].filter(Boolean)));
+      const cleanStatus = message.status === 'seen' || message.status === 'delivered' ? message.status : 'sent';
+      const cleanMessage: ChatMessage = {
         ...message,
-        timestamp: Date.now(),
-      });
+        status: cleanStatus,
+      };
 
-      // Update parent conversation doc
-      const convRef = doc(db, 'conversations', conversationId);
+      for (const tId of targetIds) {
+        try {
+          const msgRef = doc(db, 'conversations', tId, 'messages', cleanMessage.id);
+          await setDoc(msgRef, {
+            ...cleanMessage,
+            timestamp: Date.now(),
+          });
+        } catch (err) {
+          console.warn('Firestore message save error for', tId, err);
+        }
+      }
+
+      // Build comprehensive participant set
+      const participantSet = new Set<string>();
+      if (foundConvObj?.participants && Array.isArray(foundConvObj.participants)) {
+        foundConvObj.participants.forEach((p) => participantSet.add(p));
+      }
+      if (conversationId.startsWith('conv_')) {
+        conversationId.replace('conv_', '').split('_').forEach((p) => {
+          if (p) {
+            participantSet.add(p);
+            participantSet.add(normalizeUserId(p));
+          }
+        });
+      }
+
+      participantSet.add(ADMIN_CANONICAL_ID);
+      participantSet.add('amytzee@gmail.com');
+      participantSet.add('current_user_id');
+
+      const isSavegamourConv =
+        conversationId.toLowerCase().includes('savegamour') ||
+        conversationId.includes(SAVEGAMOUR_CANONICAL_ID) ||
+        Array.from(participantSet).some((p) => matchesUser(p, SAVEGAMOUR_CANONICAL_ID));
+
+      if (isSavegamourConv) {
+        participantSet.add(SAVEGAMOUR_CANONICAL_ID);
+        participantSet.add('savegamour@gmail.com');
+        participantSet.add('savegamour');
+      }
+
       const updates: any = {
-        id: conversationId,
+        id: canonicalId,
+        participants: Array.from(participantSet),
+        participantDetails: {
+          ...(foundConvObj?.participantDetails || {}),
+          [ADMIN_CANONICAL_ID]: {
+            id: ADMIN_CANONICAL_ID,
+            displayName: 'Amytzee (Admin)',
+            username: 'amytzee',
+            email: 'amytzee@gmail.com',
+            isOnline: true,
+          },
+          ...(isSavegamourConv
+            ? {
+                [SAVEGAMOUR_CANONICAL_ID]: {
+                  id: SAVEGAMOUR_CANONICAL_ID,
+                  displayName: 'Savegamour',
+                  username: 'savegamour',
+                  email: 'savegamour@gmail.com',
+                  isOnline: true,
+                },
+              }
+            : {}),
+        },
         lastMessage:
-          message.text ||
-          (message.messageType === 'audio'
+          cleanMessage.text ||
+          (cleanMessage.messageType === 'audio'
             ? '🎙️ Ujumbe wa sauti'
-            : message.messageType === 'invoice'
+            : cleanMessage.messageType === 'invoice'
             ? '🧾 Ankara ya Malipo'
-            : message.messageType === 'poll'
+            : cleanMessage.messageType === 'poll'
             ? '📊 Kura ya Maoni'
-            : message.messageType === 'tip_gift'
+            : cleanMessage.messageType === 'tip_gift'
             ? '🎁 Zawadi'
             : 'Ujumbe mpya'),
-        lastMessageType: message.messageType,
-        lastMessageSenderId: message.senderId,
-        updatedAt: message.createdAt,
+        lastMessageType: cleanMessage.messageType,
+        lastMessageSenderId: cleanMessage.senderId,
+        updatedAt: cleanMessage.createdAt,
         timestamp: Date.now(),
       };
 
       if (foundConvObj) {
-        if (foundConvObj.participants) updates.participants = foundConvObj.participants;
-        if (foundConvObj.participantDetails) updates.participantDetails = foundConvObj.participantDetails;
         if (foundConvObj.isGroup !== undefined) updates.isGroup = foundConvObj.isGroup;
         if (foundConvObj.groupName) updates.groupName = foundConvObj.groupName;
         if (foundConvObj.groupAvatar) updates.groupAvatar = foundConvObj.groupAvatar;
-      } else if (conversationId.startsWith('conv_')) {
-        const parts = conversationId.replace('conv_', '').split('_').filter(Boolean);
-        if (parts.length >= 2) {
-          updates.participants = parts;
-        }
       }
 
-      await setDoc(convRef, updates, { merge: true });
+      for (const tId of targetIds) {
+        try {
+          const convRef = doc(db, 'conversations', tId);
+          await setDoc(convRef, { ...updates, id: tId }, { merge: true });
+        } catch (_) {}
+      }
 
       // Send real-time notification to participants in Firestore
       const recipientIds = updates.participants
-        ? updates.participants.filter((p: string) => !matchesUser(message.senderId, p))
+        ? updates.participants.filter((p: string) => !matchesUser(cleanMessage.senderId, p))
         : [];
 
       for (const recId of recipientIds) {
@@ -481,19 +611,19 @@ export const ChatSyncService = {
           await setDoc(doc(db, 'notifications', notifId), {
             id: notifId,
             userId: recId,
-            title: message.senderName || 'Ujumbe Mpya',
+            title: cleanMessage.senderName || 'Ujumbe Mpya',
             message:
-              message.text ||
-              (message.messageType === 'audio'
+              cleanMessage.text ||
+              (cleanMessage.messageType === 'audio'
                 ? '🎙️ Ujumbe wa sauti'
-                : message.messageType === 'invoice'
+                : cleanMessage.messageType === 'invoice'
                 ? '🧾 Ankara ya Malipo'
                 : 'Ujumbe mpya'),
             type: 'message',
-            avatar: message.senderAvatar,
+            avatar: cleanMessage.senderAvatar,
             read: false,
             createdAt: new Date().toISOString(),
-            data: { conversationId, messageId: message.id, replyText: '' },
+            data: { conversationId: canonicalId, messageId: cleanMessage.id, replyText: '' },
           });
         } catch (_) {}
       }
@@ -859,30 +989,59 @@ export const ChatSyncService = {
   },
 
   // Mark all incoming messages in a conversation as seen (Blue double ticks)
-  markMessagesAsSeen(conversationId: string, currentUserId: string) {
-    const localKey = `zenia_msgs_${conversationId}`;
+  async markMessagesAsSeen(conversationId: string, currentUserId: string) {
+    const canonicalId = getCanonicalConversationId(conversationId);
+    const targetIds = Array.from(new Set([canonicalId, conversationId].filter(Boolean)));
+    const equivalentIds = getAllEquivalentConversationIds(conversationId);
+
+    // 1. Update localStorage across all equivalent conversation IDs
     try {
-      const cached = localStorage.getItem(localKey);
-      if (cached) {
-        const msgs: ChatMessage[] = JSON.parse(cached);
-        let changed = false;
-        const updated = msgs.map((m) => {
-          if (m.senderId !== currentUserId && m.status !== 'seen') {
-            changed = true;
-            return { ...m, status: 'seen' as const };
+      for (const eId of equivalentIds) {
+        const k = `zenia_msgs_${eId}`;
+        const cached = localStorage.getItem(k);
+        if (cached) {
+          const msgs: ChatMessage[] = JSON.parse(cached);
+          let changed = false;
+          const updated = msgs.map((m) => {
+            if (!matchesUser(currentUserId, m.senderId) && m.status !== 'seen') {
+              changed = true;
+              return { ...m, status: 'seen' as const };
+            }
+            return m;
+          });
+          if (changed) {
+            localStorage.setItem(k, JSON.stringify(updated));
           }
-          return m;
-        });
-        if (changed) {
-          localStorage.setItem(localKey, JSON.stringify(updated));
-          if (chatChannel) {
-            chatChannel.postMessage({ type: 'MESSAGES_SEEN', conversationId, userId: currentUserId });
-          }
-          window.dispatchEvent(
-            new CustomEvent('zenia_messages_seen_event', { detail: { conversationId, userId: currentUserId } })
-          );
         }
       }
     } catch (_) {}
+
+    // 2. Broadcast seen event locally & cross-tab
+    if (chatChannel) {
+      try {
+        chatChannel.postMessage({ type: 'MESSAGES_SEEN', conversationId, canonicalId, userId: currentUserId });
+      } catch (_) {}
+    }
+    window.dispatchEvent(
+      new CustomEvent('zenia_messages_seen_event', { detail: { conversationId, canonicalId, userId: currentUserId } })
+    );
+
+    // 3. Update Firestore documents so remote sender gets blue double ticks in real-time
+    for (const tId of targetIds) {
+      try {
+        const msgsColl = collection(db, 'conversations', tId, 'messages');
+        const snap = await getDocs(msgsColl);
+        snap.forEach(async (docSnap) => {
+          const data = docSnap.data();
+          if (data && !matchesUser(currentUserId, data.senderId) && data.status !== 'seen') {
+            try {
+              await setDoc(doc(db, 'conversations', tId, 'messages', docSnap.id), { status: 'seen' }, { merge: true });
+            } catch (_) {}
+          }
+        });
+      } catch (err) {
+        console.warn('Firestore mark seen notice:', err);
+      }
+    }
   },
 };

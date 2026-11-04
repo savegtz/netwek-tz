@@ -471,6 +471,7 @@ export const ChatRoom: React.FC<ChatRoomProps> = ({
       mediaUrl: pendingImage.dataUrl,
       isViewOnce: isVo,
       isViewedOnce: false,
+      status: 'sent',
       createdAt: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
     };
     setMessages((prev) => [...prev, newMsg]);
@@ -561,10 +562,11 @@ export const ChatRoom: React.FC<ChatRoomProps> = ({
       messages,
       (liveMsgs) => {
         setMessages(liveMsgs);
-      }
+      },
+      currentUser.id
     );
     return () => unsub();
-  }, [conversation.id]);
+  }, [conversation.id, currentUser.id]);
 
   // Coding Cafe: Auto-scroll to bottom ref & effects
   const messagesEndRef = useRef<HTMLDivElement | null>(null);
@@ -594,9 +596,13 @@ export const ChatRoom: React.FC<ChatRoomProps> = ({
     return unsub;
   }, [conversation.id, currentUser.id]);
 
-  // Coding Cafe: Read receipts - automatically mark incoming messages as seen
+  // Coding Cafe: Read receipts - automatically mark incoming messages as seen in Firestore and locally
   useEffect(() => {
-    if (messages.some((m) => m.senderId !== currentUser.id && m.status !== 'seen')) {
+    ChatSyncService.markMessagesAsSeen(conversation.id, currentUser.id);
+  }, [conversation.id, currentUser.id]);
+
+  useEffect(() => {
+    if (messages.some((m) => !matchesUser(currentUser.id, m.senderId) && m.status !== 'seen')) {
       ChatSyncService.markMessagesAsSeen(conversation.id, currentUser.id);
     }
   }, [conversation.id, currentUser.id, messages]);
@@ -705,7 +711,7 @@ export const ChatRoom: React.FC<ChatRoomProps> = ({
       audioDuration: formattedDuration,
       transcription: 'Habari kiongozi! Ujumbe wangu wa sauti umefika.',
       createdAt: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
-      status: 'delivered',
+      status: 'sent',
       isSilent: isSilentMode,
     };
 
@@ -758,6 +764,7 @@ export const ChatRoom: React.FC<ChatRoomProps> = ({
       messageType: 'video_note',
       mediaUrl: currentUser.photoURL || freshKkAvatar,
       audioDuration: '0:10',
+      status: 'sent',
       createdAt: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
       isSilent: isSilentMode,
     };
@@ -779,6 +786,7 @@ export const ChatRoom: React.FC<ChatRoomProps> = ({
       senderAvatar: currentUser.photoURL,
       text: `📅 [Mpango/Ratiba: ${scheduleTime}]: ${inputText.trim()}`,
       messageType: 'text',
+      status: 'sent',
       createdAt: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
       disappearingTimer: disappearingTimer || undefined,
       isSilent: isSilentMode,
@@ -800,6 +808,7 @@ export const ChatRoom: React.FC<ChatRoomProps> = ({
       text: `🎁 Zawadi ya TZS ${tip.amount.toLocaleString()}`,
       messageType: 'tip_gift',
       tipDetails: tip,
+      status: 'sent',
       createdAt: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
       isSilent: isSilentMode,
     };
@@ -862,6 +871,7 @@ export const ChatRoom: React.FC<ChatRoomProps> = ({
       text: `📊 Kura: ${poll.question}`,
       messageType: 'poll',
       pollDetails: poll,
+      status: 'sent',
       createdAt: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
       isSilent: isSilentMode,
     };
@@ -942,7 +952,7 @@ export const ChatRoom: React.FC<ChatRoomProps> = ({
       text: inputText.trim(),
       messageType: 'text',
       createdAt: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
-      status: 'delivered',
+      status: 'sent',
       disappearingTimer: disappearingTimer || undefined,
       isSilent: isSilentMode,
       replyTo: replyingToMessage

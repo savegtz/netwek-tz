@@ -13,6 +13,7 @@ const friendshipBroadcast =
     : null;
 
 export const ADMIN_CANONICAL_ID = '7w6ldhpczBOVpimURqrpQ3C';
+export const SAVEGAMOUR_CANONICAL_ID = 'FCXkMkn1moZ5Vd8SR1IZuXJL';
 
 export function normalizeUserId(id?: string | null): string {
   if (!id || typeof id !== 'string') return '';
@@ -32,6 +33,17 @@ export function normalizeUserId(id?: string | null): string {
     clean === 'amina_kaunga'
   ) {
     return ADMIN_CANONICAL_ID;
+  }
+
+  // Savegamour unified aliases:
+  if (
+    clean === SAVEGAMOUR_CANONICAL_ID ||
+    lower === SAVEGAMOUR_CANONICAL_ID.toLowerCase() ||
+    lower === 'savegamour@gmail.com' ||
+    lower === 'savegamour' ||
+    lower === 'user_savegamour'
+  ) {
+    return SAVEGAMOUR_CANONICAL_ID;
   }
 
   if (lower === 'user_sarah' || lower === 'u_3' || lower === 'sarah_m' || lower === 'user_sarah_mwangi' || lower === 'sarah@soundwave.tz') return 'user_sarah_m';
@@ -61,7 +73,15 @@ export function matchesUser(
     normQ === ADMIN_CANONICAL_ID ||
     q === 'current_user_id' ||
     q === 'amytzee' ||
-    q === 'amytzee@gmail.com';
+    q === 'amytzee@gmail.com' ||
+    q === ADMIN_CANONICAL_ID.toLowerCase();
+
+  // Both match savegamour canonical identity
+  const isQuerySavegamour =
+    normQ === SAVEGAMOUR_CANONICAL_ID ||
+    q === 'savegamour' ||
+    q === 'savegamour@gmail.com' ||
+    q === SAVEGAMOUR_CANONICAL_ID.toLowerCase();
 
   if (fieldId && typeof fieldId === 'string') {
     const fId = fieldId.trim().toLowerCase();
@@ -72,7 +92,17 @@ export function matchesUser(
       (normalizeUserId(fieldId) === ADMIN_CANONICAL_ID ||
         fId === 'current_user_id' ||
         fId === 'amytzee' ||
-        fId === 'amytzee@gmail.com')
+        fId === 'amytzee@gmail.com' ||
+        fId === ADMIN_CANONICAL_ID.toLowerCase())
+    ) {
+      return true;
+    }
+    if (
+      isQuerySavegamour &&
+      (normalizeUserId(fieldId) === SAVEGAMOUR_CANONICAL_ID ||
+        fId === 'savegamour' ||
+        fId === 'savegamour@gmail.com' ||
+        fId === SAVEGAMOUR_CANONICAL_ID.toLowerCase())
     ) {
       return true;
     }
@@ -88,7 +118,17 @@ export function matchesUser(
         (normalizeUserId(details.id) === ADMIN_CANONICAL_ID ||
           dId === 'current_user_id' ||
           dId === 'amytzee' ||
-          dId === 'amytzee@gmail.com')
+          dId === 'amytzee@gmail.com' ||
+          dId === ADMIN_CANONICAL_ID.toLowerCase())
+      ) {
+        return true;
+      }
+      if (
+        isQuerySavegamour &&
+        (normalizeUserId(details.id) === SAVEGAMOUR_CANONICAL_ID ||
+          dId === 'savegamour' ||
+          dId === 'savegamour@gmail.com' ||
+          dId === SAVEGAMOUR_CANONICAL_ID.toLowerCase())
       ) {
         return true;
       }
@@ -97,14 +137,17 @@ export function matchesUser(
       const dEmail = details.email.trim().toLowerCase();
       if (dEmail === q) return true;
       if (isQueryAdmin && dEmail === 'amytzee@gmail.com') return true;
+      if (isQuerySavegamour && dEmail === 'savegamour@gmail.com') return true;
     }
     if (details.username && typeof details.username === 'string') {
       const dUser = details.username.trim().toLowerCase();
       if (dUser === q) return true;
       if (isQueryAdmin && (dUser === 'amytzee' || dUser.includes('amytzee'))) return true;
+      if (isQuerySavegamour && (dUser === 'savegamour' || dUser.includes('savegamour'))) return true;
     }
-    if (details.displayName && typeof details.displayName === 'string' && isQueryAdmin) {
-      if (details.displayName.toLowerCase().includes('amytzee')) return true;
+    if (details.displayName && typeof details.displayName === 'string') {
+      if (isQueryAdmin && details.displayName.toLowerCase().includes('amytzee')) return true;
+      if (isQuerySavegamour && details.displayName.toLowerCase().includes('savegamour')) return true;
     }
   }
 
@@ -119,6 +162,28 @@ export function makeRelId(id1: string, id2: string): string {
 }
 
 const DEFAULT_RELATIONSHIPS: Record<string, FriendRelationship> = {
+  // Authoritative mutual friendship between Amytzee (Admin) and Savegamour
+  [makeRelId(ADMIN_CANONICAL_ID, SAVEGAMOUR_CANONICAL_ID)]: {
+    id: makeRelId(ADMIN_CANONICAL_ID, SAVEGAMOUR_CANONICAL_ID),
+    userA: ADMIN_CANONICAL_ID,
+    userB: SAVEGAMOUR_CANONICAL_ID,
+    status: 'friends',
+    requestedBy: ADMIN_CANONICAL_ID,
+    senderDetails: {
+      id: ADMIN_CANONICAL_ID,
+      displayName: 'Amytzee (Admin)',
+      username: 'amytzee',
+      email: 'amytzee@gmail.com',
+    },
+    receiverDetails: {
+      id: SAVEGAMOUR_CANONICAL_ID,
+      displayName: 'Savegamour',
+      username: 'savegamour',
+      email: 'savegamour@gmail.com',
+    },
+    createdAt: new Date(Date.now() - 86400000 * 2).toISOString(),
+    updatedAt: new Date().toISOString(),
+  },
   // Fresh kk & Amina Kaunga (Current User) are friends initially
   [makeRelId('current_user_id', 'user_fresh_kk')]: {
     id: makeRelId('current_user_id', 'user_fresh_kk'),
@@ -252,7 +317,13 @@ class FriendshipServiceImpl {
       const raw = localStorage.getItem(FRIENDSHIPS_STORAGE_KEY);
       if (raw) {
         const parsed = JSON.parse(raw);
-        return { ...DEFAULT_RELATIONSHIPS, ...parsed };
+        const combined = { ...DEFAULT_RELATIONSHIPS, ...parsed };
+        // Ensure Admin <-> Savegamour is always confirmed
+        const adminSaveRelId = makeRelId(ADMIN_CANONICAL_ID, SAVEGAMOUR_CANONICAL_ID);
+        if (!combined[adminSaveRelId] || combined[adminSaveRelId].status !== 'friends') {
+          combined[adminSaveRelId] = DEFAULT_RELATIONSHIPS[adminSaveRelId];
+        }
+        return combined;
       }
     } catch (e) {
       console.warn('Failed to parse relationships from localStorage', e);
@@ -347,6 +418,14 @@ class FriendshipServiceImpl {
     // Check if target user is deleted
     if (userService.isIdentifierDeleted(targetUserId)) {
       return 'none';
+    }
+
+    // Admin and Savegamour are canonical mutual friends out of the box
+    if (
+      (matchesUser(currentUserId, ADMIN_CANONICAL_ID) && matchesUser(targetUserId, SAVEGAMOUR_CANONICAL_ID)) ||
+      (matchesUser(targetUserId, ADMIN_CANONICAL_ID) && matchesUser(currentUserId, SAVEGAMOUR_CANONICAL_ID))
+    ) {
+      return 'friends';
     }
 
     const rel = this.findRelationship(currentUserId, targetUserId);
@@ -636,6 +715,12 @@ class FriendshipServiceImpl {
       }
     });
 
+    if (matchesUser(userId, ADMIN_CANONICAL_ID)) {
+      friends.push(SAVEGAMOUR_CANONICAL_ID);
+    } else if (matchesUser(userId, SAVEGAMOUR_CANONICAL_ID)) {
+      friends.push(ADMIN_CANONICAL_ID);
+    }
+
     return Array.from(new Set(friends));
   }
 
@@ -676,6 +761,37 @@ class FriendshipServiceImpl {
         results.push({ friendId, details, relationship: rel });
       }
     });
+
+    // Ensure Admin has Savegamour as confirmed friend
+    if (matchesUser(userId, ADMIN_CANONICAL_ID)) {
+      const hasSavegamour = results.some((r) => matchesUser(r.friendId, SAVEGAMOUR_CANONICAL_ID));
+      if (!hasSavegamour) {
+        results.push({
+          friendId: SAVEGAMOUR_CANONICAL_ID,
+          details: {
+            id: SAVEGAMOUR_CANONICAL_ID,
+            displayName: 'Savegamour',
+            username: 'savegamour',
+            email: 'savegamour@gmail.com',
+          },
+          relationship: DEFAULT_RELATIONSHIPS[makeRelId(ADMIN_CANONICAL_ID, SAVEGAMOUR_CANONICAL_ID)],
+        });
+      }
+    } else if (matchesUser(userId, SAVEGAMOUR_CANONICAL_ID)) {
+      const hasAdmin = results.some((r) => matchesUser(r.friendId, ADMIN_CANONICAL_ID));
+      if (!hasAdmin) {
+        results.push({
+          friendId: ADMIN_CANONICAL_ID,
+          details: {
+            id: ADMIN_CANONICAL_ID,
+            displayName: 'Amytzee (Admin)',
+            username: 'amytzee',
+            email: 'amytzee@gmail.com',
+          },
+          relationship: DEFAULT_RELATIONSHIPS[makeRelId(ADMIN_CANONICAL_ID, SAVEGAMOUR_CANONICAL_ID)],
+        });
+      }
+    }
 
     return results;
   }
