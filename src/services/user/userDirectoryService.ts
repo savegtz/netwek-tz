@@ -111,6 +111,26 @@ export const PRIMARY_ADMIN_PROFILE: UserProfile = {
 };
 
 /**
+ * Authoritative Registered User Profile for Savegamour (Firebase Auth)
+ */
+export const PRIMARY_SAVEGAMOUR_PROFILE: UserProfile = {
+  id: 'FCXkMkn1moZ5Vd8SR1IZuXJL',
+  email: 'savegamour@gmail.com',
+  displayName: 'Savegamour',
+  username: 'savegamour',
+  bio: 'Mwanachama wa Zenia Network 🌟',
+  accountType: 'personal',
+  verified: false,
+  followersCount: 1,
+  followingCount: 1,
+  postsCount: 0,
+  isOnline: true,
+  lastSeen: 'Sasa hivi',
+  walletBalance: 0,
+  role: 'user',
+};
+
+/**
  * Check if demo/sample data mode is enabled.
  * Defaults to FALSE (Clean Production Mode) so only real users exist.
  */
@@ -271,7 +291,7 @@ class UserDirectoryServiceImpl {
     try {
       const cached = localStorage.getItem('zenia_firestore_users_cache');
       const regRaw = localStorage.getItem(REGISTERED_USERS_REGISTRY_KEY);
-      const combinedInitial: UserProfile[] = [PRIMARY_ADMIN_PROFILE];
+      const combinedInitial: UserProfile[] = [PRIMARY_ADMIN_PROFILE, PRIMARY_SAVEGAMOUR_PROFILE];
       if (regRaw) {
         try {
           combinedInitial.push(...(JSON.parse(regRaw) as UserProfile[]));

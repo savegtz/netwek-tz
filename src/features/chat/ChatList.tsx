@@ -1618,18 +1618,32 @@ export const ChatList: React.FC<ChatListProps> = ({
                     })
                     .slice(0, 3)
                     .map((contact) => {
-                      const resolvedName =
-                        contact.displayName && contact.displayName.trim() !== 'Mtumiaji'
-                          ? contact.displayName.trim()
-                          : contact.username && contact.username.trim() !== 'user'
-                          ? contact.username.trim()
-                          : contact.email
-                          ? contact.email.split('@')[0]
-                          : 'Mtumiaji';
-                      const resolvedUsername =
-                        contact.username && contact.username.trim() !== 'user'
-                          ? contact.username.trim()
-                          : (contact.email ? contact.email.split('@')[0] : resolvedName.toLowerCase().replace(/\s+/g, '_'));
+                      const isSavegamour =
+                        contact.id === 'FCXkMkn1moZ5Vd8SR1IZuXJL' ||
+                        contact.email?.toLowerCase() === 'savegamour@gmail.com' ||
+                        matchesUser(contact.id, 'FCXkMkn1moZ5Vd8SR1IZuXJL');
+                      const isAdmin =
+                        matchesUser(contact.id, ADMIN_CANONICAL_ID) ||
+                        contact.email?.toLowerCase() === 'amytzee@gmail.com';
+
+                      const resolvedName = isAdmin
+                        ? 'Amytzee (Admin)'
+                        : isSavegamour
+                        ? 'Savegamour'
+                        : contact.displayName && contact.displayName.trim() !== 'Mtumiaji'
+                        ? contact.displayName.trim()
+                        : contact.username && contact.username.trim() !== 'user'
+                        ? contact.username.trim()
+                        : contact.email
+                        ? contact.email.split('@')[0]
+                        : 'Mwanachama';
+                      const resolvedUsername = isAdmin
+                        ? 'amytzee'
+                        : isSavegamour
+                        ? 'savegamour'
+                        : contact.username && contact.username.trim() !== 'user'
+                        ? contact.username.trim()
+                        : (contact.email ? contact.email.split('@')[0] : resolvedName.toLowerCase().replace(/\s+/g, '_'));
 
                       return (
                         <div
