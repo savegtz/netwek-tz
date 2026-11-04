@@ -1,4 +1,5 @@
 import { StatusItem } from '../../types';
+import { isDemoModeActive } from '../user/userDirectoryService';
 
 export interface BusinessPromotionRecord {
   id: string;
@@ -139,10 +140,20 @@ class BusinessStatusServiceImpl {
     try {
       const raw = localStorage.getItem(STORAGE_KEY_PROMOTIONS);
       if (raw) {
-        return JSON.parse(raw);
+        const parsed: BusinessPromotionRecord[] = JSON.parse(raw);
+        if (!isDemoModeActive()) {
+          return parsed.filter(
+            (p) =>
+              p.authorId !== 'zebra_restaurant' &&
+              p.statusId !== 'status_card_zebra_food' &&
+              p.statusId !== 'status_card_dar_concert' &&
+              !p.id.startsWith('promo_zebra_')
+          );
+        }
+        return parsed;
       }
     } catch {}
-    return DEFAULT_PROMOTIONS;
+    return isDemoModeActive() ? DEFAULT_PROMOTIONS : [];
   }
 
   private savePromotions() {
@@ -162,10 +173,13 @@ class BusinessStatusServiceImpl {
       const raw = localStorage.getItem(STORAGE_KEY_VERIFIED_AUTHORS);
       if (raw) {
         const arr = JSON.parse(raw);
+        if (!isDemoModeActive()) {
+          return new Set(arr.filter((a: string) => !DEFAULT_VERIFIED_AUTHORS.includes(a)));
+        }
         return new Set(arr);
       }
     } catch {}
-    return new Set(DEFAULT_VERIFIED_AUTHORS);
+    return new Set(isDemoModeActive() ? DEFAULT_VERIFIED_AUTHORS : []);
   }
 
   private saveVerifiedAuthors() {

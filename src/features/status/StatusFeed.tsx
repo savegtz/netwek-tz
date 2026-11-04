@@ -54,6 +54,7 @@ import {
   setStoredAvatarStyle,
 } from '../profile/avatarStyles';
 import { AvatarShapeStyle } from '../../types';
+import { isDemoModeActive } from '../../services/user/userDirectoryService';
 
 interface StatusFeedProps {
   currentUser: UserProfile;
@@ -396,11 +397,15 @@ export const StatusFeed: React.FC<StatusFeedProps> = ({
     },
   ];
 
-  // Merge custom statuses with initial list
-  const [statusCards, setStatusCards] = useState<StatusItem[]>([
-    ...customStatuses,
-    ...initialStatuses,
-  ]);
+  // Merge custom statuses with initial list (only in demo preview mode)
+  const isDemo = isDemoModeActive();
+  const [statusCards, setStatusCards] = useState<StatusItem[]>(() =>
+    isDemo ? [...customStatuses, ...initialStatuses] : customStatuses
+  );
+
+  React.useEffect(() => {
+    setStatusCards(isDemo ? [...customStatuses, ...initialStatuses] : customStatuses);
+  }, [customStatuses, isDemo]);
 
   const [activeStoryIndex, setActiveStoryIndex] = useState<number>(0);
   const [likedStatusIds, setLikedStatusIds] = useState<Record<string, boolean>>({
@@ -740,7 +745,25 @@ export const StatusFeed: React.FC<StatusFeedProps> = ({
         {/* MAIN STATUS STORY CARD VIEWER (Matches Exact Specification) */}
         {/* ============================================================== */}
         <div className="p-3 sm:p-4 max-w-xl mx-auto w-full space-y-4">
-          <div className="relative rounded-[28px] overflow-hidden bg-slate-950 border border-white/10 shadow-2xl flex flex-col min-h-[460px]">
+          {!currentStatus ? (
+            <div className="p-8 sm:p-12 text-center flex flex-col items-center justify-center min-h-[420px] bg-[#0A0E1A] border border-white/10 rounded-[28px] shadow-2xl">
+              <div className="w-16 h-16 rounded-2xl bg-cyan-500/10 border border-cyan-500/20 flex items-center justify-center mb-4 text-cyan-400">
+                <Sparkles className="w-8 h-8" />
+              </div>
+              <h3 className="text-lg font-bold text-white mb-2">Hakuna Hali Mpya Kwa Sasa</h3>
+              <p className="text-sm text-slate-400 max-w-sm mb-6 leading-relaxed">
+                Bado hakuna mwanachama aliyeweka status. Bofya kitufe hapo chini au '+' kwenye Hali Yangu ili uwe wa kwanza kuweka status yako leo!
+              </p>
+              <button
+                onClick={onOpenCreateMenu}
+                className="px-5 py-2.5 rounded-2xl bg-gradient-to-r from-cyan-400 to-blue-500 text-slate-950 font-bold text-sm shadow-lg hover:brightness-110 active:scale-95 transition-all flex items-center gap-2"
+              >
+                <Plus className="w-4 h-4 stroke-[3]" />
+                <span>Weka Hali Yako Mpya</span>
+              </button>
+            </div>
+          ) : (
+            <div className="relative rounded-[28px] overflow-hidden bg-slate-950 border border-white/10 shadow-2xl flex flex-col min-h-[460px]">
             {/* Top Author Metadata */}
             <div className="relative z-10 p-4 bg-gradient-to-b from-black/85 via-black/60 to-transparent flex items-center justify-between">
               <div className="flex items-center gap-2.5">
@@ -1809,64 +1832,67 @@ export const StatusFeed: React.FC<StatusFeedProps> = ({
               )}
             </div>
           </div>
+          )}
 
           {/* ============================================================== */}
-          {/* 4. FRESH FOOD NEAR YOU (Food Statuses za Karibu) */}
+          {/* 4. FRESH FOOD NEAR YOU (Food Statuses za Karibu - Demo Only) */}
           {/* ============================================================== */}
-          <div className="p-4 rounded-3xl bg-[#0C1122] border border-amber-500/20 space-y-3 shadow-xl">
-            <div className="flex items-center justify-between">
-              <div>
-                <h4 className="font-black text-sm text-white flex items-center gap-1.5">
-                  <Flame className="w-4 h-4 text-amber-400" />
-                  <span>Fresh Food Near You (Vyakula vya Karibu)</span>
-                </h4>
-                <p className="text-[11px] text-slate-400">
-                  Vyakula vitamu kutoka migahawa ya Masaki, Kinondoni & Sinza
-                </p>
+          {isDemo && (
+            <div className="p-4 rounded-3xl bg-[#0C1122] border border-amber-500/20 space-y-3 shadow-xl">
+              <div className="flex items-center justify-between">
+                <div>
+                  <h4 className="font-black text-sm text-white flex items-center gap-1.5">
+                    <Flame className="w-4 h-4 text-amber-400" />
+                    <span>Fresh Food Near You (Vyakula vya Karibu)</span>
+                  </h4>
+                  <p className="text-[11px] text-slate-400">
+                    Vyakula vitamu kutoka migahawa ya Masaki, Kinondoni & Sinza
+                  </p>
+                </div>
               </div>
-            </div>
 
-            <div className="grid grid-cols-1 sm:grid-cols-3 gap-2.5">
-              {freshFoodsNearYou.map((f) => (
-                <div
-                  key={f.id}
-                  className="p-3 rounded-2xl bg-[#141A30] border border-white/5 hover:border-amber-500/40 flex flex-col justify-between group transition-all"
-                >
-                  <div className="relative aspect-video rounded-xl overflow-hidden mb-2">
-                    <SafeImage
-                      src={f.image}
-                      fallbackText={f.name}
-                      className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300"
-                    />
-                    <span className="absolute top-1.5 right-1.5 px-1.5 py-0.5 rounded bg-amber-500 text-slate-950 font-black text-[9px]">
-                      {f.tag}
-                    </span>
-                  </div>
-
-                  <div>
-                    <h5 className="font-extrabold text-xs text-white truncate">{f.name}</h5>
-                    <p className="text-[10px] text-slate-400 truncate">{f.restaurant}</p>
-                    <div className="flex items-center gap-1.5 mt-1">
-                      <span className="text-amber-300 font-black text-xs font-mono">
-                        TSh {f.price.toLocaleString()}
-                      </span>
-                      <span className="text-slate-500 line-through text-[10px] font-mono">
-                        TSh {f.regPrice.toLocaleString()}
+              <div className="grid grid-cols-1 sm:grid-cols-3 gap-2.5">
+                {freshFoodsNearYou.map((f) => (
+                  <div
+                    key={f.id}
+                    className="p-3 rounded-2xl bg-[#141A30] border border-white/5 hover:border-amber-500/40 flex flex-col justify-between group transition-all"
+                  >
+                    <div className="relative aspect-video rounded-xl overflow-hidden mb-2">
+                      <SafeImage
+                        src={f.image}
+                        fallbackText={f.name}
+                        className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300"
+                      />
+                      <span className="absolute top-1.5 right-1.5 px-1.5 py-0.5 rounded bg-amber-500 text-slate-950 font-black text-[9px]">
+                        {f.tag}
                       </span>
                     </div>
-                  </div>
 
-                  <button
-                    onClick={() => handleOpenFoodOrder(f.name, f.restaurant, f.price)}
-                    className="mt-2.5 py-2 w-full rounded-xl bg-amber-500/20 hover:bg-amber-500 text-amber-300 hover:text-slate-950 font-bold text-xs flex items-center justify-center gap-1 transition-all"
-                  >
-                    <Utensils className="w-3.5 h-3.5" />
-                    <span>Agiza Sasa</span>
-                  </button>
-                </div>
-              ))}
+                    <div>
+                      <h5 className="font-extrabold text-xs text-white truncate">{f.name}</h5>
+                      <p className="text-[10px] text-slate-400 truncate">{f.restaurant}</p>
+                      <div className="flex items-center gap-1.5 mt-1">
+                        <span className="text-amber-300 font-black text-xs font-mono">
+                          TSh {f.price.toLocaleString()}
+                        </span>
+                        <span className="text-slate-500 line-through text-[10px] font-mono">
+                          TSh {f.regPrice.toLocaleString()}
+                        </span>
+                      </div>
+                    </div>
+
+                    <button
+                      onClick={() => handleOpenFoodOrder(f.name, f.restaurant, f.price)}
+                      className="mt-2.5 py-2 w-full rounded-xl bg-amber-500/20 hover:bg-amber-500 text-amber-300 hover:text-slate-950 font-bold text-xs flex items-center justify-center gap-1 transition-all"
+                    >
+                      <Utensils className="w-3.5 h-3.5" />
+                      <span>Agiza Sasa</span>
+                    </button>
+                  </div>
+                ))}
+              </div>
             </div>
-          </div>
+          )}
         </div>
       </div>
 

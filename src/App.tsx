@@ -275,7 +275,45 @@ export default function App() {
     return () => unsubscribe();
   }, [activeUser.id, activeUser.email, activeCallSession]);
   const [createStatusType, setCreateStatusType] = useState<StatusType | 'ai' | null>(null);
-  const [customStatuses, setCustomStatuses] = useState<StatusItem[]>([]);
+  const [customStatuses, setCustomStatuses] = useState<StatusItem[]>(() => {
+    try {
+      const raw = localStorage.getItem('zenia_custom_statuses');
+      return raw ? JSON.parse(raw) : [];
+    } catch {
+      return [];
+    }
+  });
+
+  // Real-time Firestore sync for status updates (persisted across accounts/devices)
+  useEffect(() => {
+    try {
+      const statusesRef = collection(db, 'statuses');
+      const unsub = onSnapshot(
+        statusesRef,
+        (snapshot) => {
+          if (!snapshot.empty) {
+            const list: StatusItem[] = [];
+            snapshot.forEach((docSnap) => {
+              const data = docSnap.data() as StatusItem;
+              if (!data.expiresAt || new Date(data.expiresAt).getTime() > Date.now()) {
+                list.push({ ...data, id: docSnap.id });
+              }
+            });
+            if (list.length > 0) {
+              setCustomStatuses(list);
+              try {
+                localStorage.setItem('zenia_custom_statuses', JSON.stringify(list));
+              } catch (_) {}
+            }
+          }
+        },
+        (err) => {
+          console.warn('Firestore statuses sync notice:', err);
+        }
+      );
+      return () => unsub();
+    } catch (_) {}
+  }, []);
   const [isFrameMode, setIsFrameMode] = useState<boolean>(false); // Full-width responsive web view by default
   const [isAppLocked, setIsAppLocked] = useState<boolean>(false);
   const [authPromptReason, setAuthPromptReason] = useState<string | null>(null);
@@ -1134,8 +1172,17 @@ export default function App() {
         onClose={() => setCreateStatusType(null)}
         statusType={createStatusType}
         currentUser={activeUser}
-        onStatusCreated={(newStatus) => {
-          setCustomStatuses((prev) => [newStatus, ...prev]);
+        onStatusCreated={async (newStatus) => {
+          setCustomStatuses((prev) => {
+            const updated = [newStatus, ...prev.filter((s) => s.id !== newStatus.id)];
+            try {
+              localStorage.setItem('zenia_custom_statuses', JSON.stringify(updated));
+            } catch (_) {}
+            return updated;
+          });
+          try {
+            await setDoc(doc(db, 'statuses', newStatus.id), newStatus);
+          } catch (_) {}
           setActiveTab('chats');
         }}
       />

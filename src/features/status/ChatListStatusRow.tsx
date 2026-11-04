@@ -20,6 +20,7 @@ import { AvatarStyleSelectorModal } from '../../components/AvatarStyleSelectorMo
 import { Palette, Layers } from 'lucide-react';
 import { friendshipService } from '../../services/user/friendshipService';
 import { businessStatusService } from '../../services/status/businessStatusService';
+import { isDemoModeActive } from '../../services/user/userDirectoryService';
 import {
   AVATAR_STYLES_LIST,
   getStoredAvatarStyle,
@@ -286,7 +287,8 @@ export const ChatListStatusRow: React.FC<ChatListStatusRowProps> = ({
   customStatuses = [],
   onStartChatWithBusiness,
 }) => {
-  const allStatuses = [...customStatuses, ...INITIAL_CHAT_STATUSES];
+  const isDemo = isDemoModeActive();
+  const allStatuses = isDemo ? [...customStatuses, ...INITIAL_CHAT_STATUSES] : customStatuses;
   const scrollRef = useRef<HTMLDivElement>(null);
   const [isStyleModalOpen, setIsStyleModalOpen] = useState(false);
   const [currentAvatarStyle, setCurrentAvatarStyle] = useState<AvatarShapeStyle>(() =>
