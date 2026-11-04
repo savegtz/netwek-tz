@@ -217,13 +217,15 @@ class PushNotificationService {
   }
 
   public notifyAction(action: string, payload: ZeniaPushPayload): void {
-    this.actionListeners.forEach((cb) => {
-      try {
-        cb(action, payload);
-      } catch (err) {
-        console.error('Error in notification action listener:', err);
-      }
-    });
+    setTimeout(() => {
+      this.actionListeners.forEach((cb) => {
+        try {
+          cb(action, payload);
+        } catch (err) {
+          console.error('Error in notification action listener:', err);
+        }
+      });
+    }, 0);
   }
 
   /**
@@ -317,15 +319,17 @@ class PushNotificationService {
       badge: payload.badge || '/icon-badge.svg',
     };
 
-    // 1. Trigger in-app Heads-Up Notification Banner
+    // 1. Trigger in-app Heads-Up Notification Banner asynchronously to prevent React render-phase setState conflicts
     if (settings.bannersEnabled) {
-      this.bannerListeners.forEach((cb) => {
-        try {
-          cb(fullPayload);
-        } catch (e) {
-          console.error(e);
-        }
-      });
+      setTimeout(() => {
+        this.bannerListeners.forEach((cb) => {
+          try {
+            cb(fullPayload);
+          } catch (e) {
+            console.error(e);
+          }
+        });
+      }, 0);
     }
 
     // Play chime sound unless silent

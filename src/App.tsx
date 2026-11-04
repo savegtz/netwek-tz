@@ -3,7 +3,7 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { onAuthStateChanged, signOut } from 'firebase/auth';
 import { doc, getDoc, setDoc, collection, onSnapshot } from 'firebase/firestore';
 import { auth, db } from './services/firebase/config';
@@ -472,6 +472,9 @@ export default function App() {
     } catch {}
   }, [notifications, currentUser?.id]);
 
+  const seenNotificationIdsRef = useRef<Set<string>>(new Set());
+  const isInitialNotifSnapshotRef = useRef<boolean>(true);
+
   // Real-time Firestore notification stream for instant cross-device alerts
   useEffect(() => {
     const targetId = currentUser?.id || activeUser.id;
@@ -486,12 +489,12 @@ export default function App() {
             const remoteNotifs: NotificationItem[] = [];
             snapshot.forEach((snap) => {
               const data = snap.data() as NotificationItem;
-              const matchesUser =
+              const matchesTarget =
                 data.userId === targetId ||
                 (currentUser?.email && data.userId === currentUser.email) ||
                 (targetId === 'current_user_id' && (data.userId === 'current_user_id' || data.userId === 'savegamour@gmail.com'));
 
-              if (matchesUser) {
+              if (matchesTarget) {
                 remoteNotifs.push({
                   ...data,
                   id: snap.id,
@@ -500,23 +503,31 @@ export default function App() {
             });
 
             if (remoteNotifs.length > 0) {
+              // Update state purely without calling any external side-effects
               setNotifications((prev) => {
                 const map = new Map<string, NotificationItem>();
-                // First insert remote ones
                 remoteNotifs.forEach((n) => map.set(n.id, n));
-                // Then local non-overwritten ones
                 prev.forEach((n) => {
                   if (!map.has(n.id)) {
                     map.set(n.id, n);
                   }
                 });
 
-                // Automatically trigger Push Notification & Banner for newly arrived remote items
-                const newItems = remoteNotifs.filter(
-                  (rn) => !rn.read && !prev.some((p) => p.id === rn.id)
+                return Array.from(map.values()).sort(
+                  (a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime()
                 );
-                if (newItems.length > 0) {
-                  const newest = newItems[0];
+              });
+
+              // Detect new items safely outside state updater
+              const brandNewUnread = remoteNotifs.filter(
+                (rn) => !rn.read && !seenNotificationIdsRef.current.has(rn.id)
+              );
+              remoteNotifs.forEach((rn) => seenNotificationIdsRef.current.add(rn.id));
+
+              // Trigger push notification banner safely on a timeout if not initial load
+              if (brandNewUnread.length > 0 && !isInitialNotifSnapshotRef.current) {
+                const newest = brandNewUnread[0];
+                setTimeout(() => {
                   pushNotificationService.sendNotification({
                     title: newest.title || 'Taarifa Mpya ya Zenia',
                     body: newest.message || '',
@@ -527,12 +538,9 @@ export default function App() {
                       { action: 'reply', title: '💬 Jibu' },
                     ],
                   });
-                }
-
-                return Array.from(map.values()).sort(
-                  (a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime()
-                );
-              });
+                }, 100);
+              }
+              isInitialNotifSnapshotRef.current = false;
             }
           }
         },
