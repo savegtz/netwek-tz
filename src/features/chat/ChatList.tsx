@@ -1604,48 +1604,81 @@ export const ChatList: React.FC<ChatListProps> = ({
                   <span>Marafiki Unaoweza Kuchati Nao:</span>
                 </p>
                 <div className="space-y-2">
-                  {directoryUsers.filter((c) => !userService.isUserDeleted(c) && c.id !== (currentUser ? currentUser.id : 'guest')).slice(0, 3).map((contact) => (
-                    <div
-                      key={contact.id}
-                      className="flex items-center justify-between gap-2 p-1.5 rounded-xl hover:bg-white/5 transition-colors"
-                    >
-                      <div className="flex items-center gap-2 min-w-0">
-                        <SafeImage
-                          src={contact.photoURL}
-                          fallbackText={contact.displayName}
-                          fallbackGradient="from-cyan-800 to-indigo-900"
-                          alt={contact.displayName}
-                          className="w-7 h-7 rounded-lg object-cover ring-1 ring-white/10"
-                        />
-                        <div className="min-w-0">
-                          <p className="text-xs font-semibold text-white truncate">{contact.displayName}</p>
-                          <p className="text-[9px] text-slate-400 truncate">@{contact.username}</p>
+                  {directoryUsers
+                    .filter((c) => {
+                      if (!c || userService.isUserDeleted(c)) return false;
+                      const cId = c.id || '';
+                      if (currentUser && (cId === currentUser.id || (c.email && c.email.toLowerCase() === currentUser.email?.toLowerCase()))) {
+                        return false;
+                      }
+                      const hasName = Boolean(c.displayName && c.displayName.trim() && c.displayName !== 'Mtumiaji');
+                      const hasUsername = Boolean(c.username && c.username.trim() && c.username !== 'user');
+                      const hasEmail = Boolean(c.email && c.email.trim());
+                      return hasName || hasUsername || hasEmail;
+                    })
+                    .slice(0, 3)
+                    .map((contact) => {
+                      const resolvedName =
+                        contact.displayName && contact.displayName.trim() !== 'Mtumiaji'
+                          ? contact.displayName.trim()
+                          : contact.username && contact.username.trim() !== 'user'
+                          ? contact.username.trim()
+                          : contact.email
+                          ? contact.email.split('@')[0]
+                          : 'Mtumiaji';
+                      const resolvedUsername =
+                        contact.username && contact.username.trim() !== 'user'
+                          ? contact.username.trim()
+                          : (contact.email ? contact.email.split('@')[0] : resolvedName.toLowerCase().replace(/\s+/g, '_'));
+
+                      return (
+                        <div
+                          key={contact.id}
+                          className="flex items-center justify-between gap-2 p-1.5 rounded-xl hover:bg-white/5 transition-colors"
+                        >
+                          <div className="flex items-center gap-2 min-w-0">
+                            <SafeImage
+                              src={contact.photoURL}
+                              fallbackText={resolvedName}
+                              fallbackGradient="from-cyan-800 to-indigo-900"
+                              alt={resolvedName}
+                              className="w-7 h-7 rounded-lg object-cover ring-1 ring-white/10"
+                            />
+                            <div className="min-w-0">
+                              <p className="text-xs font-semibold text-white truncate">{resolvedName}</p>
+                              <p className="text-[9px] text-slate-400 truncate">@{resolvedUsername}</p>
+                            </div>
+                          </div>
+                          <button
+                            onClick={() => {
+                              if (!currentUser) {
+                                setGuestPromptState({
+                                  isOpen: true,
+                                  targetName: resolvedName,
+                                  targetAvatar: contact.photoURL,
+                                  targetSubtitle: `@${resolvedUsername} • ${contact.bio || ''}`,
+                                  contact,
+                                });
+                                return;
+                              }
+                              if (onStartNewChatWithUser) {
+                                onStartNewChatWithUser({
+                                  id: contact.id,
+                                  displayName: resolvedName,
+                                  username: resolvedUsername,
+                                  photoURL: contact.photoURL,
+                                });
+                              } else {
+                                onStartNewChat();
+                              }
+                            }}
+                            className="px-2.5 py-1 rounded-lg bg-cyan-500/20 hover:bg-cyan-500 text-cyan-300 hover:text-slate-950 text-[10px] font-bold transition-all shrink-0 active:scale-95"
+                          >
+                            Chat
+                          </button>
                         </div>
-                      </div>
-                      <button
-                        onClick={() => {
-                          if (!currentUser) {
-                            setGuestPromptState({
-                              isOpen: true,
-                              targetName: contact.displayName,
-                              targetAvatar: contact.photoURL,
-                              targetSubtitle: `@${contact.username} • ${contact.bio}`,
-                              contact,
-                            });
-                            return;
-                          }
-                          if (onStartNewChatWithUser) {
-                            onStartNewChatWithUser(contact);
-                          } else {
-                            onStartNewChat();
-                          }
-                        }}
-                        className="px-2.5 py-1 rounded-lg bg-cyan-500/20 hover:bg-cyan-500 text-cyan-300 hover:text-slate-950 text-[10px] font-bold transition-all shrink-0 active:scale-95"
-                      >
-                        Chat
-                      </button>
-                    </div>
-                  ))}
+                      );
+                    })}
                 </div>
               </div>
             )}

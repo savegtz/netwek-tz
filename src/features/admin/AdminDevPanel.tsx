@@ -245,6 +245,33 @@ export const AdminDevPanel: React.FC<AdminDevPanelProps> = ({
     }
   };
 
+  const [isSyncingAuth, setIsSyncingAuth] = useState(false);
+
+  const handleSyncFirebaseAuth = async () => {
+    setIsSyncingAuth(true);
+    try {
+      const res = await userDirectoryService.syncWithFirebaseAuth();
+      const freshUsers = userDirectoryService.getAllUsers();
+      setUsersList(freshUsers);
+      showToast(res.message || 'Akaunti za Firebase zimesawazishwa kikamilifu! ✨');
+    } catch (e) {
+      showToast('Kuna hitilafu ya kusawazisha: ' + (e as Error).message);
+    } finally {
+      setIsSyncingAuth(false);
+    }
+  };
+
+  const handleUpdateUserProfile = async (userId: string, data: Partial<UserProfile>) => {
+    try {
+      await userDirectoryService.updateUserProfileInFirestore(userId, data);
+      const freshUsers = userDirectoryService.getAllUsers();
+      setUsersList(freshUsers);
+      showToast('Taarifa za mtumiaji zimesasishwa kikamilifu! ✓');
+    } catch (e) {
+      showToast('Hitilafu ya kuhifadhi: ' + (e as Error).message);
+    }
+  };
+
   const handleToggleDemoMode = async () => {
     const nextMode = !isDemoMode;
     setIsDemoMode(nextMode);
@@ -1133,6 +1160,9 @@ export const AdminDevPanel: React.FC<AdminDevPanelProps> = ({
               cleanResult={cleanResult}
               onPurgeDemo={handlePurgeDemoData}
               isPurgingDemo={isPurgingDemo}
+              onSyncFirebaseAuth={handleSyncFirebaseAuth}
+              isSyncingAuth={isSyncingAuth}
+              onUpdateUserProfile={handleUpdateUserProfile}
             />
           )}
 

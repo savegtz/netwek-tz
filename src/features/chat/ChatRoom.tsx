@@ -190,19 +190,29 @@ export const ChatRoom: React.FC<ChatRoomProps> = ({
     otherUserId === ADMIN_CANONICAL_ID ||
     (otherDetails?.email && otherDetails.email.toLowerCase() === 'amytzee@gmail.com');
 
+  const isOtherSavegamour =
+    otherUserId === 'FCXkMkn1moZ5Vd8SR1IZuXJL' ||
+    otherUserLower.includes('savegamour') ||
+    (otherDetails?.email && otherDetails.email.toLowerCase() === 'savegamour@gmail.com') ||
+    (dirUser?.email && dirUser.email.toLowerCase() === 'savegamour@gmail.com');
+
   // Title / Name Resolution: never fall back to "Mtumiaji" if any identifiable details exist
   let resolvedName =
     (conversation.isGroup
       ? conversation.groupName
       : isOtherAdmin
       ? 'Amytzee (Admin)'
+      : isOtherSavegamour
+      ? (otherDetails?.displayName && otherDetails.displayName !== 'Mtumiaji' ? otherDetails.displayName : (dirUser?.displayName || 'Savegamour'))
       : (otherDetails?.displayName && otherDetails.displayName !== 'Mtumiaji' ? otherDetails.displayName : null) ||
         (dirUser?.displayName && dirUser.displayName !== 'Mtumiaji' ? dirUser.displayName : null) ||
         contact?.displayName ||
         (matchesUser(otherUserId, 'user_fresh_kk') ? 'Fresh kk' : null)) || null;
 
   if (!resolvedName || resolvedName === 'Mtumiaji') {
-    if (otherDetails?.username && otherDetails.username !== 'user') {
+    if (isOtherSavegamour) {
+      resolvedName = 'Savegamour';
+    } else if (otherDetails?.username && otherDetails.username !== 'user') {
       resolvedName = otherDetails.username.charAt(0).toUpperCase() + otherDetails.username.slice(1);
     } else if (dirUser?.username && dirUser.username !== 'user') {
       resolvedName = dirUser.username.charAt(0).toUpperCase() + dirUser.username.slice(1);
@@ -212,7 +222,9 @@ export const ChatRoom: React.FC<ChatRoomProps> = ({
       resolvedName = dirUser.email.split('@')[0];
     } else if (isOtherAdmin) {
       resolvedName = 'Amytzee (Admin)';
-    } else if (otherUserId && otherUserId.length > 2) {
+    } else if (otherUserId === 'FCXkMkn1moZ5Vd8SR1IZuXJL') {
+      resolvedName = 'Savegamour';
+    } else if (otherUserId && otherUserId.length > 2 && !otherUserId.match(/^[a-zA-Z0-9]{20,}$/)) {
       const clean = otherUserId.replace(/^user_/, '');
       resolvedName = clean.charAt(0).toUpperCase() + clean.slice(1);
     } else {
@@ -254,9 +266,10 @@ export const ChatRoom: React.FC<ChatRoomProps> = ({
     !conversation.isGroup &&
     Boolean(
       isOtherAdmin ||
+      isOtherSavegamour ||
       (dirUser && isUserOnline(dirUser, currentUserId)) ||
       (otherDetails && isUserOnline(otherDetails, currentUserId)) ||
-      (typeof name === 'string' && name.includes('Amytzee'))
+      (typeof name === 'string' && (name.includes('Amytzee') || name.includes('Savegamour')))
     );
 
   const [messages, setMessages] = useState<ChatMessage[]>(() => {

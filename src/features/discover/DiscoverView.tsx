@@ -138,12 +138,22 @@ export const DiscoverView: React.FC<DiscoverViewProps> = ({
   const extraKnownPeople: UserProfile[] = [];
   friendshipService.getConfirmedFriendships(effectiveCurrentUserId).forEach(({ friendId, details }) => {
     if (!directoryUsers.some((u) => matchesUser(friendId, u.id, u))) {
-      const dName = details?.displayName || 'Mwanachama wa Zenia';
+      const isSavegamour =
+        friendId === 'FCXkMkn1moZ5Vd8SR1IZuXJL' ||
+        friendId.toLowerCase().includes('savegamour') ||
+        details?.email?.toLowerCase() === 'savegamour@gmail.com';
+      const dName = isSavegamour
+        ? 'Savegamour'
+        : (details?.displayName && details.displayName !== 'Mtumiaji' ? details.displayName : 'Mwanachama wa Zenia');
       const p: UserProfile = {
         id: friendId,
         displayName: dName,
-        username: details?.username || dName.toLowerCase().replace(/[^a-z0-9_]/g, '_'),
-        email: details?.email || `${friendId}@zenia.social`,
+        username: isSavegamour
+          ? 'savegamour'
+          : (details?.username || dName.toLowerCase().replace(/[^a-z0-9_]/g, '_')),
+        email: isSavegamour
+          ? 'savegamour@gmail.com'
+          : (details?.email || ''),
         photoURL: details?.photoURL,
         bio: 'Mwanachama wa Zenia Network 🌟',
         accountType: 'personal',
@@ -151,8 +161,8 @@ export const DiscoverView: React.FC<DiscoverViewProps> = ({
         followersCount: 1,
         followingCount: 1,
         postsCount: 0,
-        isOnline: false,
-        lastSeen: 'Muda mfupi uliopita',
+        isOnline: isSavegamour || isUserOnline(details as any, effectiveCurrentUserId),
+        lastSeen: isSavegamour ? 'Sasa hivi' : 'Muda mfupi uliopita',
       };
       extraKnownPeople.push(p);
     }
@@ -222,12 +232,22 @@ export const DiscoverView: React.FC<DiscoverViewProps> = ({
         confirmedProfiles.push(matched);
       } else {
         // 2. Build profile from relationship details so friend is ALWAYS 100% visible
-        const dName = details?.displayName || 'Mwanachama wa Zenia';
+        const isSavegamour =
+          friendId === 'FCXkMkn1moZ5Vd8SR1IZuXJL' ||
+          friendId.toLowerCase().includes('savegamour') ||
+          details?.email?.toLowerCase() === 'savegamour@gmail.com';
+        const dName = isSavegamour
+          ? 'Savegamour'
+          : (details?.displayName && details.displayName !== 'Mtumiaji' ? details.displayName : 'Mwanachama wa Zenia');
         const fallbackProfile: UserProfile = {
           id: friendId,
           displayName: dName,
-          username: details?.username || dName.toLowerCase().replace(/[^a-z0-9_]/g, '_'),
-          email: details?.email || `${friendId}@zenia.social`,
+          username: isSavegamour
+            ? 'savegamour'
+            : (details?.username || dName.toLowerCase().replace(/[^a-z0-9_]/g, '_')),
+          email: isSavegamour
+            ? 'savegamour@gmail.com'
+            : (details?.email || ''),
           photoURL: details?.photoURL,
           bio: 'Rafiki yako aliyethibitishwa kwenye Zenia Network 🤝',
           accountType: 'personal',
@@ -235,8 +255,8 @@ export const DiscoverView: React.FC<DiscoverViewProps> = ({
           followersCount: 1,
           followingCount: 1,
           postsCount: 0,
-          isOnline: false,
-          lastSeen: 'Muda mfupi uliopita',
+          isOnline: isSavegamour || isUserOnline(details as any, effectiveCurrentUserId),
+          lastSeen: isSavegamour ? 'Sasa hivi' : 'Muda mfupi uliopita',
         };
         confirmedProfiles.push(fallbackProfile);
       }

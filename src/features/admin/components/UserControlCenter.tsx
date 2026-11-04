@@ -18,6 +18,8 @@ import {
   Smartphone,
   ShieldAlert,
   Sparkles,
+  Edit3,
+  RefreshCw,
 } from 'lucide-react';
 import { UserProfile, PRIMARY_ADMIN_EMAIL } from '../../../types';
 import { SafeImage } from '../../../components/SafeImage';
@@ -36,6 +38,9 @@ interface UserControlCenterProps {
   cleanResult: string | null;
   onPurgeDemo?: () => void;
   isPurgingDemo?: boolean;
+  onSyncFirebaseAuth?: () => void;
+  isSyncingAuth?: boolean;
+  onUpdateUserProfile?: (userId: string, data: Partial<UserProfile>) => Promise<void> | void;
 }
 
 export const UserControlCenter: React.FC<UserControlCenterProps> = ({
@@ -51,6 +56,9 @@ export const UserControlCenter: React.FC<UserControlCenterProps> = ({
   cleanResult,
   onPurgeDemo,
   isPurgingDemo,
+  onSyncFirebaseAuth,
+  isSyncingAuth,
+  onUpdateUserProfile,
 }) => {
   const [searchQuery, setSearchQuery] = useState('');
   const [filterRole, setFilterRole] = useState('all');
@@ -58,6 +66,15 @@ export const UserControlCenter: React.FC<UserControlCenterProps> = ({
   const [inspectUser, setInspectUser] = useState<UserProfile | null>(null);
   const [confirmDeleteTarget, setConfirmDeleteTarget] = useState<UserProfile | null>(null);
   const [deleteConfirmationText, setDeleteConfirmationText] = useState('');
+  const [editTargetUser, setEditTargetUser] = useState<UserProfile | null>(null);
+  const [editForm, setEditForm] = useState({
+    displayName: '',
+    username: '',
+    email: '',
+    walletBalance: 0,
+    accountType: 'personal' as 'personal' | 'creator' | 'business',
+  });
+  const [isSavingEdit, setIsSavingEdit] = useState(false);
 
   // Advanced Filtering
   const filteredUsers = users.filter((u) => {
@@ -107,6 +124,19 @@ export const UserControlCenter: React.FC<UserControlCenterProps> = ({
         </div>
 
         <div className="flex items-center gap-2 flex-wrap">
+          {onSyncFirebaseAuth && (
+            <button
+              type="button"
+              onClick={onSyncFirebaseAuth}
+              disabled={isSyncingAuth}
+              className="px-3 py-2 rounded-xl bg-cyan-500/20 hover:bg-cyan-500/30 text-cyan-200 border border-cyan-500/40 font-bold text-xs flex items-center gap-1.5 transition-all disabled:opacity-50"
+              title="Sawazisha akaunti halisi zilizopo Firebase Authentication na Firestore"
+            >
+              <RefreshCw className={`w-3.5 h-3.5 text-cyan-400 ${isSyncingAuth ? 'animate-spin' : ''}`} />
+              <span>{isSyncingAuth ? 'Inasawazisha...' : 'Sawazisha na Firebase'}</span>
+            </button>
+          )}
+
           {onPurgeDemo && (
             <button
               type="button"
@@ -266,6 +296,25 @@ export const UserControlCenter: React.FC<UserControlCenterProps> = ({
                     title="Kagua Wasifu na Shughuli za Akaunti"
                   >
                     <Eye className="w-3.5 h-3.5 text-cyan-400" />
+                  </button>
+
+                  {/* Edit User Profile Details */}
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setEditTargetUser(u);
+                      setEditForm({
+                        displayName: u.displayName || '',
+                        username: (u.username || '').replace(/^@/, ''),
+                        email: u.email || '',
+                        walletBalance: u.walletBalance ?? 0,
+                        accountType: (u.accountType as any) || 'personal',
+                      });
+                    }}
+                    className="p-2 rounded-xl bg-indigo-500/10 hover:bg-indigo-500/20 text-indigo-300 hover:text-white border border-indigo-500/30 transition-colors"
+                    title="Hariri Jina, Email, na Taarifa za Mtumiaji"
+                  >
+                    <Edit3 className="w-3.5 h-3.5 text-indigo-400" />
                   </button>
 
                   {/* Verification Toggle */}
@@ -479,6 +528,129 @@ export const UserControlCenter: React.FC<UserControlCenterProps> = ({
                 Futa Kabisa Akaunti
               </button>
             </div>
+          </div>
+        </div>
+      )}
+
+      {/* MODAL 3: EDIT USER PROFILE DETAILS */}
+      {editTargetUser && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/80 backdrop-blur-md animate-in fade-in">
+          <div className="w-full max-w-lg bg-[#0C1124] border border-cyan-500/40 rounded-3xl p-6 shadow-2xl space-y-4 max-h-[92vh] overflow-y-auto">
+            <div className="flex items-center justify-between border-b border-white/10 pb-3">
+              <h4 className="font-extrabold text-sm text-white flex items-center gap-2">
+                <Edit3 className="w-4 h-4 text-cyan-400" />
+                <span>Hariri Taarifa za Mtumiaji (Edit User Profile)</span>
+              </h4>
+              <button
+                type="button"
+                onClick={() => setEditTargetUser(null)}
+                className="p-1.5 rounded-full bg-white/5 hover:bg-white/10 text-slate-400 hover:text-white"
+              >
+                <X className="w-4 h-4" />
+              </button>
+            </div>
+
+            <form
+              onSubmit={async (e) => {
+                e.preventDefault();
+                if (!editTargetUser) return;
+                setIsSavingEdit(true);
+                try {
+                  if (onUpdateUserProfile) {
+                    await onUpdateUserProfile(editTargetUser.id, editForm);
+                  }
+                  setEditTargetUser(null);
+                } finally {
+                  setIsSavingEdit(false);
+                }
+              }}
+              className="space-y-3.5 text-xs"
+            >
+              <div>
+                <label className="text-slate-300 font-semibold block mb-1">Jina Kamili (Display Name)</label>
+                <input
+                  type="text"
+                  required
+                  value={editForm.displayName}
+                  onChange={(e) => setEditForm({ ...editForm, displayName: e.target.value })}
+                  placeholder="Mfano: Savegamour"
+                  className="w-full bg-[#14192E] border border-white/10 rounded-xl px-3 py-2 text-white focus:outline-none focus:border-cyan-400"
+                />
+              </div>
+
+              <div>
+                <label className="text-slate-300 font-semibold block mb-1">Jina la Mtumiaji (Username bila @)</label>
+                <div className="flex items-center bg-[#14192E] border border-white/10 rounded-xl px-3 py-2 focus-within:border-cyan-400">
+                  <span className="text-cyan-400 font-bold mr-1">@</span>
+                  <input
+                    type="text"
+                    required
+                    value={editForm.username}
+                    onChange={(e) => setEditForm({ ...editForm, username: e.target.value.replace(/[^a-zA-Z0-9_]/g, '') })}
+                    placeholder="savegamour"
+                    className="w-full bg-transparent text-white focus:outline-none"
+                  />
+                </div>
+              </div>
+
+              <div>
+                <label className="text-slate-300 font-semibold block mb-1">Barua Pepe (Email)</label>
+                <input
+                  type="email"
+                  value={editForm.email}
+                  onChange={(e) => setEditForm({ ...editForm, email: e.target.value })}
+                  placeholder="savegamour@gmail.com"
+                  className="w-full bg-[#14192E] border border-white/10 rounded-xl px-3 py-2 text-white focus:outline-none focus:border-cyan-400"
+                />
+              </div>
+
+              <div className="grid grid-cols-2 gap-3">
+                <div>
+                  <label className="text-slate-300 font-semibold block mb-1">Aina ya Akaunti (Role)</label>
+                  <select
+                    value={editForm.accountType}
+                    onChange={(e) => setEditForm({ ...editForm, accountType: e.target.value as any })}
+                    className="w-full bg-[#14192E] border border-white/10 rounded-xl px-3 py-2 text-white focus:outline-none focus:border-cyan-400"
+                  >
+                    <option value="personal">Binafsi (Personal)</option>
+                    <option value="creator">Mbunifu (Creator)</option>
+                    <option value="business">Biashara (Business)</option>
+                  </select>
+                </div>
+
+                <div>
+                  <label className="text-slate-300 font-semibold block mb-1">Salio la Pochi (TZS)</label>
+                  <input
+                    type="number"
+                    value={editForm.walletBalance}
+                    onChange={(e) => setEditForm({ ...editForm, walletBalance: Number(e.target.value) || 0 })}
+                    placeholder="0"
+                    className="w-full bg-[#14192E] border border-white/10 rounded-xl px-3 py-2 text-white focus:outline-none focus:border-cyan-400"
+                  />
+                </div>
+              </div>
+
+              <div className="p-3 rounded-xl bg-cyan-950/30 border border-cyan-500/20 text-[11px] text-cyan-300">
+                💡 Taarifa hizi zitahifadhiwa moja kwa moja kwenye Cloud Firestore na kurekebisha wasifu wa mtumiaji papo hapo.
+              </div>
+
+              <div className="flex items-center gap-2 pt-2">
+                <button
+                  type="button"
+                  onClick={() => setEditTargetUser(null)}
+                  className="flex-1 py-2.5 rounded-xl bg-white/10 hover:bg-white/15 text-slate-300 font-bold"
+                >
+                  Ghairi (Cancel)
+                </button>
+                <button
+                  type="submit"
+                  disabled={isSavingEdit}
+                  className="flex-1 py-2.5 rounded-xl bg-cyan-500 hover:bg-cyan-400 disabled:opacity-50 text-slate-950 font-extrabold transition-all"
+                >
+                  {isSavingEdit ? 'Inahifadhi...' : 'Hifadhi Mabadiliko'}
+                </button>
+              </div>
+            </form>
           </div>
         </div>
       )}

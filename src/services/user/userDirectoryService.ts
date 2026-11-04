@@ -1,5 +1,5 @@
 import { collection, doc, onSnapshot, getDocs, setDoc, deleteDoc, query } from 'firebase/firestore';
-import { db } from '../firebase/config';
+import { db, auth } from '../firebase/config';
 import { UserProfile } from '../../types';
 import { userService } from './userService';
 import { normalizeUserId, friendshipService } from './friendshipService';
@@ -283,17 +283,25 @@ class UserDirectoryServiceImpl {
         } catch (_) {}
       }
 
-      // Also harvest users from any confirmed/pending friendships
+      // Also harvest users from any confirmed/pending friendships (only genuine users, skip mock demo artifacts)
       try {
         const allRels = friendshipService.getAllRelationships();
         Object.values(allRels).forEach((rel) => {
           [rel.senderDetails, rel.receiverDetails].forEach((d) => {
-            if (d && d.id && !userService.isIdentifierDeleted(d.id)) {
+            if (
+              d &&
+              d.id &&
+              !userService.isIdentifierDeleted(d.id) &&
+              !d.id.startsWith('user_') &&
+              !d.email?.endsWith('@zenia.social') &&
+              !d.email?.endsWith('@zenia.app') &&
+              d.displayName !== 'Amina Kaunga'
+            ) {
               combinedInitial.push({
                 id: d.id,
                 displayName: d.displayName || 'Mwanachama wa Zenia',
                 username: d.username || d.id.replace(/[^a-z0-9_]/g, '_'),
-                email: d.email || `${d.id}@zenia.social`,
+                email: d.email || `${d.id}@zenia.app`,
                 photoURL: d.photoURL,
                 bio: 'Mwanachama wa Zenia Network 🌟',
                 accountType: 'personal',
@@ -328,7 +336,15 @@ class UserDirectoryServiceImpl {
         let added = false;
         Object.values(rels).forEach((rel) => {
           [rel.senderDetails, rel.receiverDetails].forEach((d) => {
-            if (d && d.id && !userService.isIdentifierDeleted(d.id)) {
+            if (
+              d &&
+              d.id &&
+              !userService.isIdentifierDeleted(d.id) &&
+              !d.id.startsWith('user_') &&
+              !d.email?.endsWith('@zenia.social') &&
+              !d.email?.endsWith('@zenia.app') &&
+              d.displayName !== 'Amina Kaunga'
+            ) {
               const alreadyKnown = this.users.some(
                 (u) =>
                   u.id === d.id ||
@@ -339,7 +355,7 @@ class UserDirectoryServiceImpl {
                   id: d.id,
                   displayName: d.displayName || 'Mwanachama wa Zenia',
                   username: d.username || d.id.replace(/[^a-z0-9_]/g, '_'),
-                  email: d.email || `${d.id}@zenia.social`,
+                  email: d.email || `${d.id}@zenia.app`,
                   photoURL: d.photoURL,
                   bio: 'Mwanachama wa Zenia Network 🌟',
                   accountType: 'personal',
@@ -389,23 +405,59 @@ class UserDirectoryServiceImpl {
                 rawEmail === 'amytzee@gmail.com' ||
                 docSnap.id === 'current_user_id';
 
+              // Identify if this is the second registered Firebase Auth account (savegamour@gmail.com)
+              const isSavegamour =
+                docSnap.id === 'FCXkMkn1moZ5Vd8SR1IZuXJL' ||
+                rawEmail === 'savegamour@gmail.com';
+
+              const resolvedEmail = isSavegamour
+                ? 'savegamour@gmail.com'
+                : rawEmail || data.email;
+
               const resolvedUsername = isAdmin
                 ? 'amytzee'
-                : rawUsername || emailPrefix || docSnap.id.replace(/[^a-z0-9_]/g, '_');
+                : isSavegamour
+                ? 'savegamour'
+                : rawUsername && !rawUsername.startsWith('___')
+                ? rawUsername
+                : emailPrefix || `user_${docSnap.id.slice(0, 6).toLowerCase()}`;
+
               const resolvedDisplayName = isAdmin
                 ? 'Amytzee (Admin)'
-                : rawDisplayName && rawDisplayName !== 'Mtumiaji'
+                : isSavegamour
+                ? (rawDisplayName && !rawDisplayName.startsWith('___') ? rawDisplayName : 'Savegamour')
+                : rawDisplayName && rawDisplayName !== 'Mtumiaji' && !rawDisplayName.startsWith('___')
                 ? rawDisplayName
+                : emailPrefix
+                ? emailPrefix.charAt(0).toUpperCase() + emailPrefix.slice(1)
                 : resolvedUsername
                 ? resolvedUsername.charAt(0).toUpperCase() + resolvedUsername.slice(1)
                 : 'Mwanachama wa Zenia';
+
+              // If Firestore doc had missing email/name, repair it in the background
+              if (isSavegamour && (!rawEmail || !rawDisplayName || rawDisplayName.startsWith('___'))) {
+                setDoc(
+                  doc(db, 'users', docSnap.id),
+                  {
+                    id: docSnap.id,
+                    email: 'savegamour@gmail.com',
+                    displayName: resolvedDisplayName,
+                    username: resolvedUsername,
+                    accountType: data.accountType || 'personal',
+                    verified: false,
+                    isOnline: isActuallyOnline,
+                    lastSeen: 'Sasa hivi',
+                  },
+                  { merge: true }
+                ).catch(() => {});
+              }
 
               firestoreUsers.push({
                 ...data,
                 id: docSnap.id,
                 displayName: resolvedDisplayName,
                 username: resolvedUsername,
-                email: rawEmail || data.email,
+                email: resolvedEmail,
                 role: isAdmin ? 'superadmin' : data.role || 'user',
                 verified: isAdmin ? true : Boolean(data.verified),
                 isOnline: isAdmin ? true : isActuallyOnline,
@@ -669,7 +721,6 @@ class UserDirectoryServiceImpl {
         'user_alex_k',
         'user_juma_rashid',
         'user_baraka_m',
-        'FCXkMkn1moZ5Vd8SR1IZuXJL',
         '3eysSI6sDmNNCfvkoZAuN7C',
         'PW9XSmSsmDhVnOmtBH82D',
         'DCgeroYuKbyI5TIXF8CtorSS',
@@ -683,24 +734,50 @@ class UserDirectoryServiceImpl {
         'sarah@soundwave.tz',
         'alex.kanyama@zenia.app',
         'juma.rashid@zenia.app',
+        'user_fresh_kk@zenia.social',
       ]);
 
       for (const d of snap.docs) {
         const u = d.data() as UserProfile;
         const email = (u.email || '').trim().toLowerCase();
-        const isDemo =
-          demoUserIds.has(d.id) ||
-          demoEmails.has(email) ||
-          (d.id.startsWith('user_') && email.endsWith('@zenia.app'));
-        const isAdmin = email === PRIMARY_ADMIN_PROFILE.email.toLowerCase();
+        const isProtectedUser =
+          email === PRIMARY_ADMIN_PROFILE.email.toLowerCase() ||
+          email === 'savegamour@gmail.com' ||
+          d.id === PRIMARY_ADMIN_PROFILE.id ||
+          d.id === 'FCXkMkn1moZ5Vd8SR1IZuXJL' ||
+          (auth.currentUser && d.id === auth.currentUser.uid);
 
-        if (isDemo && !isAdmin) {
+        const isDemo =
+          !isProtectedUser &&
+          (demoUserIds.has(d.id) ||
+            demoEmails.has(email) ||
+            email.endsWith('@zenia.social') ||
+            (d.id.startsWith('user_') && email.endsWith('@zenia.app')));
+
+        if (isDemo) {
           try {
             await deleteDoc(doc(db, 'users', d.id));
             deletedCount++;
           } catch (e) {
             console.warn('Could not delete demo doc:', d.id, e);
           }
+        } else if (d.id === 'FCXkMkn1moZ5Vd8SR1IZuXJL' || email === 'savegamour@gmail.com') {
+          // Ensure second real Firebase user document is properly populated
+          try {
+            await setDoc(
+              doc(db, 'users', d.id),
+              {
+                id: d.id,
+                email: 'savegamour@gmail.com',
+                displayName: u.displayName && !u.displayName.startsWith('___') ? u.displayName : 'Savegamour',
+                username: u.username && !u.username.startsWith('___') ? u.username : 'savegamour',
+                accountType: u.accountType || 'personal',
+                verified: false,
+                role: 'user',
+              },
+              { merge: true }
+            );
+          } catch {}
         }
       }
 
@@ -714,7 +791,12 @@ class UserDirectoryServiceImpl {
       const registeredList: UserProfile[] = regRaw ? JSON.parse(regRaw) : [];
       this.users = deduplicateUsers([
         PRIMARY_ADMIN_PROFILE,
-        ...registeredList.filter((u) => !demoUserIds.has(u.id) && !demoEmails.has((u.email || '').toLowerCase())),
+        ...registeredList.filter(
+          (u) =>
+            !demoUserIds.has(u.id) &&
+            !demoEmails.has((u.email || '').toLowerCase()) &&
+            !(u.email || '').endsWith('@zenia.social')
+        ),
       ]);
       try {
         localStorage.setItem('zenia_firestore_users_cache', JSON.stringify(this.users));
@@ -726,7 +808,119 @@ class UserDirectoryServiceImpl {
     } catch (e) {
       console.error('Error purging demo data:', e);
     }
+
     return { deletedCount };
+  }
+
+  /**
+   * Reconciles Firestore users with Firebase Authentication
+   * Fixes any accounts that have missing display names or missing emails.
+   */
+  public async syncWithFirebaseAuth(): Promise<{ syncedCount: number; message: string }> {
+    let syncedCount = 0;
+    try {
+      const snap = await getDocs(collection(db, 'users'));
+      for (const d of snap.docs) {
+        const u = d.data() as UserProfile;
+        const email = (u.email || '').trim().toLowerCase();
+        const dName = (u.displayName || '').trim();
+        const uName = (u.username || '').trim();
+
+        // If doc is FCXkMkn1moZ5Vd8SR1IZuXJL or has missing fields
+        if (d.id === 'FCXkMkn1moZ5Vd8SR1IZuXJL' || email === 'savegamour@gmail.com') {
+          await setDoc(
+            doc(db, 'users', d.id),
+            {
+              id: d.id,
+              email: 'savegamour@gmail.com',
+              displayName: dName && !dName.startsWith('___') ? dName : 'Savegamour',
+              username: uName && !uName.startsWith('___') ? uName : 'savegamour',
+              accountType: u.accountType || 'personal',
+              role: 'user',
+            },
+            { merge: true }
+          );
+          syncedCount++;
+        } else if (!email && auth.currentUser && auth.currentUser.uid === d.id && auth.currentUser.email) {
+          await setDoc(
+            doc(db, 'users', d.id),
+            {
+              id: d.id,
+              email: auth.currentUser.email,
+              displayName: auth.currentUser.displayName || auth.currentUser.email.split('@')[0],
+              username: auth.currentUser.email.split('@')[0].toLowerCase().replace(/[^a-z0-9_]/g, '_'),
+            },
+            { merge: true }
+          );
+          syncedCount++;
+        }
+      }
+
+      // Re-fetch users
+      const freshSnap = await getDocs(collection(db, 'users'));
+      const list: UserProfile[] = [];
+      freshSnap.forEach((d) => {
+        const data = d.data() as UserProfile;
+        if (!data.email?.endsWith('@zenia.social') && !d.id.startsWith('user_')) {
+          list.push({ ...data, id: d.id });
+        }
+      });
+
+      this.users = deduplicateUsers([PRIMARY_ADMIN_PROFILE, ...list]);
+      try {
+        localStorage.setItem('zenia_firestore_users_cache', JSON.stringify(this.users));
+        localStorage.setItem('zenia_admin_users_list', JSON.stringify(this.users));
+      } catch (_) {}
+      this.notifyListeners();
+    } catch (err: any) {
+      console.warn('Sync with Firebase Auth error:', err);
+    }
+
+    return {
+      syncedCount,
+      message: `Akaunti ${syncedCount} zimesawazishwa na kurekebishwa kikamilifu na Firebase!`,
+    };
+  }
+
+  /**
+   * Directly update a user profile in Firestore and sync in-memory & listeners
+   */
+  public async updateUserProfileInFirestore(
+    userId: string,
+    updates: Partial<UserProfile>
+  ): Promise<boolean> {
+    try {
+      if (!userId) return false;
+      const ref = doc(db, 'users', userId);
+      const cleanData: any = {};
+      if (updates.displayName !== undefined) cleanData.displayName = updates.displayName.trim();
+      if (updates.username !== undefined) cleanData.username = updates.username.trim().replace(/^@/, '');
+      if (updates.email !== undefined) cleanData.email = updates.email.trim();
+      if (updates.accountType !== undefined) cleanData.accountType = updates.accountType;
+      if (updates.walletBalance !== undefined) cleanData.walletBalance = Number(updates.walletBalance) || 0;
+      if (updates.verified !== undefined) cleanData.verified = Boolean(updates.verified);
+      if (updates.isSuspended !== undefined) cleanData.isSuspended = Boolean(updates.isSuspended);
+      if (updates.bio !== undefined) cleanData.bio = updates.bio;
+
+      await setDoc(ref, cleanData, { merge: true });
+
+      // Update in-memory
+      this.users = this.users.map((u) => {
+        if (u.id === userId) {
+          return { ...u, ...cleanData };
+        }
+        return u;
+      });
+      try {
+        localStorage.setItem('zenia_firestore_users_cache', JSON.stringify(this.users));
+        localStorage.setItem('zenia_admin_users_list', JSON.stringify(this.users));
+      } catch (_) {}
+      this.notifyListeners();
+      return true;
+    } catch (err) {
+      console.error('Failed to update user profile in Firestore:', err);
+      throw err;
+    }
   }
 
   /**
