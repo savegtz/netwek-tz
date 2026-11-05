@@ -83,7 +83,7 @@ import freshKkAvatar from '../../assets/images/fresh_kk_avatar_1791078365294.jpg
 import aminaAvatar from '../../assets/images/amina_avatar_1790280951312.jpg';
 import { userService } from '../../services/user/userService';
 import { userDirectoryService } from '../../services/user/userDirectoryService';
-import { friendshipService, matchesUser, ADMIN_CANONICAL_ID } from '../../services/user/friendshipService';
+import { friendshipService, matchesUser, ADMIN_CANONICAL_ID, SAVEGAMOUR_CANONICAL_ID } from '../../services/user/friendshipService';
 import { isUserOnline, formatUserLastSeen } from '../../services/user/presenceService';
 
 interface ChatRoomProps {
@@ -191,10 +191,25 @@ export const ChatRoom: React.FC<ChatRoomProps> = ({
     (otherDetails?.email && otherDetails.email.toLowerCase() === 'amytzee@gmail.com');
 
   const isOtherSavegamour =
+    otherUserId === SAVEGAMOUR_CANONICAL_ID ||
     otherUserId === 'FCXkMkn1moZ5Vd8SR1IZuXJL' ||
     otherUserLower.includes('savegamour') ||
+    otherUserLower.includes('fcxkmkn1mo') ||
     (otherDetails?.email && otherDetails.email.toLowerCase() === 'savegamour@gmail.com') ||
     (dirUser?.email && dirUser.email.toLowerCase() === 'savegamour@gmail.com');
+
+  const relDoc = otherUserId
+    ? Object.values(friendshipService.getAllRelationships()).find(
+        (r) =>
+          r.userA === otherUserId ||
+          r.userB === otherUserId ||
+          r.senderDetails?.id === otherUserId ||
+          r.receiverDetails?.id === otherUserId
+      )
+    : null;
+  const relDetails = relDoc
+    ? (relDoc.senderDetails?.id === otherUserId ? relDoc.senderDetails : relDoc.receiverDetails?.id === otherUserId ? relDoc.receiverDetails : null)
+    : null;
 
   // Title / Name Resolution: never fall back to "Mtumiaji" if any identifiable details exist
   let resolvedName =
@@ -206,6 +221,7 @@ export const ChatRoom: React.FC<ChatRoomProps> = ({
       ? (otherDetails?.displayName && otherDetails.displayName !== 'Mtumiaji' ? otherDetails.displayName : (dirUser?.displayName || 'Savegamour'))
       : (otherDetails?.displayName && otherDetails.displayName !== 'Mtumiaji' ? otherDetails.displayName : null) ||
         (dirUser?.displayName && dirUser.displayName !== 'Mtumiaji' ? dirUser.displayName : null) ||
+        (relDetails?.displayName && relDetails.displayName !== 'Mtumiaji' ? relDetails.displayName : null) ||
         contact?.displayName ||
         (matchesUser(otherUserId, 'user_fresh_kk') ? 'Fresh kk' : null)) || null;
 
@@ -216,14 +232,16 @@ export const ChatRoom: React.FC<ChatRoomProps> = ({
       resolvedName = otherDetails.username.charAt(0).toUpperCase() + otherDetails.username.slice(1);
     } else if (dirUser?.username && dirUser.username !== 'user') {
       resolvedName = dirUser.username.charAt(0).toUpperCase() + dirUser.username.slice(1);
+    } else if (relDetails?.username && relDetails.username !== 'user') {
+      resolvedName = relDetails.username.charAt(0).toUpperCase() + relDetails.username.slice(1);
     } else if (otherDetails?.email) {
       resolvedName = otherDetails.email.split('@')[0];
     } else if (dirUser?.email) {
       resolvedName = dirUser.email.split('@')[0];
+    } else if (relDetails?.email) {
+      resolvedName = relDetails.email.split('@')[0];
     } else if (isOtherAdmin) {
       resolvedName = 'Amytzee (Admin)';
-    } else if (otherUserId === 'FCXkMkn1moZ5Vd8SR1IZuXJL') {
-      resolvedName = 'Savegamour';
     } else if (otherUserId && otherUserId.length > 2 && !otherUserId.match(/^[a-zA-Z0-9]{20,}$/)) {
       const clean = otherUserId.replace(/^user_/, '');
       resolvedName = clean.charAt(0).toUpperCase() + clean.slice(1);
@@ -1227,9 +1245,13 @@ export const ChatRoom: React.FC<ChatRoomProps> = ({
                   onOpenAuth?.('signup', 'Ili kupiga simu ya sauti ya WebRTC ya moja kwa moja, tafadhali jisajili au ingia kwanza.');
                   return;
                 }
-                if (!isFriend) {
-                  showToast(`Huwezi kumpigia simu ${name}. Mnapaswa kuwa marafiki kwanza! Tuma ombi la urafiki chini.`);
-                  return;
+                if (!isFriend && otherUserId) {
+                  friendshipService.sendFriendRequest(currentUser as any, {
+                    id: otherUserId,
+                    displayName: name,
+                    photoURL: avatar,
+                  });
+                  friendshipService.acceptFriendRequest(otherUserId, currentUser.id);
                 }
                 onStartCall('voice');
               }}
@@ -1246,9 +1268,13 @@ export const ChatRoom: React.FC<ChatRoomProps> = ({
                   onOpenAuth?.('signup', 'Ili kupiga simu ya video ya WebRTC ya moja kwa moja, tafadhali jisajili au ingia kwanza.');
                   return;
                 }
-                if (!isFriend) {
-                  showToast(`Huwezi kumpigia simu ${name}. Mnapaswa kuwa marafiki kwanza! Tuma ombi la urafiki chini.`);
-                  return;
+                if (!isFriend && otherUserId) {
+                  friendshipService.sendFriendRequest(currentUser as any, {
+                    id: otherUserId,
+                    displayName: name,
+                    photoURL: avatar,
+                  });
+                  friendshipService.acceptFriendRequest(otherUserId, currentUser.id);
                 }
                 onStartCall('video');
               }}

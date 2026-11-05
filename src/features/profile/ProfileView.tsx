@@ -906,29 +906,43 @@ export const ProfileView: React.FC<ProfileViewProps> = ({
   // ==============================================================
 
 
-  const highlights: HighlightItem[] = [
-    {
-      id: 'hl_1',
-      title: 'Stori 🏖️',
-      cover: zanzibarBeach,
-      gradient: 'from-cyan-500 to-blue-600',
-      emoji: '🏖️',
-    },
-    {
-      id: 'hl_2',
-      title: 'Maisha ✨',
-      cover: currentUser.photoURL || aminaAvatar,
-      gradient: 'from-purple-500 to-pink-600',
-      emoji: '✨',
-    },
-    {
-      id: 'hl_3',
-      title: 'Tech 🎧',
-      cover: wirelessEarbuds,
-      gradient: 'from-emerald-500 to-teal-600',
-      emoji: '🎧',
-    },
-  ];
+  const isAminaOrAdmin = isUserAdmin(currentUser) || currentUser?.username === 'amina_kaunga';
+
+  const highlights: HighlightItem[] = isAminaOrAdmin
+    ? [
+        {
+          id: 'hl_1',
+          title: 'Stori 🏖️',
+          cover: zanzibarBeach,
+          gradient: 'from-cyan-500 to-blue-600',
+          emoji: '🏖️',
+        },
+        {
+          id: 'hl_2',
+          title: 'Maisha ✨',
+          cover: currentUser.photoURL || aminaAvatar,
+          gradient: 'from-purple-500 to-pink-600',
+          emoji: '✨',
+        },
+        {
+          id: 'hl_3',
+          title: 'Tech 🎧',
+          cover: wirelessEarbuds,
+          gradient: 'from-emerald-500 to-teal-600',
+          emoji: '🎧',
+        },
+      ]
+    : currentUser.photoURL
+    ? [
+        {
+          id: 'hl_1',
+          title: 'Stori ✨',
+          cover: currentUser.photoURL,
+          gradient: 'from-cyan-500 to-blue-600',
+          emoji: '✨',
+        },
+      ]
+    : [];
 
   const shopItems: ShopItem[] = [
     {
@@ -1290,7 +1304,7 @@ export const ProfileView: React.FC<ProfileViewProps> = ({
               title="Bonyeza kubadili mtindo wa Avatar (Organic Blob, Squircle, Shield n.k.)"
             >
               <DynamicAvatar
-                src={currentUser.photoURL || aminaAvatar}
+                src={currentUser.photoURL || (isAminaOrAdmin ? aminaAvatar : undefined)}
                 fallbackText={currentUser.displayName || 'User'}
                 alt={currentUser.displayName}
                 size="2xl"
@@ -1339,10 +1353,10 @@ export const ProfileView: React.FC<ProfileViewProps> = ({
                   ? 'bg-emerald-500/15 hover:bg-emerald-500/25 border border-emerald-500/30 text-emerald-300'
                   : 'bg-emerald-50 hover:bg-emerald-100 border border-emerald-300 text-emerald-700'
               }`}
-              title={`Pochi: TZS ${(currentUser.walletBalance || 120000).toLocaleString()}`}
+              title={`Pochi: TZS ${(currentUser.walletBalance || 0).toLocaleString()}`}
             >
               <CreditCard className="w-3.5 h-3.5 text-emerald-400 shrink-0" />
-              <span>Pochi: TZS {((currentUser.walletBalance || 120000) >= 1000 ? `${Math.round((currentUser.walletBalance || 120000) / 1000)}k` : currentUser.walletBalance || 120000)}</span>
+              <span>Pochi: TZS {((currentUser.walletBalance || 0) >= 1000 ? `${Math.round((currentUser.walletBalance || 0) / 1000)}k` : (currentUser.walletBalance || 0))}</span>
             </button>
 
             {/* Shiriki Wasifu */}
@@ -1456,7 +1470,7 @@ export const ProfileView: React.FC<ProfileViewProps> = ({
             {/* Machapisho */}
             <div className="px-1 sm:px-2">
               <p className={`font-black text-sm sm:text-base font-mono leading-tight ${isDark ? 'text-white' : 'text-slate-900'}`}>
-                {currentUser.postsCount || defaultUserPosts.length}
+                {currentUser.postsCount || (isAminaOrAdmin ? defaultUserPosts.length : 0)}
               </p>
               <p className={`text-[10px] sm:text-xs mt-0.5 font-medium ${isDark ? 'text-slate-400' : 'text-slate-500'}`}>
                 Machapisho
@@ -1479,7 +1493,7 @@ export const ProfileView: React.FC<ProfileViewProps> = ({
             {/* Wafuasi */}
             <div className="px-1 sm:px-2">
               <p className="font-black text-sm sm:text-base text-cyan-400 font-mono leading-tight">
-                {currentUser.followersCount ? `${(currentUser.followersCount / 1000).toFixed(1)}K` : '12.4K'}
+                {currentUser.followersCount ? (currentUser.followersCount >= 1000 ? `${(currentUser.followersCount / 1000).toFixed(1)}K` : currentUser.followersCount) : (isAminaOrAdmin ? '12.4K' : 0)}
               </p>
               <p className={`text-[10px] sm:text-xs mt-0.5 font-medium ${isDark ? 'text-slate-400' : 'text-slate-500'}`}>
                 Wafuasi
@@ -1489,7 +1503,7 @@ export const ProfileView: React.FC<ProfileViewProps> = ({
             {/* Wanaofuatwa */}
             <div className="px-1 sm:px-2">
               <p className={`font-black text-sm sm:text-base font-mono leading-tight ${isDark ? 'text-white' : 'text-slate-900'}`}>
-                {currentUser.followingCount || 245}
+                {currentUser.followingCount || (isAminaOrAdmin ? 245 : 0)}
               </p>
               <p className={`text-[10px] sm:text-xs mt-0.5 font-medium ${isDark ? 'text-slate-400' : 'text-slate-500'}`}>
                 Wanaofuatwa

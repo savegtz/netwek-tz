@@ -43,7 +43,7 @@ import { NotificationsView } from './features/notifications/NotificationsView';
 import { AdminDevPanel } from './features/admin/AdminDevPanel';
 import { BroadcastBanner } from './components/BroadcastBanner';
 import { userService } from './services/user/userService';
-import { friendshipService, normalizeUserId, matchesUser, ADMIN_CANONICAL_ID, buildCanonicalConversationId } from './services/user/friendshipService';
+import { friendshipService, normalizeUserId, matchesUser, ADMIN_CANONICAL_ID, SAVEGAMOUR_CANONICAL_ID, buildCanonicalConversationId } from './services/user/friendshipService';
 import { presenceService, isUserOnline } from './services/user/presenceService';
 import { ZeniaMiniPlayer } from './components/ZeniaMiniPlayer';
 import { NotificationHeadsUpBanner } from './components/NotificationHeadsUpBanner';
@@ -266,7 +266,7 @@ export default function App() {
       activeUser,
       (callData) => {
         // Ignore if we are the caller or already on an active call
-        if (callData.callerId === activeUser.id) return;
+        if (callData.callerId === activeUser.id || matchesUser(activeUser.id, callData.callerId)) return;
         if (activeCallSession) return;
         setIncomingCall(callData);
       },
@@ -454,7 +454,7 @@ export default function App() {
         ? conv.groupAvatar
         : otherDetails?.photoURL || dirUser?.photoURL) || undefined;
 
-    // Check friendship condition
+    // Ensure friendship is established so calling is smooth and never blocked
     if (!conv.isGroup && otherParticipantId) {
       if (!friendshipService.areFriends(activeUser.id, otherParticipantId)) {
         friendshipService.sendFriendRequest(activeUser as any, {
@@ -463,10 +463,7 @@ export default function App() {
           photoURL: rAvatar,
           username: otherParticipantId.replace('user_', ''),
         });
-        setAppToast(
-          `Huwezi kumpigia simu ${rName} kabla hamjawa marafiki. Ombi la urafiki (Follow) limetumwa mara moja!`
-        );
-        return;
+        friendshipService.acceptFriendRequest(otherParticipantId, activeUser.id);
       }
     }
 
@@ -529,8 +526,11 @@ export default function App() {
               const data = snap.data() as NotificationItem;
               const matchesTarget =
                 data.userId === targetId ||
-                (currentUser?.email && data.userId === currentUser.email) ||
-                (targetId === 'current_user_id' && (data.userId === 'current_user_id' || data.userId === 'savegamour@gmail.com'));
+                matchesUser(targetId, data.userId) ||
+                (currentUser?.email && matchesUser(currentUser.email, data.userId)) ||
+                normalizeUserId(data.userId) === normalizeUserId(targetId) ||
+                (targetId === 'current_user_id' && (data.userId === 'current_user_id' || data.userId === 'savegamour@gmail.com' || data.userId.includes('FCXkMkn1mo'))) ||
+                ((targetId === SAVEGAMOUR_CANONICAL_ID || targetId.includes('FCXkMkn1mo')) && (data.userId === SAVEGAMOUR_CANONICAL_ID || data.userId.includes('FCXkMkn1mo') || data.userId === 'savegamour@gmail.com'));
 
               if (matchesTarget) {
                 remoteNotifs.push({
@@ -670,40 +670,98 @@ export default function App() {
     const unsubscribe = onAuthStateChanged(auth, async (user) => {
       if (user) {
         try {
+          const isSavegamour =
+            user.uid === SAVEGAMOUR_CANONICAL_ID ||
+            user.uid.includes('FCXkMkn1mo') ||
+            user.email?.toLowerCase() === 'savegamour@gmail.com';
+          const isAdmin =
+            user.uid === ADMIN_CANONICAL_ID ||
+            user.email?.toLowerCase() === 'amytzee@gmail.com';
+
           const userDoc = await getDoc(doc(db, 'users', user.uid));
+          let resolvedProfile: UserProfile;
+
           if (userDoc.exists()) {
-            const profile = userDoc.data() as UserProfile;
-            setCurrentUser(profile);
-            localStorage.setItem('zenia_active_user', JSON.stringify(profile));
-          } else {
-            const fallback: UserProfile = {
+            const data = userDoc.data() as UserProfile;
+            const existingDisplayName = data.displayName?.trim();
+            const existingUsername = data.username?.trim();
+
+            const displayName = isAdmin
+              ? 'Amytzee (Admin)'
+              : isSavegamour
+              ? (existingDisplayName && existingDisplayName !== 'Mtumiaji wa Zenia' && !existingDisplayName.startsWith('___') ? existingDisplayName : 'Savegamour')
+              : existingDisplayName && existingDisplayName !== 'Mtumiaji wa Zenia'
+              ? existingDisplayName
+              : user.displayName || 'Mwanachama wa Zenia';
+
+            const username = isAdmin
+              ? 'amytzee'
+              : isSavegamour
+              ? 'savegamour'
+              : existingUsername && existingUsername !== 'user' && !existingUsername.startsWith('___')
+              ? existingUsername
+              : (user.displayName || user.email?.split('@')[0] || 'user').toLowerCase().replace(/[^a-z0-9_]/g, '_');
+
+            resolvedProfile = {
+              ...data,
               id: user.uid,
-              email: user.email || 'user@zenia.app',
-              displayName: user.displayName || 'Mtumiaji wa Zenia',
-              username: (user.displayName || 'user').toLowerCase().replace(/\s+/g, '_'),
+              email: isSavegamour ? 'savegamour@gmail.com' : isAdmin ? 'amytzee@gmail.com' : (user.email || data.email || 'user@zenia.app'),
+              displayName,
+              username,
+              role: isAdmin ? 'superadmin' : data.role || 'user',
+              verified: isAdmin ? true : Boolean(data.verified),
+              isOnline: true,
+              lastActiveAt: Date.now(),
+              lastSeen: 'Sasa hivi',
+            };
+          } else {
+            resolvedProfile = {
+              id: user.uid,
+              email: isSavegamour ? 'savegamour@gmail.com' : isAdmin ? 'amytzee@gmail.com' : (user.email || 'user@zenia.app'),
+              displayName: isAdmin
+                ? 'Amytzee (Admin)'
+                : isSavegamour
+                ? 'Savegamour'
+                : user.displayName || 'Mwanachama wa Zenia',
+              username: isAdmin
+                ? 'amytzee'
+                : isSavegamour
+                ? 'savegamour'
+                : (user.displayName || user.email?.split('@')[0] || 'user').toLowerCase().replace(/[^a-z0-9_]/g, '_'),
               photoURL: user.photoURL || undefined,
-              accountType: 'personal',
-              verified: false,
+              accountType: isAdmin ? 'creator' : 'personal',
+              verified: isAdmin ? true : false,
               followersCount: 0,
               followingCount: 0,
               postsCount: 0,
               isOnline: true,
               lastActiveAt: Date.now(),
               lastSeen: 'Sasa hivi',
+              walletBalance: isAdmin ? 500000 : 0,
+              role: isAdmin ? 'superadmin' : 'user',
             };
-            await setDoc(doc(db, 'users', user.uid), fallback);
-            setCurrentUser(fallback);
-            localStorage.setItem('zenia_active_user', JSON.stringify(fallback));
           }
+
+          // Persist to Firestore & Local Storage
+          await setDoc(doc(db, 'users', user.uid), resolvedProfile, { merge: true });
+          setCurrentUser(resolvedProfile);
+          localStorage.setItem('zenia_active_user', JSON.stringify(resolvedProfile));
         } catch (e) {
           console.warn('User profile sync notice:', e);
         }
       } else {
         // If not authenticated in Firebase and no manual session, reset to null
         const manualSession = localStorage.getItem('zenia_active_user');
-        if (!manualSession) {
-          setCurrentUser(null);
+        if (manualSession) {
+          try {
+            const parsed = JSON.parse(manualSession);
+            if (parsed && parsed.id && parsed.id !== 'guest') {
+              setCurrentUser(parsed);
+              return;
+            }
+          } catch {}
         }
+        setCurrentUser(null);
       }
     });
 

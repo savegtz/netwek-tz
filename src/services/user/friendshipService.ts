@@ -13,7 +13,7 @@ const friendshipBroadcast =
     : null;
 
 export const ADMIN_CANONICAL_ID = '7w6ldhpczBOVpimURqrpQ3C';
-export const SAVEGAMOUR_CANONICAL_ID = 'FCXkMkn1moZ5Vd8SR1IZuXJL';
+export const SAVEGAMOUR_CANONICAL_ID = 'FCXkMkn1moZ5Vd8SR1IZuXJLDV42';
 
 export function normalizeUserId(id?: string | null): string {
   if (!id || typeof id !== 'string') return '';
@@ -35,13 +35,16 @@ export function normalizeUserId(id?: string | null): string {
     return ADMIN_CANONICAL_ID;
   }
 
-  // Savegamour unified aliases:
+  // Savegamour unified aliases (supporting both 28-char and 24-char forms):
   if (
     clean === SAVEGAMOUR_CANONICAL_ID ||
     lower === SAVEGAMOUR_CANONICAL_ID.toLowerCase() ||
+    clean === 'FCXkMkn1moZ5Vd8SR1IZuXJL' ||
+    lower === 'fcxkmkn1moz5vd8sr1izuxjl' ||
     lower === 'savegamour@gmail.com' ||
     lower === 'savegamour' ||
-    lower === 'user_savegamour'
+    lower === 'user_savegamour' ||
+    lower.includes('fcxkmkn1mo')
   ) {
     return SAVEGAMOUR_CANONICAL_ID;
   }
@@ -81,7 +84,8 @@ export function matchesUser(
     normQ === SAVEGAMOUR_CANONICAL_ID ||
     q === 'savegamour' ||
     q === 'savegamour@gmail.com' ||
-    q === SAVEGAMOUR_CANONICAL_ID.toLowerCase();
+    q === SAVEGAMOUR_CANONICAL_ID.toLowerCase() ||
+    q.includes('fcxkmkn1mo');
 
   if (fieldId && typeof fieldId === 'string') {
     const fId = fieldId.trim().toLowerCase();
@@ -102,7 +106,8 @@ export function matchesUser(
       (normalizeUserId(fieldId) === SAVEGAMOUR_CANONICAL_ID ||
         fId === 'savegamour' ||
         fId === 'savegamour@gmail.com' ||
-        fId === SAVEGAMOUR_CANONICAL_ID.toLowerCase())
+        fId === SAVEGAMOUR_CANONICAL_ID.toLowerCase() ||
+        fId.includes('fcxkmkn1mo'))
     ) {
       return true;
     }
@@ -372,18 +377,28 @@ class FriendshipServiceImpl {
    */
   private findRelationship(user1: string, user2: string): FriendRelationship | null {
     if (!user1 || !user2) return null;
-    const relIdModern = makeRelId(user1, user2);
-    if (this.relationships[relIdModern]) {
-      return this.relationships[relIdModern];
-    }
-
-    // Try legacy format with ':::'
+    // Try all canonical and legacy delimiters (triple underscore, rel prefix, colon)
     const norm1 = normalizeUserId(user1);
     const norm2 = normalizeUserId(user2);
     const [first, second] = [norm1, norm2].sort();
-    const legacyKey = `${first}:::${second}`;
-    if (this.relationships[legacyKey]) {
-      return this.relationships[legacyKey];
+    const keysToCheck = [
+      makeRelId(user1, user2),
+      makeRelId(user2, user1),
+      `${first}___${second}`,
+      `${second}___${first}`,
+      `${user1}___${user2}`,
+      `${user2}___${user1}`,
+      `rel_${first}_${second}`,
+      `rel_${second}_${first}`,
+      `rel_${user1}_${user2}`,
+      `rel_${user2}_${user1}`,
+      `${first}:::${second}`,
+      `${second}:::${first}`,
+    ];
+    for (const key of keysToCheck) {
+      if (this.relationships[key]) {
+        return this.relationships[key];
+      }
     }
 
     // Search across all relationships with robust fuzzy identification using matchesUser
@@ -821,8 +836,10 @@ class FriendshipServiceImpl {
       const isTarget =
         matchesUser(userId, rel.userA, rel.receiverDetails) ||
         matchesUser(userId, rel.userB, rel.receiverDetails) ||
+        matchesUser(userId, rel.receiverDetails?.id, rel.receiverDetails) ||
         (rel.receiverDetails?.email && userId.includes('@') && rel.receiverDetails.email.toLowerCase() === userId.toLowerCase()) ||
-        (normalizeUserId(userId) === 'current_user_id' && (rel.userA === 'current_user_id' || rel.userB === 'current_user_id' || rel.receiverDetails?.id === 'current_user_id'));
+        (normalizeUserId(userId) === 'current_user_id' && (rel.userA === 'current_user_id' || rel.userB === 'current_user_id' || rel.receiverDetails?.id === 'current_user_id')) ||
+        (normalizeUserId(userId) === SAVEGAMOUR_CANONICAL_ID && (rel.userA.includes('FCXkMkn1mo') || rel.userB.includes('FCXkMkn1mo')));
 
       if (!isTarget) return false;
 

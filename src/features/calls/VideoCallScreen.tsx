@@ -147,15 +147,18 @@ export const VideoCallScreen: React.FC<VideoCallScreenProps> = ({
       const localStream = await webrtcService.getLocalStream(callType, facingMode);
       if (localVideoRef.current && localStream) {
         localVideoRef.current.srcObject = localStream;
+        localVideoRef.current.play?.().catch(() => {});
       }
 
       const handleRemoteStream = (remoteStream: MediaStream) => {
         if (remoteVideoRef.current) {
           remoteVideoRef.current.srcObject = remoteStream;
+          remoteVideoRef.current.play?.().catch((e) => console.warn('Remote video playback note:', e));
           setHasRemoteVideo(remoteStream.getVideoTracks().length > 0);
         }
         if (remoteAudioRef.current) {
           remoteAudioRef.current.srcObject = remoteStream;
+          remoteAudioRef.current.play?.().catch((e) => console.warn('Remote audio playback note:', e));
         }
       };
 
@@ -784,13 +787,19 @@ export const VideoCallScreen: React.FC<VideoCallScreenProps> = ({
 
             {/* 2. Speakerphone */}
             <button
-              onClick={() => setIsSpeakerOn(!isSpeakerOn)}
+              onClick={() => {
+                const next = !isSpeakerOn;
+                setIsSpeakerOn(next);
+                if (remoteAudioRef.current) {
+                  remoteAudioRef.current.muted = !next;
+                }
+              }}
               className={`p-3 rounded-full transition-all active:scale-95 ${
                 isSpeakerOn
                   ? 'bg-cyan-500/30 text-cyan-300 border border-cyan-500/40'
                   : 'bg-white/10 text-white hover:bg-white/20'
               }`}
-              title="Loudspeaker"
+              title={isSpeakerOn ? 'Spika ya Nje (Loudspeaker)' : 'Nyamazisha Spika'}
             >
               {isSpeakerOn ? <Volume2 className="w-4 h-4" /> : <VolumeX className="w-4 h-4" />}
             </button>

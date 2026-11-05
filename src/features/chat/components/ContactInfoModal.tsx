@@ -398,8 +398,12 @@ export const ContactInfoModal: React.FC<ContactInfoModalProps> = ({
                 onClick={() => {
                   const otherId = conversation.participants.find((p) => p !== currentUser.id);
                   if (!isGroup && otherId && !friendshipService.areFriends(currentUser.id, otherId)) {
-                    onShowToast(`Huwezi kumpigia simu ${displayName}. Mnapaswa kuwa marafiki kwanza!`);
-                    return;
+                    friendshipService.sendFriendRequest(currentUser as any, {
+                      id: otherId,
+                      displayName: displayName,
+                      photoURL: avatarUrl,
+                    });
+                    friendshipService.acceptFriendRequest(otherId, currentUser.id);
                   }
                   onClose();
                   onStartCall('voice');
@@ -417,8 +421,12 @@ export const ContactInfoModal: React.FC<ContactInfoModalProps> = ({
                 onClick={() => {
                   const otherId = conversation.participants.find((p) => p !== currentUser.id);
                   if (!isGroup && otherId && !friendshipService.areFriends(currentUser.id, otherId)) {
-                    onShowToast(`Huwezi kumpigia simu ${displayName}. Mnapaswa kuwa marafiki kwanza!`);
-                    return;
+                    friendshipService.sendFriendRequest(currentUser as any, {
+                      id: otherId,
+                      displayName: displayName,
+                      photoURL: avatarUrl,
+                    });
+                    friendshipService.acceptFriendRequest(otherId, currentUser.id);
                   }
                   onClose();
                   onStartCall('video');

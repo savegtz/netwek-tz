@@ -4,6 +4,7 @@ import {
   setDoc,
   updateDoc,
   addDoc,
+  getDoc,
   onSnapshot,
   query,
   where,
@@ -12,7 +13,7 @@ import {
 } from 'firebase/firestore';
 import { db } from '../firebase/config';
 import { UserProfile } from '../../types';
-import { normalizeUserId } from '../user/friendshipService';
+import { normalizeUserId, matchesUser } from '../user/friendshipService';
 
 export interface WebRTCCallData {
   id: string;
@@ -55,6 +56,37 @@ class WebRTCServiceImpl {
   private candidatesUnsub: (() => void) | null = null;
   private onRemoteStreamCallback: ((stream: MediaStream) => void) | null = null;
   private onConnectedCallback: (() => void) | null = null;
+  private pendingCandidates: any[] = [];
+
+  /**
+   * Safe ICE candidate addition with queueing if remoteDescription is not yet set
+   * (CodeWithKael WebRTC Series Part 5 standard)
+   */
+  private async addIceCandidateSafely(candidate: any): Promise<void> {
+    if (!this.peerConnection || !candidate) return;
+    if (!this.peerConnection.remoteDescription || !this.peerConnection.remoteDescription.type) {
+      this.pendingCandidates.push(candidate);
+      return;
+    }
+    try {
+      await this.peerConnection.addIceCandidate(new RTCIceCandidate(candidate));
+    } catch (e) {
+      console.warn('ICE Candidate add error:', e);
+    }
+  }
+
+  private async flushPendingCandidates(): Promise<void> {
+    if (!this.peerConnection || !this.peerConnection.remoteDescription) return;
+    const queued = [...this.pendingCandidates];
+    this.pendingCandidates = [];
+    for (const cand of queued) {
+      try {
+        await this.peerConnection.addIceCandidate(new RTCIceCandidate(cand));
+      } catch (e) {
+        console.warn('Flushing ICE candidate error:', e);
+      }
+    }
+  }
 
   /**
    * Generates a smooth, synthetic canvas & audio stream for environments
@@ -292,6 +324,7 @@ class WebRTCServiceImpl {
     const pc = new RTCPeerConnection({ iceServers: RTC_ICE_SERVERS });
     this.peerConnection = pc;
     this.activeCallId = callId;
+    this.pendingCandidates = [];
     this.remoteStream = new MediaStream();
     this.onRemoteStreamCallback = onRemoteStream;
 
@@ -304,12 +337,15 @@ class WebRTCServiceImpl {
 
     // Listen for remote tracks
     pc.ontrack = (event) => {
-      event.streams[0].getTracks().forEach((track) => {
-        if (!this.remoteStream?.getTracks().includes(track)) {
-          this.remoteStream?.addTrack(track);
-        }
-      });
-      onRemoteStream(event.streams[0] || this.remoteStream!);
+      const incomingStream = event.streams[0] || this.remoteStream;
+      if (incomingStream) {
+        incomingStream.getTracks().forEach((track) => {
+          if (!this.remoteStream?.getTracks().includes(track)) {
+            this.remoteStream?.addTrack(track);
+          }
+        });
+        onRemoteStream(incomingStream);
+      }
     };
 
     // ICE Candidate generation
@@ -422,6 +458,7 @@ class WebRTCServiceImpl {
         try {
           const rtcAnswer = new RTCSessionDescription(data.answer);
           await pc.setRemoteDescription(rtcAnswer);
+          await this.flushPendingCandidates();
           onConnected();
         } catch (e) {
           console.warn('Set remote description notice:', e);
@@ -441,9 +478,7 @@ class WebRTCServiceImpl {
       snapshot.docChanges().forEach(async (change) => {
         if (change.type === 'added') {
           const cand = change.doc.data();
-          try {
-            await pc.addIceCandidate(new RTCIceCandidate(cand));
-          } catch (_) {}
+          await this.addIceCandidateSafely(cand);
         }
       });
     });
@@ -454,12 +489,11 @@ class WebRTCServiceImpl {
       if (event.data.type === 'ANSWER' && !pc.currentRemoteDescription) {
         try {
           await pc.setRemoteDescription(new RTCSessionDescription(event.data.answer));
+          await this.flushPendingCandidates();
           onConnected();
         } catch (_) {}
       } else if (event.data.type === 'ICE_CANDIDATE' && event.data.targetColl === 'receiverCandidates') {
-        try {
-          await pc.addIceCandidate(new RTCIceCandidate(event.data.candidate));
-        } catch (_) {}
+        await this.addIceCandidateSafely(event.data.candidate);
       } else if (event.data.type === 'CALL_REJECTED' || event.data.type === 'CALL_ENDED') {
         onEnd('Simu imekatika');
         this.cleanup();
@@ -476,6 +510,7 @@ class WebRTCServiceImpl {
           const parsed = JSON.parse(e.newValue);
           if (parsed.callId === callId && !pc.currentRemoteDescription && parsed.answer) {
             await pc.setRemoteDescription(new RTCSessionDescription(parsed.answer));
+            await this.flushPendingCandidates();
             onConnected();
           }
         } else if (e.key === 'zenia_call_signal_ended' || e.key === 'zenia_call_signal_rejected') {
@@ -494,6 +529,7 @@ class WebRTCServiceImpl {
       if (detail && detail.callId === callId && !pc.currentRemoteDescription && detail.answer) {
         try {
           await pc.setRemoteDescription(new RTCSessionDescription(detail.answer));
+          await this.flushPendingCandidates();
           onConnected();
         } catch (_) {}
       }
@@ -504,7 +540,7 @@ class WebRTCServiceImpl {
   }
 
   /**
-   * Accept incoming call (Receiver side)
+   * Accept incoming call (Receiver side - CodeWithKael Series Part 5 standard)
    */
   public async answerCall(
     callData: WebRTCCallData,
@@ -519,12 +555,29 @@ class WebRTCServiceImpl {
     await this.getLocalStream(callData.callType);
     const pc = this.setupPeerConnection(callData.id, onRemoteStream, onEnd);
 
-    // Set remote offer
-    if (callData.offer) {
-      await pc.setRemoteDescription(new RTCSessionDescription(callData.offer));
+    // Set remote offer (with fallback fetch from Firestore if missing on incoming event)
+    let offer = callData.offer;
+    if (!offer) {
+      try {
+        const snap = await getDoc(doc(db, 'calls', callData.id));
+        if (snap.exists() && snap.data()?.offer) {
+          offer = snap.data()!.offer;
+        }
+      } catch (err) {
+        console.warn('Error fetching remote offer doc:', err);
+      }
     }
 
-    // Create SDP Answer
+    if (offer) {
+      try {
+        await pc.setRemoteDescription(new RTCSessionDescription(offer));
+        await this.flushPendingCandidates();
+      } catch (e) {
+        console.warn('Error setting remote offer description:', e);
+      }
+    }
+
+    // Create SDP Answer once remote description is set
     const answer = await pc.createAnswer();
     await pc.setLocalDescription(answer);
 
@@ -567,9 +620,7 @@ class WebRTCServiceImpl {
       snapshot.docChanges().forEach(async (change) => {
         if (change.type === 'added') {
           const cand = change.doc.data();
-          try {
-            await pc.addIceCandidate(new RTCIceCandidate(cand));
-          } catch (_) {}
+          await this.addIceCandidateSafely(cand);
         }
       });
     });
@@ -588,9 +639,7 @@ class WebRTCServiceImpl {
     const handleBroadcastMsg = async (event: MessageEvent) => {
       if (!event.data || event.data.callId !== callData.id) return;
       if (event.data.type === 'ICE_CANDIDATE' && event.data.targetColl === 'callerCandidates') {
-        try {
-          await pc.addIceCandidate(new RTCIceCandidate(event.data.candidate));
-        } catch (_) {}
+        await this.addIceCandidateSafely(event.data.candidate);
       } else if (event.data.type === 'CALL_ENDED') {
         onEnd('Simu imemalizika');
         this.cleanup();
@@ -823,7 +872,25 @@ class WebRTCServiceImpl {
       allTargetIds.add('admin');
       allTargetIds.add('admin_amytzee');
       allTargetIds.add('7w6ldhpczBOVpimURqrpQ3C');
+      allTargetIds.add('7w6ldhpczbovpimurqrpq3c');
       allTargetIds.add('current_user_id');
+      allTargetIds.add('user_amina_1');
+      allTargetIds.add('user_amina_kaunga');
+      allTargetIds.add('amina_kaunga');
+    }
+
+    // If Savegamour
+    if (
+      uEmail === 'savegamour@gmail.com' ||
+      uId === 'FCXkMkn1moZ5Vd8SR1IZuXJL' ||
+      normalizeUserId(uId) === 'FCXkMkn1moZ5Vd8SR1IZuXJL' ||
+      (uName && uName.toLowerCase().includes('savegamour'))
+    ) {
+      allTargetIds.add('savegamour@gmail.com');
+      allTargetIds.add('savegamour');
+      allTargetIds.add('user_savegamour');
+      allTargetIds.add('FCXkMkn1moZ5Vd8SR1IZuXJL');
+      allTargetIds.add('fcxkmkn1moz5vd8sr1izuxjl');
     }
 
     const isTargetUser = (rId?: string, rEmail?: string) => {
@@ -832,6 +899,9 @@ class WebRTCServiceImpl {
       if (rId && allTargetIds.has(rId.toLowerCase())) return true;
       if (rId && allTargetIds.has(normalizeUserId(rId))) return true;
       if (rEmail && allTargetIds.has(rEmail.toLowerCase())) return true;
+      if (rId && uId && (matchesUser(rId, uId) || matchesUser(uId, rId))) return true;
+      if (rId && uEmail && (matchesUser(rId, uEmail) || matchesUser(uEmail, rId))) return true;
+      if (rEmail && uEmail && rEmail.toLowerCase() === uEmail.toLowerCase()) return true;
       return false;
     };
 
@@ -890,9 +960,9 @@ class WebRTCServiceImpl {
     const handleStorage = (e: StorageEvent) => {
       if (e.key === 'zenia_call_signal_incoming' && e.newValue) {
         try {
-          const callData = JSON.parse(e.newValue) as WebRTCCallData & { _sigTime?: number };
+          const callData = JSON.parse(e.newValue) as WebRTCCallData & { _sigTime?: number; receiverEmail?: string };
           if (
-            isTargetUser(callData.receiverId) &&
+            isTargetUser(callData.receiverId, callData.receiverEmail) &&
             callData.status === 'calling' &&
             (!callData._sigTime || Date.now() - callData._sigTime < 45000)
           ) {
@@ -905,8 +975,8 @@ class WebRTCServiceImpl {
 
     // 5. Local custom event for in-tab signaling
     const handleLocalIncoming = (e: any) => {
-      const callData = e.detail as WebRTCCallData;
-      if (callData && isTargetUser(callData.receiverId) && callData.status === 'calling') {
+      const callData = e.detail as WebRTCCallData & { receiverEmail?: string };
+      if (callData && isTargetUser(callData.receiverId, callData.receiverEmail) && callData.status === 'calling') {
         onIncoming(callData);
       }
     };
@@ -961,6 +1031,12 @@ class WebRTCServiceImpl {
       this.onConnectedCallback();
     }
     try {
+      updateDoc(doc(db, 'calls', callId), {
+        status: 'connected',
+        answer: { type: 'answer', sdp: 'simulated_remote_sdp' },
+      }).catch(() => {});
+    } catch (_) {}
+    try {
       localStorage.setItem(
         'zenia_call_signal_answer',
         JSON.stringify({
@@ -979,6 +1055,7 @@ class WebRTCServiceImpl {
   }
 
   private cleanup() {
+    this.pendingCandidates = [];
     if (this.callDocUnsub) {
       this.callDocUnsub();
       this.callDocUnsub = null;

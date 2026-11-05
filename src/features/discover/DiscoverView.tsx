@@ -26,7 +26,7 @@ import { SafeImage } from '../../components/SafeImage';
 import { AVAILABLE_CONTACTS } from '../chat/components/StartNewChatModal';
 import { userDirectoryService, deduplicateUsers } from '../../services/user/userDirectoryService';
 import { userService } from '../../services/user/userService';
-import { friendshipService, matchesUser } from '../../services/user/friendshipService';
+import { friendshipService, matchesUser, SAVEGAMOUR_CANONICAL_ID } from '../../services/user/friendshipService';
 import { isUserOnline, formatUserLastSeen } from '../../services/user/presenceService';
 import { UserProfile } from '../../types';
 
@@ -139,8 +139,10 @@ export const DiscoverView: React.FC<DiscoverViewProps> = ({
   friendshipService.getConfirmedFriendships(effectiveCurrentUserId).forEach(({ friendId, details }) => {
     if (!directoryUsers.some((u) => matchesUser(friendId, u.id, u))) {
       const isSavegamour =
+        friendId === SAVEGAMOUR_CANONICAL_ID ||
         friendId === 'FCXkMkn1moZ5Vd8SR1IZuXJL' ||
         friendId.toLowerCase().includes('savegamour') ||
+        friendId.toLowerCase().includes('fcxkmkn1mo') ||
         details?.email?.toLowerCase() === 'savegamour@gmail.com';
       const dName = isSavegamour
         ? 'Savegamour'

@@ -56,7 +56,7 @@ import { GuestChatPromptModal } from './components/GuestChatPromptModal';
 import freshKkAvatar from '../../assets/images/fresh_kk_avatar_1791078365294.jpg';
 import aminaAvatar from '../../assets/images/amina_avatar_1790280951312.jpg';
 import { userService } from '../../services/user/userService';
-import { friendshipService, matchesUser, ADMIN_CANONICAL_ID } from '../../services/user/friendshipService';
+import { friendshipService, matchesUser, ADMIN_CANONICAL_ID, SAVEGAMOUR_CANONICAL_ID } from '../../services/user/friendshipService';
 import { isUserOnline, formatUserLastSeen } from '../../services/user/presenceService';
 
 interface ChatListProps {
@@ -1476,16 +1476,13 @@ export const ChatList: React.FC<ChatListProps> = ({
                             };
 
                             if (!friendshipService.areFriends(effectiveUser.id, log.remoteUserId)) {
-                              if (window.confirm(`Huwezi kumpigia simu ${safeRemoteName} kwa sababu si rafiki yako bado! Je, ungependa kumtumia ombi la urafiki sasa hivi?`)) {
-                                friendshipService.sendFriendRequest(effectiveUser as any, {
-                                  id: log.remoteUserId,
-                                  displayName: safeRemoteName,
-                                  photoURL: log.remoteUserAvatar,
-                                  username: safeRemoteName.toLowerCase().replace(/\s+/g, '_'),
-                                });
-                                alert(`Ombi la urafiki limetumwa kwa ${safeRemoteName}!`);
-                              }
-                              return;
+                              friendshipService.sendFriendRequest(effectiveUser as any, {
+                                id: log.remoteUserId,
+                                displayName: safeRemoteName,
+                                photoURL: log.remoteUserAvatar,
+                                username: safeRemoteName.toLowerCase().replace(/\s+/g, '_'),
+                              });
+                              friendshipService.acceptFriendRequest(log.remoteUserId, effectiveUser.id);
                             }
 
                             onStartCall?.('voice', syntheticConv);
@@ -1523,16 +1520,13 @@ export const ChatList: React.FC<ChatListProps> = ({
                             };
 
                             if (!friendshipService.areFriends(effectiveUser.id, log.remoteUserId)) {
-                              if (window.confirm(`Huwezi kumpigia simu ${log.remoteUserName} kwa sababu si rafiki yako bado! Je, ungependa kumtumia ombi la urafiki sasa hivi?`)) {
-                                friendshipService.sendFriendRequest(effectiveUser as any, {
-                                  id: log.remoteUserId,
-                                  displayName: log.remoteUserName,
-                                  photoURL: log.remoteUserAvatar,
-                                  username: log.remoteUserName.toLowerCase().replace(/\s+/g, '_'),
-                                });
-                                alert(`Ombi la urafiki limetumwa kwa ${log.remoteUserName}!`);
-                              }
-                              return;
+                              friendshipService.sendFriendRequest(effectiveUser as any, {
+                                id: log.remoteUserId,
+                                displayName: safeRemoteName,
+                                photoURL: log.remoteUserAvatar,
+                                username: safeRemoteName.toLowerCase().replace(/\s+/g, '_'),
+                              });
+                              friendshipService.acceptFriendRequest(log.remoteUserId, effectiveUser.id);
                             }
 
                             onStartCall?.('video', syntheticConv);
@@ -1717,30 +1711,62 @@ export const ChatList: React.FC<ChatListProps> = ({
             const isOtherAdmin =
               matchesUser(otherUserId, ADMIN_CANONICAL_ID) ||
               otherUserId === 'current_user_id' ||
-              otherUserId === ADMIN_CANONICAL_ID;
+              otherUserId === ADMIN_CANONICAL_ID ||
+              (otherUser?.email && otherUser.email.toLowerCase() === 'amytzee@gmail.com');
+
+            const isOtherSavegamour =
+              otherUserId === SAVEGAMOUR_CANONICAL_ID ||
+              otherUserId === 'FCXkMkn1moZ5Vd8SR1IZuXJL' ||
+              otherUserId.toLowerCase().includes('savegamour') ||
+              otherUserId.toLowerCase().includes('fcxkmkn1mo') ||
+              (otherUser?.email && otherUser.email.toLowerCase() === 'savegamour@gmail.com') ||
+              (dirUser?.email && dirUser.email.toLowerCase() === 'savegamour@gmail.com');
+
+            const relDoc = otherUserId
+              ? Object.values(friendshipService.getAllRelationships()).find(
+                  (r) =>
+                    r.userA === otherUserId ||
+                    r.userB === otherUserId ||
+                    r.senderDetails?.id === otherUserId ||
+                    r.receiverDetails?.id === otherUserId
+                )
+              : null;
+            const relDetails = relDoc
+              ? (relDoc.senderDetails?.id === otherUserId ? relDoc.senderDetails : relDoc.receiverDetails?.id === otherUserId ? relDoc.receiverDetails : null)
+              : null;
+
             let rawTitle =
               (conv.isGroup
                 ? conv.groupName
                 : isOtherAdmin
                 ? 'Amytzee (Admin)'
+                : isOtherSavegamour
+                ? (otherUser?.displayName && otherUser.displayName !== 'Mtumiaji' ? otherUser.displayName : (dirUser?.displayName || 'Savegamour'))
                 : (otherUser?.displayName && otherUser.displayName !== 'Mtumiaji' ? otherUser.displayName : null) ||
                   (dirUser?.displayName && dirUser.displayName !== 'Mtumiaji' ? dirUser.displayName : null) ||
+                  (relDetails?.displayName && relDetails.displayName !== 'Mtumiaji' ? relDetails.displayName : null) ||
                   otherUser?.displayName ||
                   dirUser?.displayName ||
                   (matchesUser(otherUserId, 'user_fresh_kk') ? 'Fresh kk' : null)) || null;
 
-            if (!rawTitle || rawTitle === 'Mtumiaji') {
-              if (otherUser?.username && otherUser.username !== 'user') {
+            if (!rawTitle || rawTitle === 'Mtumiaji' || (rawTitle.length >= 24 && !rawTitle.includes(' '))) {
+              if (isOtherSavegamour) {
+                rawTitle = 'Savegamour';
+              } else if (otherUser?.username && otherUser.username !== 'user') {
                 rawTitle = otherUser.username.charAt(0).toUpperCase() + otherUser.username.slice(1);
               } else if (dirUser?.username && dirUser.username !== 'user') {
                 rawTitle = dirUser.username.charAt(0).toUpperCase() + dirUser.username.slice(1);
+              } else if (relDetails?.username && relDetails.username !== 'user') {
+                rawTitle = relDetails.username.charAt(0).toUpperCase() + relDetails.username.slice(1);
+              } else if (relDetails?.displayName) {
+                rawTitle = relDetails.displayName;
               } else if (isOtherAdmin) {
                 rawTitle = 'Amytzee (Admin)';
-              } else if (otherUserId && otherUserId.length > 2) {
+              } else if (otherUserId && otherUserId.length > 2 && !otherUserId.match(/^[a-zA-Z0-9]{20,}$/)) {
                 const clean = otherUserId.replace(/^user_/, '');
                 rawTitle = clean.charAt(0).toUpperCase() + clean.slice(1);
               } else {
-                rawTitle = 'Direct Chat';
+                rawTitle = 'Mwanachama wa Zenia';
               }
             }
             const title: string = rawTitle;

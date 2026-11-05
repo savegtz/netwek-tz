@@ -2,7 +2,7 @@ import { collection, doc, onSnapshot, getDocs, setDoc, deleteDoc, query } from '
 import { db, auth } from '../firebase/config';
 import { UserProfile } from '../../types';
 import { userService } from './userService';
-import { normalizeUserId, friendshipService } from './friendshipService';
+import { normalizeUserId, friendshipService, SAVEGAMOUR_CANONICAL_ID } from './friendshipService';
 import freshKkAvatar from '../../assets/images/fresh_kk_avatar_1791078365294.jpg';
 import aminaAvatar from '../../assets/images/amina_avatar_1790280951312.jpg';
 
@@ -114,7 +114,7 @@ export const PRIMARY_ADMIN_PROFILE: UserProfile = {
  * Authoritative Registered User Profile for Savegamour (Firebase Auth)
  */
 export const PRIMARY_SAVEGAMOUR_PROFILE: UserProfile = {
-  id: 'FCXkMkn1moZ5Vd8SR1IZuXJL',
+  id: SAVEGAMOUR_CANONICAL_ID,
   email: 'savegamour@gmail.com',
   displayName: 'Savegamour',
   username: 'savegamour',
@@ -427,8 +427,11 @@ class UserDirectoryServiceImpl {
 
               // Identify if this is the second registered Firebase Auth account (savegamour@gmail.com)
               const isSavegamour =
+                docSnap.id === SAVEGAMOUR_CANONICAL_ID ||
                 docSnap.id === 'FCXkMkn1moZ5Vd8SR1IZuXJL' ||
-                rawEmail === 'savegamour@gmail.com';
+                docSnap.id.includes('FCXkMkn1mo') ||
+                rawEmail === 'savegamour@gmail.com' ||
+                rawDisplayName.toLowerCase().includes('savegamour');
 
               const resolvedEmail = isSavegamour
                 ? 'savegamour@gmail.com'
