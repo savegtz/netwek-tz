@@ -25,6 +25,27 @@ const chatChannel =
     ? new BroadcastChannel('zenia_live_chat_sync')
     : null;
 
+/**
+ * Deeply sanitizes any object or array to ensure no `undefined` values exist,
+ * as Firestore setDoc/updateDoc strictly rejects undefined fields.
+ */
+export function sanitizeForFirestore<T>(obj: T): T {
+  if (obj === null || obj === undefined) return null as any;
+  if (Array.isArray(obj)) {
+    return obj.map(sanitizeForFirestore) as any;
+  }
+  if (typeof obj === 'object') {
+    const clean: Record<string, any> = {};
+    for (const [key, val] of Object.entries(obj)) {
+      if (val !== undefined) {
+        clean[key] = sanitizeForFirestore(val);
+      }
+    }
+    return clean as any;
+  }
+  return obj;
+}
+
 export function getAllEquivalentConversationIds(conversationId: string): string[] {
   const set = new Set<string>();
   if (!conversationId) return [];
@@ -40,11 +61,11 @@ export function getAllEquivalentConversationIds(conversationId: string): string[
       const aliasesFor = (p: string): string[] => {
         const norm = normalizeUserId(p);
         const list = [p, norm];
-        if (norm === ADMIN_CANONICAL_ID || p === 'current_user_id' || p.toLowerCase().includes('amytzee')) {
-          list.push(ADMIN_CANONICAL_ID, 'current_user_id', 'amytzee@gmail.com', 'amytzee');
+        if (norm === ADMIN_CANONICAL_ID || p === 'current_user_id' || p.toLowerCase().includes('amytzee') || p.includes('amina')) {
+          list.push(ADMIN_CANONICAL_ID, 'current_user_id', 'amytzee@gmail.com', 'amytzee', 'user_amina_1', 'user_amina_kaunga', 'amina_kaunga');
         }
-        if (norm === SAVEGAMOUR_CANONICAL_ID || p.toLowerCase().includes('savegamour')) {
-          list.push(SAVEGAMOUR_CANONICAL_ID, 'savegamour@gmail.com', 'savegamour');
+        if (norm === SAVEGAMOUR_CANONICAL_ID || p.toLowerCase().includes('savegamour') || p.includes('FCXkMkn1mo')) {
+          list.push(SAVEGAMOUR_CANONICAL_ID, 'savegamour@gmail.com', 'savegamour', 'FCXkMkn1moZ5Vd8SR1IZuXJL', 'user_savegamour');
         }
         return Array.from(new Set(list.filter(Boolean)));
       };
@@ -227,7 +248,7 @@ export const ChatSyncService = {
 
     // 3. Listen to Firestore collection in real-time on all target IDs
     const unsubsFirestore: (() => void)[] = [];
-    const listenTargetIds = Array.from(new Set([canonicalId, conversationId].filter(Boolean)));
+    const listenTargetIds = Array.from(new Set([canonicalId, conversationId, ...equivalentIds].filter(Boolean)));
 
     for (const cId of listenTargetIds) {
       try {
@@ -497,20 +518,23 @@ export const ChatSyncService = {
     // 3. Write to Firestore so other devices & remote users receive it live across canonical and alias paths
     try {
       const canonicalId = getCanonicalConversationId(conversationId);
-      const targetIds = Array.from(new Set([canonicalId, conversationId].filter(Boolean)));
+      const equivalentIds = getAllEquivalentConversationIds(conversationId);
+      const targetIds = Array.from(new Set([canonicalId, conversationId, ...equivalentIds].filter(Boolean)));
       const cleanStatus = message.status === 'seen' || message.status === 'delivered' ? message.status : 'sent';
       const cleanMessage: ChatMessage = {
         ...message,
         status: cleanStatus,
       };
 
+      const firestorePayload = sanitizeForFirestore({
+        ...cleanMessage,
+        timestamp: Date.now(),
+      });
+
       for (const tId of targetIds) {
         try {
           const msgRef = doc(db, 'conversations', tId, 'messages', cleanMessage.id);
-          await setDoc(msgRef, {
-            ...cleanMessage,
-            timestamp: Date.now(),
-          });
+          await setDoc(msgRef, firestorePayload, { merge: true });
         } catch (err) {
           console.warn('Firestore message save error for', tId, err);
         }
@@ -595,7 +619,7 @@ export const ChatSyncService = {
       for (const tId of targetIds) {
         try {
           const convRef = doc(db, 'conversations', tId);
-          await setDoc(convRef, { ...updates, id: tId }, { merge: true });
+          await setDoc(convRef, sanitizeForFirestore({ ...updates, id: tId }), { merge: true });
         } catch (_) {}
       }
 
@@ -608,7 +632,7 @@ export const ChatSyncService = {
         if (!recId || recId === 'guest') continue;
         try {
           const notifId = `notif_msg_${Date.now()}_${Math.random().toString(36).substring(2, 6)}`;
-          await setDoc(doc(db, 'notifications', notifId), {
+          await setDoc(doc(db, 'notifications', notifId), sanitizeForFirestore({
             id: notifId,
             userId: recId,
             title: cleanMessage.senderName || 'Ujumbe Mpya',
@@ -620,11 +644,11 @@ export const ChatSyncService = {
                 ? '🧾 Ankara ya Malipo'
                 : 'Ujumbe mpya'),
             type: 'message',
-            avatar: cleanMessage.senderAvatar,
+            avatar: cleanMessage.senderAvatar || '',
             read: false,
             createdAt: new Date().toISOString(),
             data: { conversationId: canonicalId, messageId: cleanMessage.id, replyText: '' },
-          });
+          }));
         } catch (_) {}
       }
     } catch (e) {
@@ -839,21 +863,41 @@ export const ChatSyncService = {
 
   // Update a message (for edits, poll votes, opening tips, view-once)
   async updateMessage(conversationId: string, messageId: string, updates: Partial<ChatMessage>) {
-    const localKey = `zenia_msgs_${conversationId}`;
-    try {
-      const cached = localStorage.getItem(localKey);
-      if (cached) {
-        const list: ChatMessage[] = JSON.parse(cached);
-        const updated = list.map((m) => (m.id === messageId ? { ...m, ...updates } : m));
-        localStorage.setItem(localKey, JSON.stringify(updated));
-      }
-    } catch (_) {}
+    const canonicalId = getCanonicalConversationId(conversationId);
+    const equivalentIds = getAllEquivalentConversationIds(conversationId);
+    const targetIds = Array.from(new Set([canonicalId, conversationId, ...equivalentIds].filter(Boolean)));
+    const cleanUpdates = sanitizeForFirestore(updates);
 
-    try {
-      const msgRef = doc(db, 'conversations', conversationId, 'messages', messageId);
-      await setDoc(msgRef, updates, { merge: true });
-    } catch (e) {
-      console.warn('Firestore message update error:', e);
+    for (const eId of targetIds) {
+      const localKey = `zenia_msgs_${eId}`;
+      try {
+        const cached = localStorage.getItem(localKey);
+        if (cached) {
+          const list: ChatMessage[] = JSON.parse(cached);
+          const updated = list.map((m) => (m.id === messageId ? { ...m, ...updates } : m));
+          localStorage.setItem(localKey, JSON.stringify(updated));
+        }
+      } catch (_) {}
+    }
+
+    if (chatChannel) {
+      try {
+        chatChannel.postMessage({
+          type: 'UPDATE_MESSAGE',
+          conversationId,
+          messageId,
+          updates,
+        });
+      } catch (_) {}
+    }
+
+    for (const tId of targetIds) {
+      try {
+        const msgRef = doc(db, 'conversations', tId, 'messages', messageId);
+        await setDoc(msgRef, cleanUpdates, { merge: true });
+      } catch (e) {
+        console.warn('Firestore message update error for', tId, e);
+      }
     }
   },
 
@@ -991,8 +1035,8 @@ export const ChatSyncService = {
   // Mark all incoming messages in a conversation as seen (Blue double ticks)
   async markMessagesAsSeen(conversationId: string, currentUserId: string) {
     const canonicalId = getCanonicalConversationId(conversationId);
-    const targetIds = Array.from(new Set([canonicalId, conversationId].filter(Boolean)));
     const equivalentIds = getAllEquivalentConversationIds(conversationId);
+    const targetIds = Array.from(new Set([canonicalId, conversationId, ...equivalentIds].filter(Boolean)));
 
     // 1. Update localStorage across all equivalent conversation IDs
     try {

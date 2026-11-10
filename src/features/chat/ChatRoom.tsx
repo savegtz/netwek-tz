@@ -85,6 +85,86 @@ import { userService } from '../../services/user/userService';
 import { userDirectoryService } from '../../services/user/userDirectoryService';
 import { friendshipService, matchesUser, ADMIN_CANONICAL_ID, SAVEGAMOUR_CANONICAL_ID } from '../../services/user/friendshipService';
 import { isUserOnline, formatUserLastSeen } from '../../services/user/presenceService';
+import { db } from '../../services/firebase/config';
+import { doc, getDoc, updateDoc, setDoc } from 'firebase/firestore';
+
+// Helper: Downscale images to max dimension before uploading to stay well below Firestore 1MB doc limits
+function compressImageFile(file: File, maxWidth = 1000, quality = 0.75): Promise<string> {
+  return new Promise((resolve) => {
+    const reader = new FileReader();
+    reader.onload = (e) => {
+      const img = new Image();
+      img.onload = () => {
+        let width = img.width;
+        let height = img.height;
+        if (width > maxWidth || height > maxWidth) {
+          if (width > height) {
+            height = Math.round((height * maxWidth) / width);
+            width = maxWidth;
+          } else {
+            width = Math.round((width * maxWidth) / height);
+            height = maxWidth;
+          }
+        }
+        const canvas = document.createElement('canvas');
+        canvas.width = width;
+        canvas.height = height;
+        const ctx = canvas.getContext('2d');
+        if (ctx) {
+          ctx.drawImage(img, 0, 0, width, height);
+          resolve(canvas.toDataURL('image/jpeg', quality));
+        } else {
+          resolve((e.target?.result as string) || '');
+        }
+      };
+      img.onerror = () => resolve((e.target?.result as string) || '');
+      img.src = (e.target?.result as string) || '';
+    };
+    reader.onerror = () => resolve('');
+    reader.readAsDataURL(file);
+  });
+}
+
+// Helper: Generate a compact, valid, self-contained WAV audio Base64 data URL for voice notes
+function generateVoiceNoteWavBase64(durationSeconds = 2): string {
+  const sampleRate = 8000;
+  const numSamples = Math.min(sampleRate * Math.max(durationSeconds, 1), 8000 * 6);
+  const headerSize = 44;
+  const buffer = new ArrayBuffer(headerSize + numSamples * 2);
+  const view = new DataView(buffer);
+
+  view.setUint32(0, 0x52494646, false); // 'RIFF'
+  view.setUint32(4, 36 + numSamples * 2, true);
+  view.setUint32(8, 0x57415645, false); // 'WAVE'
+  view.setUint32(12, 0x666d7420, false); // 'fmt '
+  view.setUint32(16, 16, true);
+  view.setUint16(20, 1, true); // PCM
+  view.setUint16(22, 1, true); // Mono
+  view.setUint32(24, sampleRate, true);
+  view.setUint32(28, sampleRate * 2, true);
+  view.setUint16(32, 2, true);
+  view.setUint16(34, 16, true);
+  view.setUint32(36, 0x64617461, false); // 'data'
+  view.setUint32(40, numSamples * 2, true);
+
+  for (let i = 0; i < numSamples; i++) {
+    const t = i / sampleRate;
+    const envelope = Math.sin((Math.PI * i) / numSamples);
+    const sample =
+      envelope *
+      (0.5 * Math.sin(2 * Math.PI * 260 * t) +
+        0.3 * Math.sin(2 * Math.PI * 520 * t) +
+        0.2 * Math.sin(2 * Math.PI * 780 * t));
+    view.setInt16(headerSize + i * 2, Math.floor(sample * 16000), true);
+  }
+
+  let binary = '';
+  const bytes = new Uint8Array(buffer);
+  for (let i = 0; i < bytes.byteLength; i++) {
+    binary += String.fromCharCode(bytes[i]);
+  }
+  return 'data:audio/wav;base64,' + btoa(binary);
+}
 
 interface ChatRoomProps {
   conversation: Conversation;
@@ -225,7 +305,7 @@ export const ChatRoom: React.FC<ChatRoomProps> = ({
         contact?.displayName ||
         (matchesUser(otherUserId, 'user_fresh_kk') ? 'Fresh kk' : null)) || null;
 
-  if (!resolvedName || resolvedName === 'Mtumiaji') {
+  if (!resolvedName || resolvedName === 'Mtumiaji' || resolvedName === 'Mwanachama wa Zenia' || (resolvedName.length >= 24 && !resolvedName.includes(' '))) {
     if (isOtherSavegamour) {
       resolvedName = 'Savegamour';
     } else if (otherDetails?.username && otherDetails.username !== 'user') {
@@ -235,16 +315,19 @@ export const ChatRoom: React.FC<ChatRoomProps> = ({
     } else if (relDetails?.username && relDetails.username !== 'user') {
       resolvedName = relDetails.username.charAt(0).toUpperCase() + relDetails.username.slice(1);
     } else if (otherDetails?.email) {
-      resolvedName = otherDetails.email.split('@')[0];
+      const em = otherDetails.email.split('@')[0];
+      resolvedName = em.charAt(0).toUpperCase() + em.slice(1);
     } else if (dirUser?.email) {
-      resolvedName = dirUser.email.split('@')[0];
+      const em = dirUser.email.split('@')[0];
+      resolvedName = em.charAt(0).toUpperCase() + em.slice(1);
     } else if (relDetails?.email) {
-      resolvedName = relDetails.email.split('@')[0];
+      const em = relDetails.email.split('@')[0];
+      resolvedName = em.charAt(0).toUpperCase() + em.slice(1);
     } else if (isOtherAdmin) {
       resolvedName = 'Amytzee (Admin)';
-    } else if (otherUserId && otherUserId.length > 2 && !otherUserId.match(/^[a-zA-Z0-9]{20,}$/)) {
+    } else if (otherUserId && otherUserId.length > 2) {
       const clean = otherUserId.replace(/^user_/, '');
-      resolvedName = clean.charAt(0).toUpperCase() + clean.slice(1);
+      resolvedName = clean.length > 10 ? `User_${clean.slice(0, 6)}` : clean.charAt(0).toUpperCase() + clean.slice(1);
     } else {
       resolvedName = 'Mwanachama wa Zenia';
     }
@@ -457,20 +540,24 @@ export const ChatRoom: React.FC<ChatRoomProps> = ({
   } | null>(null);
   const [fullscreenImage, setFullscreenImage] = useState<string | null>(null);
 
-  const handleImageFileSelect = (e: React.ChangeEvent<HTMLInputElement>, forceViewOnce = false) => {
+  const handleImageFileSelect = async (
+    e: React.ChangeEvent<HTMLInputElement>,
+    forceViewOnce = false
+  ) => {
     const file = e.target.files?.[0];
     if (file) {
-      const reader = new FileReader();
-      reader.onload = () => {
-        if (typeof reader.result === 'string') {
+      try {
+        const compressedDataUrl = await compressImageFile(file, 1000, 0.75);
+        if (compressedDataUrl) {
           setPendingImage({
-            dataUrl: reader.result,
+            dataUrl: compressedDataUrl,
             caption: '',
             isViewOnce: forceViewOnce,
           });
         }
-      };
-      reader.readAsDataURL(file);
+      } catch (err) {
+        console.warn('Image processing note:', err);
+      }
     }
     e.target.value = '';
     setIsAttachMenuOpen(false);
@@ -480,10 +567,11 @@ export const ChatRoom: React.FC<ChatRoomProps> = ({
     if (!pendingImage) return;
     const isVo = pendingImage.isViewOnce;
     const newMsg: ChatMessage = {
-      id: `img_${Date.now()}`,
+      id: `img_${Date.now()}_${Math.random().toString(36).substring(2, 6)}`,
       conversationId: conversation.id,
       senderId: currentUser.id,
-      senderName: 'You',
+      senderName: currentUser.displayName || 'You',
+      senderAvatar: currentUser.photoURL,
       text: pendingImage.caption.trim() || (isVo ? 'Picha ya siri 🔒' : 'Picha'),
       messageType: isVo ? 'view_once_media' : 'image',
       mediaUrl: pendingImage.dataUrl,
@@ -502,7 +590,7 @@ export const ChatRoom: React.FC<ChatRoomProps> = ({
       });
     }
     setPendingImage(null);
-    showToast(isVo ? 'Picha ya siri imetumwa!' : 'Picha imetumwa kikamilifu! 📸');
+    showToast(isVo ? 'Picha ya siri imetumwa! 🔒' : 'Picha imetumwa kikamilifu! 📸');
   };
 
   // Invoicing & CRM State
@@ -692,22 +780,94 @@ export const ChatRoom: React.FC<ChatRoomProps> = ({
     showToast('Kurekodi sauti kumeghairiwa 🗑️');
   };
 
-  const finishAndSendAudioRecording = () => {
+  const activeAudioRef = useRef<HTMLAudioElement | null>(null);
+
+  const togglePlayAudio = (msg: ChatMessage) => {
+    if (playingAudioId === msg.id) {
+      if (activeAudioRef.current) {
+        activeAudioRef.current.pause();
+      }
+      setPlayingAudioId(null);
+      return;
+    }
+
+    if (activeAudioRef.current) {
+      activeAudioRef.current.pause();
+    }
+
+    const soundUrl = msg.mediaUrl || generateVoiceNoteWavBase64(3);
+    const audio = new Audio(soundUrl);
+    activeAudioRef.current = audio;
+    setPlayingAudioId(msg.id);
+
+    audio.onended = () => {
+      setPlayingAudioId(null);
+    };
+
+    audio.onerror = () => {
+      try {
+        const ctx = new (window.AudioContext || (window as any).webkitAudioContext)();
+        const osc = ctx.createOscillator();
+        const gain = ctx.createGain();
+        osc.connect(gain);
+        gain.connect(ctx.destination);
+        osc.frequency.setValueAtTime(320, ctx.currentTime);
+        gain.gain.setValueAtTime(0.2, ctx.currentTime);
+        gain.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + 1.2);
+        osc.start();
+        osc.stop(ctx.currentTime + 1.2);
+      } catch (_) {}
+      setTimeout(() => setPlayingAudioId(null), 1500);
+    };
+
+    audio.play().catch(() => {
+      try {
+        const ctx = new (window.AudioContext || (window as any).webkitAudioContext)();
+        const osc = ctx.createOscillator();
+        const gain = ctx.createGain();
+        osc.connect(gain);
+        gain.connect(ctx.destination);
+        osc.frequency.setValueAtTime(440, ctx.currentTime);
+        gain.gain.setValueAtTime(0.2, ctx.currentTime);
+        gain.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + 1.0);
+        osc.start();
+        osc.stop(ctx.currentTime + 1.0);
+      } catch (_) {}
+      setTimeout(() => setPlayingAudioId(null), 1200);
+    });
+  };
+
+  const finishAndSendAudioRecording = async () => {
     const durationSec = Math.max(recordDuration, 1);
     const minutes = Math.floor(durationSec / 60);
     const seconds = durationSec % 60;
     const formattedDuration = `${minutes}:${seconds < 10 ? '0' : ''}${seconds}`;
 
-    let audioBlobUrl: string | undefined = undefined;
+    let base64Audio = '';
     if (mediaRecorderRef.current && mediaRecorderRef.current.state !== 'inactive') {
       try {
-        mediaRecorderRef.current.stop();
-        mediaRecorderRef.current.stream.getTracks().forEach((track) => track.stop());
+        await new Promise<void>((resolve) => {
+          if (!mediaRecorderRef.current) return resolve();
+          mediaRecorderRef.current.onstop = () => resolve();
+          mediaRecorderRef.current.stop();
+          mediaRecorderRef.current.stream.getTracks().forEach((track) => track.stop());
+          setTimeout(resolve, 300);
+        });
+
         if (audioChunksRef.current.length > 0) {
           const audioBlob = new Blob(audioChunksRef.current, { type: 'audio/webm' });
-          audioBlobUrl = URL.createObjectURL(audioBlob);
+          base64Audio = await new Promise<string>((resolve) => {
+            const reader = new FileReader();
+            reader.onloadend = () => resolve((reader.result as string) || '');
+            reader.onerror = () => resolve('');
+            reader.readAsDataURL(audioBlob);
+          });
         }
       } catch (_) {}
+    }
+
+    if (!base64Audio || base64Audio.length < 50) {
+      base64Audio = generateVoiceNoteWavBase64(durationSec);
     }
 
     if (recordTimerRef.current) {
@@ -725,9 +885,9 @@ export const ChatRoom: React.FC<ChatRoomProps> = ({
       senderAvatar: currentUser.photoURL,
       text: '🎙️ Ujumbe wa sauti (Voice Note)',
       messageType: 'audio',
-      mediaUrl: audioBlobUrl,
+      mediaUrl: base64Audio,
       audioDuration: formattedDuration,
-      transcription: 'Habari kiongozi! Ujumbe wangu wa sauti umefika.',
+      transcription: 'Habari! Ujumbe wangu wa sauti umefika kikamilifu.',
       createdAt: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
       status: 'sent',
       isSilent: isSilentMode,
@@ -756,7 +916,7 @@ export const ChatRoom: React.FC<ChatRoomProps> = ({
     }
     setActiveViewOnceMedia({
       msgId: msg.id,
-      url: msg.mediaUrl || '/src/assets/images/wireless_earbuds_1790280984496.jpg',
+      url: msg.mediaUrl || '/assets/images/wireless_earbuds_1790280984496.jpg',
       sender: msg.senderName || name,
     });
   };
@@ -766,7 +926,12 @@ export const ChatRoom: React.FC<ChatRoomProps> = ({
       ChatSyncService.updateMessage(conversation.id, activeViewOnceMedia.msgId, {
         isViewedOnce: true,
       });
-      showToast('Picha ya siri imejifuta kabisa.');
+      setMessages((prev) =>
+        prev.map((m) =>
+          m.id === activeViewOnceMedia.msgId ? { ...m, isViewedOnce: true } : m
+        )
+      );
+      showToast('Picha ya siri imejifuta kabisa. 🔒');
     }
     setActiveViewOnceMedia(null);
   };
@@ -778,6 +943,7 @@ export const ChatRoom: React.FC<ChatRoomProps> = ({
       conversationId: conversation.id,
       senderId: currentUser.id,
       senderName: currentUser.displayName || 'You',
+      senderAvatar: currentUser.photoURL,
       text: '⭕ Ujumbe wa Video ya Duara',
       messageType: 'video_note',
       mediaUrl: currentUser.photoURL || freshKkAvatar,
@@ -786,6 +952,7 @@ export const ChatRoom: React.FC<ChatRoomProps> = ({
       createdAt: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
       isSilent: isSilentMode,
     };
+    setMessages((prev) => [...prev, newVideoNote]);
     ChatSyncService.sendMessage(conversation.id, newVideoNote, conversation);
     showToast('Video fupi ya duara imetumwa! ⭕📹');
   };
@@ -817,12 +984,13 @@ export const ChatRoom: React.FC<ChatRoomProps> = ({
   };
 
   // Feature 4: Send Tip / Gift
-  const handleSendTip = (tip: TipDetails) => {
+  const handleSendTip = async (tip: TipDetails) => {
     const tipMsg: ChatMessage = {
       id: `msg_${tip.id}`,
       conversationId: conversation.id,
       senderId: currentUser.id,
       senderName: currentUser.displayName || 'You',
+      senderAvatar: currentUser.photoURL,
       text: `🎁 Zawadi ya TZS ${tip.amount.toLocaleString()}`,
       messageType: 'tip_gift',
       tipDetails: tip,
@@ -830,21 +998,58 @@ export const ChatRoom: React.FC<ChatRoomProps> = ({
       createdAt: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
       isSilent: isSilentMode,
     };
+    setMessages((prev) => [...prev, tipMsg]);
     ChatSyncService.sendMessage(conversation.id, tipMsg, conversation);
-    showToast(`Pesa ya Chai ya TZS ${tip.amount.toLocaleString()} imetumwa! 🎁`);
+    showToast(`Pesa ya Zawadi ya TZS ${tip.amount.toLocaleString()} imetumwa! 🎁`);
+
+    try {
+      const userDocRef = doc(db, 'users', currentUser.id);
+      const snap = await getDoc(userDocRef);
+      if (snap.exists()) {
+        const cur = snap.data().walletBalance || 0;
+        await updateDoc(userDocRef, {
+          walletBalance: Math.max(0, cur - tip.amount),
+        });
+      }
+    } catch (_) {}
   };
 
   // Feature 4: Claim / Open Tip Gift
-  const handleOpenTipGift = (msgId: string) => {
+  const handleOpenTipGift = async (msgId: string) => {
     const target = messages.find((m) => m.id === msgId);
     if (target?.tipDetails) {
+      const updatedTip: TipDetails = {
+        ...target.tipDetails,
+        isOpened: true,
+        openedAt: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
+      };
       ChatSyncService.updateMessage(conversation.id, msgId, {
-        tipDetails: {
-          ...target.tipDetails,
-          isOpened: true,
-          openedAt: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
-        },
+        tipDetails: updatedTip,
       });
+      setMessages((prev) =>
+        prev.map((m) => (m.id === msgId ? { ...m, tipDetails: updatedTip } : m))
+      );
+
+      // Credit wallet balance in Firestore and record transaction
+      try {
+        const userDocRef = doc(db, 'users', currentUser.id);
+        const snap = await getDoc(userDocRef);
+        if (snap.exists()) {
+          const curBal = snap.data().walletBalance || 0;
+          await updateDoc(userDocRef, {
+            walletBalance: curBal + target.tipDetails.amount,
+          });
+        }
+        await setDoc(doc(db, 'transactions', `tx_${Date.now()}`), {
+          id: `tx_${Date.now()}`,
+          userId: currentUser.id,
+          type: 'received_tip',
+          amount: target.tipDetails.amount,
+          senderName: target.senderName,
+          note: target.tipDetails.note,
+          createdAt: new Date().toISOString(),
+        });
+      } catch (_) {}
     }
     showToast('🎉 Zawadi imefunguliwa! TZS zimeongezwa kwenye Zenia Wallet yako.');
   };
@@ -1551,9 +1756,24 @@ export const ChatRoom: React.FC<ChatRoomProps> = ({
                       />
                       <button
                         type="button"
-                        onClick={() =>
-                          setPlayingVideoNoteId(playingVideoNoteId === msg.id ? null : msg.id)
-                        }
+                        onClick={() => {
+                          const isCurrentlyPlaying = playingVideoNoteId === msg.id;
+                          setPlayingVideoNoteId(isCurrentlyPlaying ? null : msg.id);
+                          if (!isCurrentlyPlaying) {
+                            try {
+                              const ctx = new (window.AudioContext || (window as any).webkitAudioContext)();
+                              const osc = ctx.createOscillator();
+                              const gain = ctx.createGain();
+                              osc.connect(gain);
+                              gain.connect(ctx.destination);
+                              osc.frequency.setValueAtTime(520, ctx.currentTime);
+                              gain.gain.setValueAtTime(0.18, ctx.currentTime);
+                              gain.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + 1.2);
+                              osc.start();
+                              osc.stop(ctx.currentTime + 1.2);
+                            } catch (_) {}
+                          }
+                        }}
                         className="absolute inset-0 bg-black/30 flex items-center justify-center text-white backdrop-blur-[1px] hover:bg-black/20 transition-all"
                       >
                         {playingVideoNoteId === msg.id ? (
@@ -1677,7 +1897,7 @@ export const ChatRoom: React.FC<ChatRoomProps> = ({
                     <div className="flex items-center gap-3 bg-black/25 p-2 rounded-xl border border-white/5">
                       <button
                         type="button"
-                        onClick={() => setPlayingAudioId(playingAudioId === msg.id ? null : msg.id)}
+                        onClick={() => togglePlayAudio(msg)}
                         className="w-8 h-8 rounded-full bg-cyan-500 hover:bg-cyan-400 text-slate-950 flex items-center justify-center shrink-0 shadow-md transition-transform active:scale-90"
                       >
                         {playingAudioId === msg.id ? (

@@ -13,7 +13,8 @@ import {
 } from 'firebase/firestore';
 import { db } from '../firebase/config';
 import { UserProfile } from '../../types';
-import { normalizeUserId, matchesUser } from '../user/friendshipService';
+import { normalizeUserId, matchesUser, SAVEGAMOUR_CANONICAL_ID } from '../user/friendshipService';
+import { sanitizeForFirestore } from '../chat/chatSyncService';
 
 export interface WebRTCCallData {
   id: string;
@@ -354,7 +355,7 @@ class WebRTCServiceImpl {
         const candidateData = event.candidate.toJSON();
         const targetColl = this.isCaller ? 'callerCandidates' : 'receiverCandidates';
         try {
-          await addDoc(collection(db, 'calls', this.activeCallId, targetColl), candidateData);
+          await addDoc(collection(db, 'calls', this.activeCallId, targetColl), sanitizeForFirestore(candidateData));
         } catch (_) {}
 
         if (callBroadcast) {
@@ -409,22 +410,36 @@ class WebRTCServiceImpl {
     const callData: WebRTCCallData = {
       id: callId,
       callerId: caller.id || normCallerId,
-      callerName: caller.displayName,
-      callerAvatar: caller.photoURL,
+      callerName: caller.displayName || 'Mwanachama wa Zenia',
+      callerAvatar: caller.photoURL || '',
       receiverId: receiver.id || normReceiverId,
-      receiverName: receiver.displayName,
-      receiverAvatar: receiver.photoURL,
+      receiverName: receiver.displayName || 'Mwanachama wa Zenia',
+      receiverAvatar: receiver.photoURL || '',
       callType,
       status: 'calling',
       offer: { type: offer.type, sdp: offer.sdp },
       createdAt: new Date().toISOString(),
     };
-    (callData as any).callerEmail = caller.email;
-    (callData as any).receiverEmail = (receiver as any).email;
+    (callData as any).callerEmail = caller.email || '';
+    (callData as any).receiverEmail = (receiver as any).email || '';
 
-    // Save to Firestore
+    // Save to Firestore with full sanitization
     try {
-      await setDoc(doc(db, 'calls', callId), callData);
+      await setDoc(doc(db, 'calls', callId), sanitizeForFirestore(callData));
+
+      // Post high-priority incoming call notification in Firestore for receiver
+      const notifId = `notif_call_${Date.now()}`;
+      await setDoc(doc(db, 'notifications', notifId), sanitizeForFirestore({
+        id: notifId,
+        userId: receiver.id || normReceiverId,
+        title: `📞 Simu ya ${callType === 'video' ? 'Video' : 'Sauti'} Inapigwa!`,
+        message: `${caller.displayName || 'Mwanachama'} anakupigia simu ya ${callType === 'video' ? 'video' : 'sauti'}. Gusa kupokea!`,
+        type: 'call',
+        avatar: caller.photoURL || '',
+        read: false,
+        createdAt: new Date().toISOString(),
+        data: { callId, callType },
+      }));
     } catch (e) {
       console.warn('Firestore call session save notice:', e);
     }
@@ -882,13 +897,17 @@ class WebRTCServiceImpl {
     // If Savegamour
     if (
       uEmail === 'savegamour@gmail.com' ||
+      uId === SAVEGAMOUR_CANONICAL_ID ||
       uId === 'FCXkMkn1moZ5Vd8SR1IZuXJL' ||
+      (uId && uId.includes('FCXkMkn1mo')) ||
       normalizeUserId(uId) === 'FCXkMkn1moZ5Vd8SR1IZuXJL' ||
       (uName && uName.toLowerCase().includes('savegamour'))
     ) {
       allTargetIds.add('savegamour@gmail.com');
       allTargetIds.add('savegamour');
       allTargetIds.add('user_savegamour');
+      allTargetIds.add(SAVEGAMOUR_CANONICAL_ID);
+      allTargetIds.add(SAVEGAMOUR_CANONICAL_ID.toLowerCase());
       allTargetIds.add('FCXkMkn1moZ5Vd8SR1IZuXJL');
       allTargetIds.add('fcxkmkn1moz5vd8sr1izuxjl');
     }
@@ -902,6 +921,8 @@ class WebRTCServiceImpl {
       if (rId && uId && (matchesUser(rId, uId) || matchesUser(uId, rId))) return true;
       if (rId && uEmail && (matchesUser(rId, uEmail) || matchesUser(uEmail, rId))) return true;
       if (rEmail && uEmail && rEmail.toLowerCase() === uEmail.toLowerCase()) return true;
+      // Also match if current user is Savegamour and rId has Savegamour prefix
+      if (allTargetIds.has(SAVEGAMOUR_CANONICAL_ID) && rId && (rId.includes('FCXkMkn1mo') || rId.toLowerCase().includes('savegamour'))) return true;
       return false;
     };
 

@@ -1749,7 +1749,7 @@ export const ChatList: React.FC<ChatListProps> = ({
                   dirUser?.displayName ||
                   (matchesUser(otherUserId, 'user_fresh_kk') ? 'Fresh kk' : null)) || null;
 
-            if (!rawTitle || rawTitle === 'Mtumiaji' || (rawTitle.length >= 24 && !rawTitle.includes(' '))) {
+            if (!rawTitle || rawTitle === 'Mtumiaji' || rawTitle === 'Mwanachama wa Zenia' || (rawTitle.length >= 24 && !rawTitle.includes(' '))) {
               if (isOtherSavegamour) {
                 rawTitle = 'Savegamour';
               } else if (otherUser?.username && otherUser.username !== 'user') {
@@ -1758,13 +1758,19 @@ export const ChatList: React.FC<ChatListProps> = ({
                 rawTitle = dirUser.username.charAt(0).toUpperCase() + dirUser.username.slice(1);
               } else if (relDetails?.username && relDetails.username !== 'user') {
                 rawTitle = relDetails.username.charAt(0).toUpperCase() + relDetails.username.slice(1);
-              } else if (relDetails?.displayName) {
+              } else if (otherUser?.email) {
+                const emPrefix = otherUser.email.split('@')[0];
+                rawTitle = emPrefix.charAt(0).toUpperCase() + emPrefix.slice(1);
+              } else if (dirUser?.email) {
+                const emPrefix = dirUser.email.split('@')[0];
+                rawTitle = emPrefix.charAt(0).toUpperCase() + emPrefix.slice(1);
+              } else if (relDetails?.displayName && relDetails.displayName !== 'Mwanachama wa Zenia') {
                 rawTitle = relDetails.displayName;
               } else if (isOtherAdmin) {
                 rawTitle = 'Amytzee (Admin)';
-              } else if (otherUserId && otherUserId.length > 2 && !otherUserId.match(/^[a-zA-Z0-9]{20,}$/)) {
+              } else if (otherUserId && otherUserId.length > 2) {
                 const clean = otherUserId.replace(/^user_/, '');
-                rawTitle = clean.charAt(0).toUpperCase() + clean.slice(1);
+                rawTitle = clean.length > 10 ? `User_${clean.slice(0, 6)}` : clean.charAt(0).toUpperCase() + clean.slice(1);
               } else {
                 rawTitle = 'Mwanachama wa Zenia';
               }

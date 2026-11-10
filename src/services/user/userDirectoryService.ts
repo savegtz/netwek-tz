@@ -448,9 +448,11 @@ class UserDirectoryServiceImpl {
               const resolvedDisplayName = isAdmin
                 ? 'Amytzee (Admin)'
                 : isSavegamour
-                ? (rawDisplayName && !rawDisplayName.startsWith('___') ? rawDisplayName : 'Savegamour')
-                : rawDisplayName && rawDisplayName !== 'Mtumiaji' && !rawDisplayName.startsWith('___')
+                ? (rawDisplayName && !rawDisplayName.startsWith('___') && rawDisplayName !== 'Mwanachama wa Zenia' ? rawDisplayName : 'Savegamour')
+                : rawDisplayName && rawDisplayName !== 'Mtumiaji' && rawDisplayName !== 'Mwanachama wa Zenia' && !rawDisplayName.startsWith('___')
                 ? rawDisplayName
+                : resolvedUsername && resolvedUsername !== 'user' && !resolvedUsername.startsWith('user_')
+                ? resolvedUsername.charAt(0).toUpperCase() + resolvedUsername.slice(1)
                 : emailPrefix
                 ? emailPrefix.charAt(0).toUpperCase() + emailPrefix.slice(1)
                 : resolvedUsername
