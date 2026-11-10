@@ -48,7 +48,7 @@ import { ChatListStatusRow } from '../status/ChatListStatusRow';
 import { ProfilePicturePreviewModal } from './components/ProfilePicturePreviewModal';
 import { StatusIcon } from '../../components/StatusIcon';
 import { AVAILABLE_CONTACTS } from './components/StartNewChatModal';
-import { userDirectoryService } from '../../services/user/userDirectoryService';
+import { userDirectoryService, isDemoModeActive } from '../../services/user/userDirectoryService';
 import { CreateGroupModal } from './components/CreateGroupModal';
 import { StarredMessagesModal } from './components/StarredMessagesModal';
 import { AppLockModal } from './components/AppLockModal';
@@ -56,7 +56,7 @@ import { GuestChatPromptModal } from './components/GuestChatPromptModal';
 import freshKkAvatar from '../../assets/images/fresh_kk_avatar_1791078365294.jpg';
 import aminaAvatar from '../../assets/images/amina_avatar_1790280951312.jpg';
 import { userService } from '../../services/user/userService';
-import { friendshipService, matchesUser, ADMIN_CANONICAL_ID, SAVEGAMOUR_CANONICAL_ID } from '../../services/user/friendshipService';
+import { friendshipService, matchesUser, normalizeUserId, ADMIN_CANONICAL_ID, SAVEGAMOUR_CANONICAL_ID } from '../../services/user/friendshipService';
 import { isUserOnline, formatUserLastSeen } from '../../services/user/presenceService';
 
 interface ChatListProps {
@@ -431,38 +431,8 @@ export const ChatList: React.FC<ChatListProps> = ({
       bc.addEventListener('message', handleBroadcast);
     }
 
-    // Also subscribe to Firestore conversations collection
-    let unsubFirestore: (() => void) | null = null;
-    try {
-      unsubFirestore = onSnapshot(collection(db, 'conversations'), (snapshot) => {
-        if (!snapshot.empty) {
-          const remoteMap: Record<string, any> = {};
-          snapshot.forEach((d) => {
-            remoteMap[d.id] = d.data();
-          });
-
-          setConversations((prev) =>
-            prev.map((c) => {
-              if (remoteMap[c.id]) {
-                const r = remoteMap[c.id];
-                return {
-                  ...c,
-                  lastMessage: r.lastMessage || c.lastMessage,
-                  lastMessageType: r.lastMessageType || c.lastMessageType,
-                  lastMessageSenderId: r.lastMessageSenderId || c.lastMessageSenderId,
-                  updatedAt: r.updatedAt || c.updatedAt,
-                };
-              }
-              return c;
-            })
-          );
-        }
-      });
-    } catch (_) {}
-
     return () => {
       if (bc) bc.removeEventListener('message', handleBroadcast);
-      if (unsubFirestore) unsubFirestore();
     };
   }, []);
 
@@ -841,11 +811,14 @@ export const ChatList: React.FC<ChatListProps> = ({
 
   const DEMO_IDS = ['conv_1', 'conv_2', 'conv_3', 'conv_4', 'conv_5', 'conv_6'];
 
-  const filteredConversations = (conversations || [])
+  const rawFiltered = (conversations || [])
     .filter((c) => {
       if (!c) return false;
       // Exclude demo conversations as requested by user
       if (DEMO_IDS.includes(c.id)) return false;
+      if (!isDemoModeActive() && (c.id.includes('fresh_kk') || (c.participants && c.participants.some((p) => typeof p === 'string' && p.includes('fresh_kk'))))) {
+        return false;
+      }
 
       const effectiveUserId = currentUser ? currentUser.id : 'guest';
       const participants = Array.isArray(c.participants) ? c.participants : [];
@@ -907,13 +880,39 @@ export const ChatList: React.FC<ChatListProps> = ({
       if (activeFilter === 'favorites') return c.isFavorite === true;
       if (activeFilter === 'groups') return c.isGroup;
       return true;
-    })
-    .sort((a, b) => {
-      // Pinned chats appear on top
-      if (a.isPinned && !b.isPinned) return -1;
-      if (!a.isPinned && b.isPinned) return 1;
-      return 0;
     });
+
+  // Deduplicate conversations so each contact or group appears exactly once
+  const seenConversationKeys = new Set<string>();
+  const deduplicatedFiltered: Conversation[] = [];
+  const effectiveUserId = currentUser ? currentUser.id : 'guest';
+
+  for (const c of rawFiltered) {
+    let key = c.id;
+    if (c.isGroup) {
+      key = `group_${c.id}`;
+    } else {
+      const parts = Array.isArray(c.participants) ? c.participants : [];
+      const other =
+        parts.find((p) => p && !matchesUser(effectiveUserId, p)) ||
+        parts.find((p) => p && p !== effectiveUserId) ||
+        parts[0] ||
+        c.id;
+      key = `dm_${normalizeUserId(other)}`;
+    }
+
+    if (!seenConversationKeys.has(key)) {
+      seenConversationKeys.add(key);
+      deduplicatedFiltered.push(c);
+    }
+  }
+
+  const filteredConversations = deduplicatedFiltered.sort((a, b) => {
+    // Pinned chats appear on top
+    if (a.isPinned && !b.isPinned) return -1;
+    if (!a.isPinned && b.isPinned) return 1;
+    return 0;
+  });
 
   const matchingContacts = searchQuery.trim()
     ? userDirectoryService.searchUsers(searchQuery, currentUser ? currentUser.id : undefined)

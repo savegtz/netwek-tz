@@ -10,7 +10,6 @@ import {
   WalletTransaction,
   NotificationItem,
 } from '../../types';
-import freshKkAvatar from '../../assets/images/fresh_kk_avatar_1791078365294.jpg';
 import aminaAvatar from '../../assets/images/amina_avatar_1790280951312.jpg';
 
 export const INITIAL_USER: UserProfile = {
@@ -31,34 +30,7 @@ export const INITIAL_USER: UserProfile = {
   lastSeen: 'Sasa hivi',
 };
 
-export const INITIAL_CONVERSATIONS: Conversation[] = [
-  {
-    id: 'conv_7w6ldhpczBOVpimURqrpQ3C_user_fresh_kk',
-    participants: ['7w6ldhpczBOVpimURqrpQ3C', 'user_fresh_kk'],
-    participantDetails: {
-      user_fresh_kk: {
-        displayName: 'Fresh kk',
-        photoURL: freshKkAvatar,
-        username: 'fresh_kk',
-        isOnline: false,
-      },
-      '7w6ldhpczBOVpimURqrpQ3C': {
-        displayName: 'Amytzee (Admin)',
-        photoURL: aminaAvatar,
-        username: 'amytzee',
-        email: 'amytzee@gmail.com',
-        isOnline: true,
-      },
-    },
-    isGroup: false,
-    lastMessage: 'Habari kiongozi! Mzigo uko tayari kutumwa 👊',
-    lastMessageSenderId: 'user_fresh_kk',
-    lastMessageType: 'text',
-    updatedAt: '1m ago',
-    unreadCount: 1,
-    isFavorite: true,
-  },
-];
+export const INITIAL_CONVERSATIONS: Conversation[] = [];
 
 export const INITIAL_MESSAGES_CONV2: ChatMessage[] = [
   {

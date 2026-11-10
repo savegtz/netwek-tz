@@ -18,7 +18,7 @@ import {
 import { SafeImage } from './SafeImage';
 
 interface NotificationHeadsUpBannerProps {
-  onNavigate?: (route: string) => void;
+  onNavigate?: (route: string, payload?: ZeniaPushPayload) => void;
 }
 
 export const NotificationHeadsUpBanner: React.FC<NotificationHeadsUpBannerProps> = ({
@@ -69,14 +69,20 @@ export const NotificationHeadsUpBanner: React.FC<NotificationHeadsUpBannerProps>
     }
 
     if (action === 'view') {
+      const banner = activeBanner;
       setActiveBanner(null);
       if (onNavigate) {
-        if (activeBanner.tag?.includes('chat')) onNavigate('chats');
-        else if (activeBanner.tag?.includes('wallet')) onNavigate('wallet');
-        else if (activeBanner.tag?.includes('market')) onNavigate('shop');
-        else onNavigate('notifications');
+        if (banner.tag?.includes('chat') || banner.data?.conversationId || banner.data?.senderId) {
+          onNavigate('chats', banner);
+        } else if (banner.tag?.includes('wallet')) {
+          onNavigate('wallet', banner);
+        } else if (banner.tag?.includes('market')) {
+          onNavigate('shop', banner);
+        } else {
+          onNavigate('notifications', banner);
+        }
       }
-      pushNotificationService.notifyAction('view', activeBanner);
+      pushNotificationService.notifyAction('view', banner);
       return;
     }
 
@@ -173,7 +179,10 @@ export const NotificationHeadsUpBanner: React.FC<NotificationHeadsUpBannerProps>
         </div>
 
         {/* Content body */}
-        <div className="flex items-start gap-3">
+        <div
+          onClick={() => handleActionClick('view')}
+          className="flex items-start gap-3 cursor-pointer hover:opacity-90 transition-opacity"
+        >
           {activeBanner.image ? (
             <div className="w-12 h-12 rounded-2xl overflow-hidden shrink-0 border border-white/10 shadow-md">
               <SafeImage

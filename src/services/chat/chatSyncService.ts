@@ -518,8 +518,6 @@ export const ChatSyncService = {
     // 3. Write to Firestore so other devices & remote users receive it live across canonical and alias paths
     try {
       const canonicalId = getCanonicalConversationId(conversationId);
-      const equivalentIds = getAllEquivalentConversationIds(conversationId);
-      const targetIds = Array.from(new Set([canonicalId, conversationId, ...equivalentIds].filter(Boolean)));
       const cleanStatus = message.status === 'seen' || message.status === 'delivered' ? message.status : 'sent';
       const cleanMessage: ChatMessage = {
         ...message,
@@ -531,42 +529,30 @@ export const ChatSyncService = {
         timestamp: Date.now(),
       });
 
-      for (const tId of targetIds) {
-        try {
-          const msgRef = doc(db, 'conversations', tId, 'messages', cleanMessage.id);
-          await setDoc(msgRef, firestorePayload, { merge: true });
-        } catch (err) {
-          console.warn('Firestore message save error for', tId, err);
-        }
+      // 1. Write message strictly to the single canonical conversation messages subcollection
+      try {
+        const msgRef = doc(db, 'conversations', canonicalId, 'messages', cleanMessage.id);
+        await setDoc(msgRef, firestorePayload, { merge: true });
+      } catch (err) {
+        console.warn('Firestore message save error for', canonicalId, err);
       }
 
-      // Build comprehensive participant set
+      // Build clean canonical participant set (strictly genuine IDs, no aliases)
+      const senderCan = normalizeUserId(cleanMessage.senderId);
       const participantSet = new Set<string>();
+      if (senderCan) participantSet.add(senderCan);
+
       if (foundConvObj?.participants && Array.isArray(foundConvObj.participants)) {
-        foundConvObj.participants.forEach((p) => participantSet.add(p));
+        foundConvObj.participants.forEach((p) => {
+          const normP = normalizeUserId(p);
+          if (normP && !normP.startsWith('user_fresh')) participantSet.add(normP);
+        });
       }
       if (conversationId.startsWith('conv_')) {
         conversationId.replace('conv_', '').split('_').forEach((p) => {
-          if (p) {
-            participantSet.add(p);
-            participantSet.add(normalizeUserId(p));
-          }
+          const normP = normalizeUserId(p);
+          if (normP && !normP.startsWith('user_fresh')) participantSet.add(normP);
         });
-      }
-
-      participantSet.add(ADMIN_CANONICAL_ID);
-      participantSet.add('amytzee@gmail.com');
-      participantSet.add('current_user_id');
-
-      const isSavegamourConv =
-        conversationId.toLowerCase().includes('savegamour') ||
-        conversationId.includes(SAVEGAMOUR_CANONICAL_ID) ||
-        Array.from(participantSet).some((p) => matchesUser(p, SAVEGAMOUR_CANONICAL_ID));
-
-      if (isSavegamourConv) {
-        participantSet.add(SAVEGAMOUR_CANONICAL_ID);
-        participantSet.add('savegamour@gmail.com');
-        participantSet.add('savegamour');
       }
 
       const updates: any = {
@@ -574,24 +560,6 @@ export const ChatSyncService = {
         participants: Array.from(participantSet),
         participantDetails: {
           ...(foundConvObj?.participantDetails || {}),
-          [ADMIN_CANONICAL_ID]: {
-            id: ADMIN_CANONICAL_ID,
-            displayName: 'Amytzee (Admin)',
-            username: 'amytzee',
-            email: 'amytzee@gmail.com',
-            isOnline: true,
-          },
-          ...(isSavegamourConv
-            ? {
-                [SAVEGAMOUR_CANONICAL_ID]: {
-                  id: SAVEGAMOUR_CANONICAL_ID,
-                  displayName: 'Savegamour',
-                  username: 'savegamour',
-                  email: 'savegamour@gmail.com',
-                  isOnline: true,
-                },
-              }
-            : {}),
         },
         lastMessage:
           cleanMessage.text ||
@@ -616,14 +584,13 @@ export const ChatSyncService = {
         if (foundConvObj.groupAvatar) updates.groupAvatar = foundConvObj.groupAvatar;
       }
 
-      for (const tId of targetIds) {
-        try {
-          const convRef = doc(db, 'conversations', tId);
-          await setDoc(convRef, sanitizeForFirestore({ ...updates, id: tId }), { merge: true });
-        } catch (_) {}
-      }
+      // 2. Save ONLY to the single canonical conversation document
+      try {
+        const convRef = doc(db, 'conversations', canonicalId);
+        await setDoc(convRef, sanitizeForFirestore({ ...updates, id: canonicalId }), { merge: true });
+      } catch (_) {}
 
-      // Send real-time notification to participants in Firestore
+      // 3. Send real-time notification to other participant(s) in Firestore
       const recipientIds = updates.participants
         ? updates.participants.filter((p: string) => !matchesUser(cleanMessage.senderId, p))
         : [];
@@ -647,7 +614,7 @@ export const ChatSyncService = {
             avatar: cleanMessage.senderAvatar || '',
             read: false,
             createdAt: new Date().toISOString(),
-            data: { conversationId: canonicalId, messageId: cleanMessage.id, replyText: '' },
+            data: { conversationId: canonicalId, messageId: cleanMessage.id, senderId: cleanMessage.senderId, replyText: '' },
           }));
         } catch (_) {}
       }
@@ -816,15 +783,28 @@ export const ChatSyncService = {
             });
 
             if (remoteList.length > 0) {
-              const map = new Map<string, Conversation>();
-              // Keep local customization like custom lists, pinned state, muted
-              currentConvs.forEach((c) => map.set(c.id, c));
-              // Merge/update with remote authoritative info
+              const dedupMap = new Map<string, Conversation>();
+
+              // Filter out demo conversations like Fresh kk and index local convs by unique party
+              currentConvs.forEach((c) => {
+                if (!c || c.id === 'conv_fresh_kk' || c.participants?.includes('user_fresh_kk')) return;
+                const canId = getCanonicalConversationId(c.id);
+                const other = c.participants?.find((p) => !matchesUser(userId, p)) || c.id;
+                const key = c.isGroup ? `grp_${c.groupName || canId}` : `dm_${normalizeUserId(other)}`;
+                dedupMap.set(key, { ...c, id: canId });
+              });
+
+              // Merge remote authoritative info
               remoteList.forEach((r) => {
-                const existing = map.get(r.id);
+                if (!r || r.id === 'conv_fresh_kk' || r.participants?.includes('user_fresh_kk')) return;
+                const canId = getCanonicalConversationId(r.id);
+                const other = r.participants?.find((p) => !matchesUser(userId, p)) || r.id;
+                const key = r.isGroup ? `grp_${r.groupName || canId}` : `dm_${normalizeUserId(other)}`;
+                const existing = dedupMap.get(key);
                 if (existing) {
-                  map.set(r.id, {
+                  dedupMap.set(key, {
                     ...existing,
+                    id: canId,
                     lastMessage: r.lastMessage,
                     lastMessageType: r.lastMessageType,
                     lastMessageSenderId: r.lastMessageSenderId,
@@ -836,11 +816,11 @@ export const ChatSyncService = {
                     participants: Array.from(new Set([...(existing.participants || []), ...(r.participants || [])])),
                   });
                 } else {
-                  map.set(r.id, r);
+                  dedupMap.set(key, { ...r, id: canId });
                 }
               });
 
-              currentConvs = Array.from(map.values());
+              currentConvs = Array.from(dedupMap.values());
               try {
                 localStorage.setItem(localKey, JSON.stringify(currentConvs));
               } catch (_) {}

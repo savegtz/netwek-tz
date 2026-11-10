@@ -28,7 +28,7 @@ import { pushNotificationService } from '../../services/notifications/pushNotifi
 
 interface NotificationsViewProps {
   onBack?: () => void;
-  onNavigate?: (type: string) => void;
+  onNavigate?: (type: string, item?: NotificationItem) => void;
   notifications?: NotificationItem[];
   onUpdateNotifications?: (updated: NotificationItem[]) => void;
   currentUser?: UserProfile | null;
@@ -489,8 +489,15 @@ export const NotificationsView: React.FC<NotificationsViewProps> = ({
                 onClick={() => {
                   if (isSelectionMode) {
                     toggleSelect(item.id);
-                  } else if (onNavigate) {
-                    onNavigate(item.type);
+                  } else {
+                    if (!item.read) {
+                      updateNotificationsList((prev) =>
+                        prev.map((n) => (n.id === item.id ? { ...n, read: true } : n))
+                      );
+                    }
+                    if (onNavigate) {
+                      onNavigate(item.type, item);
+                    }
                   }
                 }}
                 className={`group relative p-3 rounded-2xl border transition-all cursor-pointer flex items-start gap-3 ${

@@ -326,14 +326,83 @@ export default function App() {
     return () => clearTimeout(timer);
   }, [appToast]);
 
+  const currentUserRef = useRef(currentUser);
+  currentUserRef.current = currentUser;
+  const conversationsRef = useRef(conversations);
+  conversationsRef.current = conversations;
+
   // Listen to interactive Push Notification action clicks (Jibu, Angalia, Kubali, Kataa)
   useEffect(() => {
-    const unsub = pushNotificationService.onAction((action, payload) => {
+    const unsub = pushNotificationService.onAction(async (action, payload) => {
       if (action === 'reply_sent' && payload.data?.replyText) {
-        setAppToast(`Jibu limetumwa kwa ${payload.data.sender || 'mtumiaji'}: "${payload.data.replyText}"`);
+        const text = payload.data.replyText.trim();
+        const current = currentUserRef.current;
+        const convId =
+          payload.data.conversationId ||
+          (payload.data.senderId && current ? buildCanonicalConversationId(current.id, payload.data.senderId) : null);
+        const recipientId = payload.data.senderId;
+
+        if (current && current.id !== 'guest' && convId) {
+          const replyMsg: ChatMessage = {
+            id: `msg_${Date.now()}_${Math.random().toString(36).substring(2, 6)}`,
+            conversationId: convId,
+            senderId: current.id,
+            senderName: current.displayName || 'Mimi',
+            senderAvatar: current.photoURL || undefined,
+            text,
+            createdAt: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
+            timestamp: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
+            status: 'sent',
+            messageType: 'text',
+          };
+
+          await ChatSyncService.sendMessage(convId, replyMsg, {
+            participants: [current.id, recipientId || ''],
+            lastMessage: text,
+            lastMessageType: 'text',
+            lastMessageSenderId: current.id,
+            updatedAt: 'Sasa hivi',
+          });
+
+          setAppToast(`Jibu limetumwa kikamilifu: "${text}" ✅`);
+        } else {
+          setAppToast(`Jibu limetumwa kwa ${payload.data.sender || 'mtumiaji'}: "${text}"`);
+        }
       } else if (action === 'view') {
-        if (payload.tag?.includes('chat') || payload.mode === 'lock_screen') {
+        const current = currentUserRef.current;
+        const convs = conversationsRef.current;
+        const convId =
+          payload.data?.conversationId ||
+          (payload.data?.senderId && current ? buildCanonicalConversationId(current.id, payload.data.senderId) : null);
+
+        if (convId || payload.tag?.includes('chat') || payload.mode === 'lock_screen') {
           setActiveTab('chats');
+          if (convId) {
+            const found = convs.find(
+              (c) => c.id === convId || (payload.data?.senderId && c.participants?.includes(payload.data.senderId))
+            );
+            if (found) {
+              setActiveConversation(found);
+            } else if (payload.data?.senderId && current) {
+              const partnerId = String(payload.data.senderId);
+              const newConv: Conversation = {
+                id: convId,
+                participants: [current.id, partnerId],
+                participantDetails: {
+                  [partnerId]: {
+                    id: partnerId,
+                    displayName: payload.title || 'Mwanachama wa Zenia',
+                    photoURL: payload.image || '',
+                  },
+                },
+                lastMessage: payload.body || '',
+                updatedAt: 'Sasa hivi',
+                unreadCount: 0,
+                isGroup: false,
+              };
+              setActiveConversation(newConv);
+            }
+          }
         } else if (payload.tag?.includes('wallet')) {
           setActiveTab('wallet');
         } else if (payload.tag?.includes('market')) {
@@ -571,6 +640,12 @@ export default function App() {
                     body: newest.message || '',
                     image: newest.avatar,
                     tag: `zenia-${newest.type || 'general'}`,
+                    data: {
+                      ...(newest.data || {}),
+                      sender: newest.title,
+                      conversationId: newest.data?.conversationId,
+                      senderId: newest.data?.senderId,
+                    },
                     actions: [
                       { action: 'view', title: '👁️ Angalia' },
                       { action: 'reply', title: '💬 Jibu' },
@@ -1217,7 +1292,44 @@ export default function App() {
       </main>
 
       {/* Modals & Overlays */}
-      <NotificationHeadsUpBanner onNavigate={(route) => setActiveTab(route)} />
+      <NotificationHeadsUpBanner
+        onNavigate={(route, payload) => {
+          setActiveTab(route);
+          if (route === 'chats' && payload?.data) {
+            const current = currentUserRef.current || activeUser;
+            const convs = conversationsRef.current;
+            const convId =
+              payload.data.conversationId ||
+              (payload.data.senderId && current ? buildCanonicalConversationId(current.id, payload.data.senderId) : null);
+            if (convId) {
+              const found = convs.find(
+                (c) => c.id === convId || (payload.data?.senderId && c.participants?.includes(payload.data.senderId))
+              );
+              if (found) {
+                setActiveConversation(found);
+              } else if (payload.data?.senderId && current) {
+                const partnerId = String(payload.data.senderId);
+                const newConv: Conversation = {
+                  id: convId,
+                  participants: [current.id, partnerId],
+                  participantDetails: {
+                    [partnerId]: {
+                      id: partnerId,
+                      displayName: payload.title || 'Mwanachama wa Zenia',
+                      photoURL: payload.image || '',
+                    },
+                  },
+                  lastMessage: payload.body || '',
+                  updatedAt: 'Sasa hivi',
+                  unreadCount: 0,
+                  isGroup: false,
+                };
+                setActiveConversation(newConv);
+              }
+            }
+          }
+        }}
+      />
 
       <CreateMenuModal
         isOpen={isCreateMenuOpen}
@@ -1298,10 +1410,43 @@ export default function App() {
               notifications={notifications}
               onUpdateNotifications={setNotifications}
               currentUser={activeUser}
-              onNavigate={(type) => {
+              onNavigate={(type, notifItem) => {
                 setIsNotificationsOpen(false);
-                if (type === 'message') setActiveTab('chats');
-                else if (type === 'event') setActiveTab('events');
+                if (type === 'message') {
+                  setActiveTab('chats');
+                  const current = currentUser || activeUser;
+                  if (notifItem?.data?.conversationId || notifItem?.data?.senderId) {
+                    const convId =
+                      notifItem.data.conversationId ||
+                      (notifItem.data.senderId && current ? buildCanonicalConversationId(current.id, notifItem.data.senderId) : null);
+                    if (convId) {
+                      const found = conversations.find(
+                        (c) => c.id === convId || (notifItem.data?.senderId && c.participants?.includes(notifItem.data.senderId))
+                      );
+                      if (found) {
+                        setActiveConversation(found);
+                      } else if (notifItem.data?.senderId && current) {
+                        const partnerId = String(notifItem.data.senderId);
+                        const newConv: Conversation = {
+                          id: convId,
+                          participants: [current.id, partnerId],
+                          participantDetails: {
+                            [partnerId]: {
+                              id: partnerId,
+                              displayName: notifItem.title || 'Mwanachama wa Zenia',
+                              photoURL: notifItem.avatar || '',
+                            },
+                          },
+                          lastMessage: notifItem.message || '',
+                          updatedAt: 'Sasa hivi',
+                          unreadCount: 0,
+                          isGroup: false,
+                        };
+                        setActiveConversation(newConv);
+                      }
+                    }
+                  }
+                } else if (type === 'event') setActiveTab('events');
                 else if (type === 'order') setActiveTab('shop');
                 else if (type === 'job') setActiveTab('jobs');
                 else setActiveTab('chats');

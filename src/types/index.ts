@@ -161,6 +161,7 @@ export interface ChatMessage {
   readBy?: string[];
   status?: 'sent' | 'delivered' | 'seen';
   createdAt: string;
+  timestamp?: string;
   editedAt?: string;
   isEdited?: boolean;
   isStarred?: boolean;
@@ -568,6 +569,13 @@ export interface NotificationItem {
   read: boolean;
   avatar?: string;
   createdAt: string;
+  data?: {
+    conversationId?: string;
+    messageId?: string;
+    senderId?: string;
+    replyText?: string;
+    [key: string]: any;
+  };
 }
 
 export interface CallSession {
