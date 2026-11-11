@@ -1,4 +1,5 @@
 import React, { useState } from 'react';
+import { User } from 'lucide-react';
 
 interface SafeImageProps extends React.ImgHTMLAttributes<HTMLImageElement> {
   fallbackText?: string;
@@ -10,27 +11,33 @@ export const SafeImage: React.FC<SafeImageProps> = ({
   alt = '',
   className = '',
   fallbackText,
-  fallbackGradient = 'from-purple-900 to-indigo-900',
+  fallbackGradient = 'from-slate-800 to-slate-900',
   ...props
 }) => {
   const [error, setError] = useState(false);
 
   if (error || !src) {
-    const initials = fallbackText
-      ? fallbackText
+    const trimmed = (fallbackText || '').trim();
+    const initials = trimmed
+      ? trimmed
           .split(' ')
+          .filter(Boolean)
           .map((n) => n[0])
           .slice(0, 2)
           .join('')
           .toUpperCase()
-      : 'Z';
+      : '';
 
     return (
       <div
         className={`bg-gradient-to-br ${fallbackGradient} flex items-center justify-center font-bold text-white/90 select-none ${className}`}
-        title={alt || fallbackText}
+        title={alt || fallbackText || 'Mtumiaji'}
       >
-        <span className="text-xs tracking-wider">{initials}</span>
+        {initials ? (
+          <span className="text-sm font-black tracking-wider">{initials}</span>
+        ) : (
+          <User className="w-1/2 h-1/2 text-slate-400 stroke-[2]" />
+        )}
       </div>
     );
   }
