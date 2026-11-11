@@ -564,8 +564,20 @@ export default function App() {
       const saved = localStorage.getItem(`zenia_notifications_${currentUser?.id || 'guest'}`);
       if (saved) return JSON.parse(saved);
     } catch {}
-    return INITIAL_NOTIFICATIONS;
+    return isDemoModeActive() ? INITIAL_NOTIFICATIONS : [];
   });
+
+  useEffect(() => {
+    const key = `zenia_notifications_${currentUser?.id || 'guest'}`;
+    try {
+      const saved = localStorage.getItem(key);
+      if (saved) {
+        setNotifications(JSON.parse(saved));
+        return;
+      }
+    } catch {}
+    setNotifications(isDemoModeActive() ? INITIAL_NOTIFICATIONS : []);
+  }, [currentUser?.id]);
 
   useEffect(() => {
     try {

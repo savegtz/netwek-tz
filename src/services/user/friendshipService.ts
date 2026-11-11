@@ -189,49 +189,6 @@ const DEFAULT_RELATIONSHIPS: Record<string, FriendRelationship> = {
     createdAt: new Date(Date.now() - 86400000 * 2).toISOString(),
     updatedAt: new Date().toISOString(),
   },
-  // Fresh kk & Amina Kaunga (Current User) are friends initially
-  [makeRelId('current_user_id', 'user_fresh_kk')]: {
-    id: makeRelId('current_user_id', 'user_fresh_kk'),
-    userA: 'current_user_id',
-    userB: 'user_fresh_kk',
-    status: 'friends',
-    requestedBy: 'user_fresh_kk',
-    senderDetails: {
-      id: 'user_fresh_kk',
-      displayName: 'Fresh kk',
-      photoURL: '/assets/images/fresh_kk_avatar_1791078365294.jpg',
-      username: 'fresh_kk',
-    },
-    receiverDetails: {
-      id: 'current_user_id',
-      displayName: 'Amina Kaunga',
-      photoURL: '/assets/images/amina_avatar_1790280951312.jpg',
-      username: 'amina_kaunga',
-    },
-    createdAt: new Date(Date.now() - 86400000 * 3).toISOString(),
-    updatedAt: new Date(Date.now() - 86400000 * 2).toISOString(),
-  },
-  // Sarah Mwangi sent a friend request to current_user_id (pending received!)
-  [makeRelId('current_user_id', 'user_sarah_m')]: {
-    id: makeRelId('current_user_id', 'user_sarah_m'),
-    userA: 'current_user_id',
-    userB: 'user_sarah_m',
-    status: 'pending',
-    requestedBy: 'user_sarah_m',
-    senderDetails: {
-      id: 'user_sarah_m',
-      displayName: 'Sarah Mwangi',
-      photoURL: '/assets/images/sarah_avatar_1790802224123.jpg',
-      username: 'sarah_m',
-    },
-    receiverDetails: {
-      id: 'current_user_id',
-      displayName: 'Amina Kaunga',
-      photoURL: '/assets/images/amina_avatar_1790280951312.jpg',
-      username: 'amina_kaunga',
-    },
-    createdAt: new Date(Date.now() - 3600000 * 4).toISOString(),
-  },
 };
 
 class FriendshipServiceImpl {
