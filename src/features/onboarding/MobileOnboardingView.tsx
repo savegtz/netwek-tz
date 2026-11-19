@@ -91,6 +91,7 @@ export const MobileOnboardingView: React.FC<MobileOnboardingViewProps> = ({
 
   const isLastSlide = currentIndex === ONBOARDING_SLIDES.length - 1;
   const isFirstSlide = currentIndex === 0;
+  const activeSlide = ONBOARDING_SLIDES[currentIndex];
 
   const handleNext = () => {
     if (!isLastSlide) {
@@ -124,7 +125,6 @@ export const MobileOnboardingView: React.FC<MobileOnboardingViewProps> = ({
     }
 
     if (isHorizontalSwipeRef.current) {
-      // Dampen pull at edges
       if ((isFirstSlide && dx > 0) || (isLastSlide && dx < 0)) {
         setDragOffset(dx * 0.25);
       } else {
@@ -155,7 +155,7 @@ export const MobileOnboardingView: React.FC<MobileOnboardingViewProps> = ({
         ? ShoppingBag
         : Sparkles;
     return (
-      <div className="w-full h-full flex flex-col items-center justify-center px-7 text-center bg-gradient-to-b from-[#0A1328] via-[#060B17] to-[#060B17]">
+      <div className="w-full h-full flex flex-col items-center justify-center px-6 text-center bg-gradient-to-b from-[#0A1328] via-[#060B17] to-[#060B17]">
         <div className="w-24 h-24 rounded-3xl bg-cyan-500/15 border border-cyan-400/30 flex items-center justify-center mb-8 shadow-lg shadow-cyan-500/10">
           <Icon className="w-11 h-11 text-cyan-400" />
         </div>
@@ -171,56 +171,56 @@ export const MobileOnboardingView: React.FC<MobileOnboardingViewProps> = ({
 
   return (
     <div
-      className="fixed inset-0 z-[80] bg-[#040710] flex items-center justify-center overflow-hidden select-none"
+      className="fixed inset-0 z-[80] w-full h-[100dvh] bg-[#060B17] flex flex-col overflow-hidden select-none"
       role="dialog"
       aria-modal="true"
       aria-label="Zenia Onboarding"
     >
-      {/* Mobile-First Stage: Edge-to-edge on mobile, crisp 430px phone frame on desktop */}
-      <div className="relative w-full h-[100dvh] md:max-w-[430px] md:h-[min(860px,94dvh)] md:rounded-[36px] md:border md:border-white/10 md:shadow-[0_32px_90px_rgba(0,0,0,0.85)] bg-[#060B17] flex flex-col overflow-hidden">
-        {/* Top Compact Safe Header Bar */}
-        <div className="shrink-0 flex items-center justify-between px-4 pt-safe py-2.5 bg-[#060B17] z-20">
-          <div className="flex items-center gap-2">
-            <div className="w-7 h-7 rounded-lg bg-gradient-to-tr from-cyan-400 to-blue-600 p-[1.5px] shrink-0">
-              <div className="w-full h-full bg-[#060B17] rounded-[6px] flex items-center justify-center">
-                <span className="text-transparent bg-clip-text bg-gradient-to-tr from-cyan-400 to-blue-400 font-black text-xs">
-                  Z
-                </span>
-              </div>
+      {/* Top Safe Header Bar (Spans full width cleanly) */}
+      <div className="shrink-0 w-full flex items-center justify-between px-4 sm:px-6 pt-safe py-3 bg-[#060B17] z-20">
+        <div className="flex items-center gap-2.5">
+          <div className="w-8 h-8 rounded-xl bg-gradient-to-tr from-cyan-400 to-blue-600 p-[1.5px] shrink-0">
+            <div className="w-full h-full bg-[#060B17] rounded-[10px] flex items-center justify-center">
+              <span className="text-transparent bg-clip-text bg-gradient-to-tr from-cyan-400 to-blue-400 font-black text-sm">
+                Z
+              </span>
             </div>
-            <span className="text-sm font-bold text-white tracking-tight">Zenia</span>
-            <span aria-hidden="true" className="text-slate-600 text-xs">
-              ·
-            </span>
-            <span className="text-xs font-medium text-slate-400 tabular-nums">
-              {currentIndex + 1} / {ONBOARDING_SLIDES.length}
-            </span>
           </div>
-
-          {currentUser ? (
-            <button
-              type="button"
-              onClick={() => onComplete('explore')}
-              className="min-h-[44px] min-w-[44px] px-3 flex items-center justify-center gap-1 rounded-xl text-xs font-semibold text-slate-300 hover:text-white hover:bg-white/[0.06] active:scale-95 transition-all"
-              aria-label="Funga mwongozo"
-            >
-              <X className="w-4 h-4" />
-              <span>Funga</span>
-            </button>
-          ) : (
-            <button
-              type="button"
-              onClick={() => onComplete('signin')}
-              className="min-h-[44px] px-3.5 flex items-center justify-center rounded-xl bg-white/[0.07] hover:bg-white/[0.12] border border-white/10 text-xs font-semibold text-cyan-300 active:scale-95 transition-all"
-            >
-              Ingia
-            </button>
-          )}
+          <span className="text-base font-extrabold text-white tracking-tight">Zenia</span>
+          <span aria-hidden="true" className="text-slate-600 text-sm">
+            ·
+          </span>
+          <span className="text-xs sm:text-sm font-medium text-slate-400 tabular-nums">
+            {currentIndex + 1} / {ONBOARDING_SLIDES.length}
+          </span>
         </div>
 
-        {/* Swipeable Visual Slide Track */}
+        {currentUser ? (
+          <button
+            type="button"
+            onClick={() => onComplete('explore')}
+            className="min-h-[44px] min-w-[44px] px-3.5 flex items-center justify-center gap-1.5 rounded-xl text-xs sm:text-sm font-semibold text-slate-200 hover:text-white hover:bg-white/[0.08] active:scale-95 transition-all"
+            aria-label="Funga mwongozo"
+          >
+            <X className="w-4 h-4" />
+            <span>Funga</span>
+          </button>
+        ) : (
+          <button
+            type="button"
+            onClick={() => onComplete('signin')}
+            className="min-h-[44px] px-4 flex items-center justify-center rounded-xl bg-white/[0.08] hover:bg-white/[0.14] border border-white/10 text-xs sm:text-sm font-semibold text-cyan-300 active:scale-95 transition-all"
+          >
+            Ingia
+          </button>
+        )}
+      </div>
+
+      {/* Main Content Area: Full-screen vertical on mobile/portrait; balanced 2-column stage on wide desktop landscape */}
+      <div className="flex-1 min-h-0 w-full flex flex-col [@media(min-width:1024px)_and_(orientation:landscape)]:grid [@media(min-width:1024px)_and_(orientation:landscape)]:grid-cols-12 [@media(min-width:1024px)_and_(orientation:landscape)]:items-center [@media(min-width:1024px)_and_(orientation:landscape)]:max-w-6xl [@media(min-width:1024px)_and_(orientation:landscape)]:mx-auto [@media(min-width:1024px)_and_(orientation:landscape)]:px-8 [@media(min-width:1024px)_and_(orientation:landscape)]:gap-10">
+        {/* Swipeable Visual Carousel */}
         <div
-          className="relative flex-1 min-h-0 overflow-hidden bg-[#060B17] touch-pan-y"
+          className="relative flex-1 min-h-0 w-full [@media(min-width:1024px)_and_(orientation:landscape)]:col-span-7 [@media(min-width:1024px)_and_(orientation:landscape)]:h-[min(78dvh,680px)] overflow-hidden bg-[#060B17] touch-pan-y"
           onTouchStart={handleTouchStart}
           onTouchMove={handleTouchMove}
           onTouchEnd={handleTouchEnd}
@@ -236,7 +236,7 @@ export const MobileOnboardingView: React.FC<MobileOnboardingViewProps> = ({
             {ONBOARDING_SLIDES.map((slide) => (
               <div
                 key={slide.id}
-                className="w-full h-full shrink-0 flex items-center justify-center bg-[#060B17] px-2"
+                className="w-full h-full shrink-0 flex items-center justify-center bg-[#060B17]"
               >
                 {failedImages[slide.id] ? (
                   renderFallbackArtwork(slide)
@@ -256,13 +256,13 @@ export const MobileOnboardingView: React.FC<MobileOnboardingViewProps> = ({
             ))}
           </div>
 
-          {/* Subtle Desktop/Tablet Arrow Affordances */}
+          {/* Left/Right Navigation Chevrons for wide screens */}
           {!isFirstSlide && (
             <button
               type="button"
               onClick={handlePrev}
               aria-label="Slaidi iliyopita"
-              className="hidden sm:flex absolute left-2.5 top-1/2 -translate-y-1/2 w-10 h-10 rounded-full bg-black/45 hover:bg-black/70 border border-white/10 text-white items-center justify-center backdrop-blur-sm transition-all active:scale-95"
+              className="hidden sm:flex absolute left-3 top-1/2 -translate-y-1/2 w-11 h-11 rounded-full bg-black/50 hover:bg-black/75 border border-white/15 text-white items-center justify-center backdrop-blur-sm transition-all active:scale-95"
             >
               <ChevronLeft className="w-5 h-5" />
             </button>
@@ -272,21 +272,34 @@ export const MobileOnboardingView: React.FC<MobileOnboardingViewProps> = ({
               type="button"
               onClick={handleNext}
               aria-label="Slaidi inayofuata"
-              className="hidden sm:flex absolute right-2.5 top-1/2 -translate-y-1/2 w-10 h-10 rounded-full bg-black/45 hover:bg-black/70 border border-white/10 text-white items-center justify-center backdrop-blur-sm transition-all active:scale-95"
+              className="hidden sm:flex absolute right-3 top-1/2 -translate-y-1/2 w-11 h-11 rounded-full bg-black/50 hover:bg-black/75 border border-white/15 text-white items-center justify-center backdrop-blur-sm transition-all active:scale-95"
             >
               <ChevronRight className="w-5 h-5" />
             </button>
           )}
 
-          {/* Soft bottom gradient blend into action dock */}
-          <div className="pointer-events-none absolute inset-x-0 bottom-0 h-5 bg-gradient-to-t from-[#060B17] to-transparent" />
+          {/* Soft bottom gradient blend */}
+          <div className="pointer-events-none absolute inset-x-0 bottom-0 h-6 bg-gradient-to-t from-[#060B17] to-transparent" />
         </div>
 
-        {/* Bottom Thumb-Zone Action Dock */}
-        <div className="shrink-0 bg-[#060B17] px-5 pt-2 pb-5 pb-safe flex flex-col gap-3 z-20">
+        {/* Bottom Thumb-Zone Dock (or Right Action Column on Desktop Landscape) */}
+        <div className="shrink-0 w-full max-w-xl mx-auto bg-[#060B17] px-5 sm:px-6 pt-2 pb-6 pb-safe flex flex-col gap-3 z-20 [@media(min-width:1024px)_and_(orientation:landscape)]:col-span-5 [@media(min-width:1024px)_and_(orientation:landscape)]:max-w-none [@media(min-width:1024px)_and_(orientation:landscape)]:p-0">
+          {/* Desktop Landscape Context Copy (Hidden on portrait phones since text is inside artwork) */}
+          <div className="hidden [@media(min-width:1024px)_and_(orientation:landscape)]:block mb-2">
+            <p className="text-xs font-semibold text-cyan-400 tracking-wide mb-2">
+              {activeSlide.accentLabel}
+            </p>
+            <h1 className="text-3xl font-extrabold text-white tracking-tight text-balance mb-3">
+              {activeSlide.title}
+            </h1>
+            <p className="text-base text-slate-300 leading-relaxed">
+              {activeSlide.subtitle}
+            </p>
+          </div>
+
           {/* Interactive Progress Indicators */}
           <div
-            className="flex items-center justify-center gap-2"
+            className="flex items-center justify-center [@media(min-width:1024px)_and_(orientation:landscape)]:justify-start gap-2.5"
             role="tablist"
             aria-label="Hatua za maelezo"
           >
@@ -303,10 +316,10 @@ export const MobileOnboardingView: React.FC<MobileOnboardingViewProps> = ({
                   className="py-2 px-1 flex items-center justify-center focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-cyan-400 rounded-full"
                 >
                   <span
-                    className={`h-1.5 rounded-full transition-all duration-200 ${
+                    className={`h-2 rounded-full transition-all duration-200 ${
                       isActive
-                        ? 'w-7 bg-cyan-400'
-                        : 'w-2 bg-white/20 hover:bg-white/40'
+                        ? 'w-8 bg-cyan-400'
+                        : 'w-2.5 bg-white/25 hover:bg-white/45'
                     }`}
                   />
                 </button>
@@ -317,13 +330,13 @@ export const MobileOnboardingView: React.FC<MobileOnboardingViewProps> = ({
           {/* Primary & Secondary CTAs */}
           {!isLastSlide ? (
             <div className="flex flex-col gap-1.5">
-              <div className="flex items-center gap-2.5">
+              <div className="flex items-center gap-3">
                 {!isFirstSlide && (
                   <button
                     type="button"
                     onClick={handlePrev}
                     aria-label="Rudi nyuma"
-                    className="min-h-[48px] min-w-[48px] rounded-2xl bg-white/[0.06] hover:bg-white/[0.1] border border-white/10 text-slate-200 flex items-center justify-center active:scale-95 transition-all shrink-0"
+                    className="min-h-[50px] min-w-[50px] rounded-2xl bg-white/[0.07] hover:bg-white/[0.12] border border-white/10 text-slate-200 flex items-center justify-center active:scale-95 transition-all shrink-0"
                   >
                     <ChevronLeft className="w-5 h-5" />
                   </button>
@@ -331,7 +344,7 @@ export const MobileOnboardingView: React.FC<MobileOnboardingViewProps> = ({
                 <button
                   type="button"
                   onClick={handleNext}
-                  className="flex-1 min-h-[48px] px-5 rounded-2xl bg-gradient-to-r from-cyan-400 to-blue-500 hover:from-cyan-300 hover:to-blue-400 text-slate-950 font-bold text-sm shadow-lg shadow-cyan-500/20 flex items-center justify-center gap-2 active:scale-[0.98] transition-all whitespace-nowrap"
+                  className="flex-1 min-h-[50px] px-6 rounded-2xl bg-gradient-to-r from-cyan-400 to-blue-500 hover:from-cyan-300 hover:to-blue-400 text-slate-950 font-bold text-sm sm:text-base shadow-lg shadow-cyan-500/20 flex items-center justify-center gap-2 active:scale-[0.98] transition-all whitespace-nowrap"
                 >
                   <span>Endelea</span>
                   <ArrowRight className="w-4 h-4 stroke-[2.5]" />
@@ -342,7 +355,7 @@ export const MobileOnboardingView: React.FC<MobileOnboardingViewProps> = ({
                 <button
                   type="button"
                   onClick={() => onComplete('signin')}
-                  className="min-h-[44px] w-full text-xs font-medium text-slate-400 hover:text-cyan-300 transition-colors flex items-center justify-center"
+                  className="min-h-[44px] w-full text-xs sm:text-sm font-medium text-slate-400 hover:text-cyan-300 transition-colors flex items-center justify-center [@media(min-width:1024px)_and_(orientation:landscape)]:justify-start"
                 >
                   Tayari una akaunti? <span className="text-cyan-400 font-semibold ml-1">Ingia</span>
                 </button>
@@ -353,7 +366,7 @@ export const MobileOnboardingView: React.FC<MobileOnboardingViewProps> = ({
               <button
                 type="button"
                 onClick={() => onComplete('explore')}
-                className="w-full min-h-[48px] px-5 rounded-2xl bg-gradient-to-r from-cyan-400 to-blue-500 hover:from-cyan-300 hover:to-blue-400 text-slate-950 font-bold text-sm shadow-lg shadow-cyan-500/20 flex items-center justify-center gap-2 active:scale-[0.98] transition-all whitespace-nowrap"
+                className="w-full min-h-[50px] px-6 rounded-2xl bg-gradient-to-r from-cyan-400 to-blue-500 hover:from-cyan-300 hover:to-blue-400 text-slate-950 font-bold text-sm sm:text-base shadow-lg shadow-cyan-500/20 flex items-center justify-center gap-2 active:scale-[0.98] transition-all whitespace-nowrap"
               >
                 <span>Anza Kutumia Zenia</span>
                 <ArrowRight className="w-4 h-4 stroke-[2.5]" />
@@ -361,17 +374,17 @@ export const MobileOnboardingView: React.FC<MobileOnboardingViewProps> = ({
               <button
                 type="button"
                 onClick={() => setCurrentIndex(0)}
-                className="min-h-[44px] w-full rounded-xl text-xs font-medium text-slate-400 hover:text-white transition-colors"
+                className="min-h-[44px] w-full rounded-xl text-xs sm:text-sm font-medium text-slate-400 hover:text-white transition-colors"
               >
                 Tazama Tena Mwanzo
               </button>
             </div>
           ) : (
-            <div className="flex flex-col gap-2">
+            <div className="flex flex-col gap-2.5">
               <button
                 type="button"
                 onClick={() => onComplete('signup')}
-                className="w-full min-h-[48px] px-5 rounded-2xl bg-gradient-to-r from-cyan-400 to-blue-500 hover:from-cyan-300 hover:to-blue-400 text-slate-950 font-bold text-sm shadow-lg shadow-cyan-500/20 flex items-center justify-center gap-2 active:scale-[0.98] transition-all whitespace-nowrap"
+                className="w-full min-h-[50px] px-6 rounded-2xl bg-gradient-to-r from-cyan-400 to-blue-500 hover:from-cyan-300 hover:to-blue-400 text-slate-950 font-bold text-sm sm:text-base shadow-lg shadow-cyan-500/20 flex items-center justify-center gap-2 active:scale-[0.98] transition-all whitespace-nowrap"
               >
                 <span>Anza Sasa — Jisajili</span>
                 <ArrowRight className="w-4 h-4 stroke-[2.5]" />
@@ -379,7 +392,7 @@ export const MobileOnboardingView: React.FC<MobileOnboardingViewProps> = ({
               <button
                 type="button"
                 onClick={() => onComplete('signin')}
-                className="w-full min-h-[44px] px-4 rounded-2xl bg-white/[0.07] hover:bg-white/[0.13] border border-white/10 text-white font-semibold text-xs transition-all active:scale-[0.98] whitespace-nowrap"
+                className="w-full min-h-[48px] px-5 rounded-2xl bg-white/[0.08] hover:bg-white/[0.14] border border-white/10 text-white font-semibold text-xs sm:text-sm transition-all active:scale-[0.98] whitespace-nowrap"
               >
                 Tayari Nina Akaunti — Ingia
               </button>
