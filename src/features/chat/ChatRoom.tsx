@@ -80,9 +80,8 @@ import { ChatSyncService } from '../../services/chat/chatSyncService';
 import { AVAILABLE_CONTACTS } from './components/StartNewChatModal';
 import { ArrowLeftRight } from 'lucide-react';
 import freshKkAvatar from '../../assets/images/fresh_kk_avatar_1791078365294.jpg';
-import aminaAvatar from '../../assets/images/amina_avatar_1790280951312.jpg';
 import { userService } from '../../services/user/userService';
-import { userDirectoryService } from '../../services/user/userDirectoryService';
+import { userDirectoryService, isDemoModeActive } from '../../services/user/userDirectoryService';
 import { friendshipService, matchesUser, ADMIN_CANONICAL_ID, SAVEGAMOUR_CANONICAL_ID } from '../../services/user/friendshipService';
 import { isUserOnline, formatUserLastSeen } from '../../services/user/presenceService';
 import { db } from '../../services/firebase/config';
@@ -337,11 +336,10 @@ export const ChatRoom: React.FC<ChatRoomProps> = ({
 
   const avatar =
     (conversation.isGroup ? conversation.groupAvatar : undefined) ||
-    (isOtherAdmin ? aminaAvatar : undefined) ||
     otherDetails?.photoURL ||
     dirUser?.photoURL ||
     contact?.photoURL ||
-    (matchesUser(otherUserId, 'user_fresh_kk') ? freshKkAvatar : undefined);
+    (isDemoModeActive() && matchesUser(otherUserId, 'user_fresh_kk') ? freshKkAvatar : undefined);
 
   const [, setFriendshipTick] = useState(0);
   useEffect(() => {
@@ -946,7 +944,7 @@ export const ChatRoom: React.FC<ChatRoomProps> = ({
       senderAvatar: currentUser.photoURL,
       text: '⭕ Ujumbe wa Video ya Duara',
       messageType: 'video_note',
-      mediaUrl: currentUser.photoURL || freshKkAvatar,
+      mediaUrl: currentUser.photoURL || '',
       audioDuration: '0:10',
       status: 'sent',
       createdAt: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
@@ -1749,8 +1747,9 @@ export const ChatRoom: React.FC<ChatRoomProps> = ({
                   /* 2. ROUND CAM VIDEO NOTE (Feature 2) */
                   <div className="py-1 flex flex-col items-center">
                     <div className="relative w-36 h-36 sm:w-40 sm:h-40 rounded-full overflow-hidden border-4 border-cyan-400 shadow-2xl bg-black ring-4 ring-cyan-500/20 group/vn">
-                      <img
-                        src={msg.mediaUrl || freshKkAvatar}
+                      <SafeImage
+                        src={msg.mediaUrl}
+                        fallbackText={msg.senderName || ''}
                         alt="Round Video Note"
                         className="w-full h-full object-cover scale-105 group-hover/vn:scale-110 transition-transform"
                       />

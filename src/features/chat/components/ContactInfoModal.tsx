@@ -115,21 +115,21 @@ export const ContactInfoModal: React.FC<ContactInfoModalProps> = ({
   const isMarket = otherUser?.displayName?.toLowerCase().includes('market') || otherUserId === 'user_market';
 
   const displayName = isGroup
-    ? conversation.groupName || 'Design Team'
-    : otherUser?.displayName || (isSarah ? 'Sarah Mwangi' : isAlex ? 'Alex Johnson' : 'Sarah Mwangi');
+    ? conversation.groupName || 'Kikundi cha Zenia'
+    : otherUser?.displayName || (isSarah ? 'Sarah Mwangi' : isAlex ? 'Alex Johnson' : 'Mwanachama wa Zenia');
 
   const avatarUrl = isGroup
-    ? conversation.groupAvatar || '/src/assets/images/team_design_1790802245828.jpg'
+    ? conversation.groupAvatar
     : otherUser?.photoURL ||
       (isSarah
         ? '/src/assets/images/sarah_avatar_1790802224123.jpg'
         : isAlex
         ? '/src/assets/images/alex_avatar_1790802235334.jpg'
-        : '/assets/images/amina_avatar_1790280951312.jpg');
+        : undefined);
 
   const username = isGroup
-    ? 'group/design_team_tz'
-    : otherUser?.username || (isSarah ? 'sarah_m' : isAlex ? 'alex_j' : isMarket ? 'marketplace_hq' : 'sarah_m');
+    ? 'group/zenia_group'
+    : otherUser?.username || (isSarah ? 'sarah_m' : isAlex ? 'alex_j' : isMarket ? 'marketplace_hq' : 'user');
 
   const phoneNumber = isSarah
     ? '+255 712 345 678'
@@ -255,10 +255,10 @@ export const ContactInfoModal: React.FC<ContactInfoModalProps> = ({
               title="Bonyeza kuona picha kubwa"
             >
               <div className="w-24 h-24 sm:w-28 sm:h-28 rounded-full overflow-hidden ring-4 ring-cyan-500/20 group-hover:ring-cyan-400 shadow-2xl transition-all duration-300 group-hover:scale-105 bg-slate-900">
-                <img
+                <SafeImage
                   src={avatarUrl}
+                  fallbackText={displayName}
                   alt={displayName}
-                  referrerPolicy="no-referrer"
                   className="w-full h-full object-cover"
                 />
               </div>
@@ -1026,11 +1026,11 @@ export const ContactInfoModal: React.FC<ContactInfoModalProps> = ({
             </div>
           </div>
           <div className="max-w-md w-full max-h-[70vh] rounded-3xl overflow-hidden shadow-2xl border border-white/10 bg-slate-950 flex items-center justify-center">
-            <img
+            <SafeImage
               src={avatarUrl}
+              fallbackText={displayName}
               alt={displayName}
-              referrerPolicy="no-referrer"
-              className="w-full h-full object-contain"
+              className="w-full h-full object-contain min-h-[240px]"
             />
           </div>
         </div>

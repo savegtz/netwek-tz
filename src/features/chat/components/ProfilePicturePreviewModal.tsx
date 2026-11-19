@@ -11,8 +11,8 @@ import {
   Sparkles,
 } from 'lucide-react';
 import { Conversation } from '../../../types';
+import { SafeImage } from '../../../components/SafeImage';
 import freshKkAvatar from '../../../assets/images/fresh_kk_avatar_1791078365294.jpg';
-import freshKkStatus from '../../../assets/images/fresh_kk_status_1791078352206.jpg';
 
 interface ProfilePicturePreviewModalProps {
   isOpen: boolean;
@@ -41,8 +41,8 @@ export const ProfilePicturePreviewModal: React.FC<ProfilePicturePreviewModalProp
   const otherUser = otherUserId && conversation.participantDetails ? conversation.participantDetails[otherUserId] : null;
   const title = conversation.isGroup ? conversation.groupName : otherUser?.displayName || 'Direct Chat';
   const avatar = conversation.isGroup
-    ? conversation.groupAvatar || '/assets/images/amina_avatar_1790280951312.jpg'
-    : otherUser?.photoURL || '/assets/images/amina_avatar_1790280951312.jpg';
+    ? conversation.groupAvatar
+    : otherUser?.photoURL;
 
   const handleFileUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
@@ -85,8 +85,9 @@ export const ProfilePicturePreviewModal: React.FC<ProfilePicturePreviewModalProp
 
         {/* Large Profile Picture View */}
         <div className="relative w-full aspect-square bg-[#070A12] overflow-hidden group">
-          <img
+          <SafeImage
             src={avatar}
+            fallbackText={title || ''}
             alt={title || 'Profile'}
             className="w-full h-full object-cover"
           />

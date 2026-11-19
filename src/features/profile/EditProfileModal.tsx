@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import {
   X,
   User,
@@ -13,7 +13,7 @@ import {
   Sparkles,
   Upload,
 } from 'lucide-react';
-import { doc, updateDoc } from 'firebase/firestore';
+import { doc, setDoc } from 'firebase/firestore';
 import { db } from '../../services/firebase/config';
 import { UserProfile, AccountType } from '../../types';
 import { SafeImage } from '../../components/SafeImage';
@@ -48,6 +48,19 @@ export const EditProfileModal: React.FC<EditProfileModalProps> = ({
   const [errorMsg, setErrorMsg] = useState<string | null>(null);
   const [successMsg, setSuccessMsg] = useState<string | null>(null);
 
+  useEffect(() => {
+    if (isOpen) {
+      setDisplayName(currentUser.displayName || '');
+      setUsername(currentUser.username || '');
+      setBio(currentUser.bio || '');
+      setAccountType(currentUser.accountType || 'personal');
+      setPhotoURL(currentUser.photoURL || '');
+      setPhoneNumber(currentUser.phoneNumber || currentUser.phone || '');
+      setErrorMsg(null);
+      setSuccessMsg(null);
+    }
+  }, [isOpen, currentUser.id]);
+
   if (!isOpen) return null;
 
   const presetAvatars = [
@@ -64,6 +77,7 @@ export const EditProfileModal: React.FC<EditProfileModalProps> = ({
     setSuccessMsg(null);
 
     const cleanUsername = username.toLowerCase().replace(/[^a-z0-9_]/g, '_');
+    const cleanPhoto = photoURL.trim();
 
     const updatedUser: UserProfile = {
       ...currentUser,
@@ -71,7 +85,7 @@ export const EditProfileModal: React.FC<EditProfileModalProps> = ({
       username: cleanUsername || currentUser.username,
       bio: bio.trim(),
       accountType,
-      photoURL: photoURL.trim() || currentUser.photoURL,
+      photoURL: cleanPhoto || undefined,
       phoneNumber: phoneNumber.trim(),
       phone: phoneNumber.trim(),
     };
@@ -80,14 +94,18 @@ export const EditProfileModal: React.FC<EditProfileModalProps> = ({
       // Update in Firestore if user is authenticated with Firebase
       if (currentUser.id && currentUser.id !== 'guest') {
         try {
-          await updateDoc(doc(db, 'users', currentUser.id), {
-            displayName: updatedUser.displayName,
-            username: updatedUser.username,
-            bio: updatedUser.bio,
-            accountType: updatedUser.accountType,
-            photoURL: updatedUser.photoURL,
-            phoneNumber: updatedUser.phoneNumber,
-          });
+          await setDoc(
+            doc(db, 'users', currentUser.id),
+            {
+              displayName: updatedUser.displayName,
+              username: updatedUser.username,
+              bio: updatedUser.bio,
+              accountType: updatedUser.accountType,
+              photoURL: cleanPhoto || '',
+              phoneNumber: updatedUser.phoneNumber || '',
+            },
+            { merge: true }
+          );
         } catch (dbErr) {
           console.warn('Firestore update notice (continuing locally):', dbErr);
         }
@@ -158,8 +176,8 @@ export const EditProfileModal: React.FC<EditProfileModalProps> = ({
             </label>
             <div className="flex items-center gap-4">
               <DynamicAvatar
-                src={photoURL || currentUser.photoURL}
-                fallbackText={displayName || 'User'}
+                src={photoURL || undefined}
+                fallbackText={displayName || ''}
                 size={60}
                 hasStory={false}
               />
@@ -182,6 +200,16 @@ export const EditProfileModal: React.FC<EditProfileModalProps> = ({
                       <img src={av.url} alt={av.label} className="w-full h-full object-cover" />
                     </button>
                   ))}
+                  {photoURL && (
+                    <button
+                      type="button"
+                      onClick={() => setPhotoURL('')}
+                      className="px-2 py-1 rounded-lg bg-rose-500/15 hover:bg-rose-500/25 border border-rose-500/30 text-rose-300 text-[10px] font-bold transition-colors"
+                      title="Ondoa picha ya wasifu"
+                    >
+                      Ondoa
+                    </button>
+                  )}
                 </div>
               </div>
             </div>

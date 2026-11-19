@@ -26,6 +26,7 @@ import {
   Phone,
 } from 'lucide-react';
 import { Conversation, ChatMessage } from '../../../types';
+import { SafeImage } from '../../../components/SafeImage';
 
 export interface ChatTheme {
   id: string;
@@ -724,12 +725,13 @@ export const ChatRoomMoreMenu: React.FC<ChatRoomMoreMenuProps> = ({
 
             <div className="text-center mb-5">
               <div className="w-20 h-20 rounded-full mx-auto overflow-hidden ring-4 ring-cyan-500/30 mb-3 shadow-xl">
-                <img
+                <SafeImage
                   src={
                     conversation.isGroup
-                      ? conversation.groupAvatar || '/assets/images/amina_avatar_1790280951312.jpg'
-                      : otherUser?.photoURL || '/assets/images/amina_avatar_1790280951312.jpg'
+                      ? conversation.groupAvatar
+                      : otherUser?.photoURL
                   }
+                  fallbackText={chatName}
                   alt={chatName}
                   className="w-full h-full object-cover"
                 />

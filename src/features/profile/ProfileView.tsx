@@ -59,7 +59,7 @@ import { useTheme } from '../../context/ThemeContext';
 import { INITIAL_USER } from '../../services/seed/initialData';
 import { friendshipService, matchesUser } from '../../services/user/friendshipService';
 import { AVAILABLE_CONTACTS } from '../chat/components/StartNewChatModal';
-import { userDirectoryService } from '../../services/user/userDirectoryService';
+import { userDirectoryService, isDemoModeActive } from '../../services/user/userDirectoryService';
 
 // Import local image assets
 import aminaAvatar from '../../assets/images/amina_avatar_1790280951312.jpg';
@@ -78,6 +78,7 @@ interface ProfileViewProps {
   onSignOut?: () => void;
   onLoginSuccess?: (user: UserProfile) => void;
   onOpenCreateStatus?: () => void;
+  onOpenOnboarding?: () => void;
 }
 
 interface PostItem {
@@ -117,6 +118,7 @@ export const ProfileView: React.FC<ProfileViewProps> = ({
   onSignOut,
   onLoginSuccess,
   onOpenCreateStatus,
+  onOpenOnboarding,
 }) => {
   const { isDark, toggleTheme } = useTheme();
 
@@ -275,7 +277,7 @@ export const ProfileView: React.FC<ProfileViewProps> = ({
         id: currentUser?.id || 'current_user_id',
         displayName: currentUser?.displayName || INITIAL_USER.displayName,
         username: currentUser?.username || INITIAL_USER.username,
-        photoURL: currentUser?.photoURL || aminaAvatar,
+        photoURL: currentUser?.photoURL,
         bio: currentUser?.bio || INITIAL_USER.bio,
         isOnline: false,
         lastSeen: 'Muda mfupi uliopita',
@@ -629,6 +631,16 @@ export const ProfileView: React.FC<ProfileViewProps> = ({
             </div>
 
             <div className="flex items-center gap-2">
+              {onOpenOnboarding && (
+                <button
+                  type="button"
+                  onClick={onOpenOnboarding}
+                  className="px-3 py-2 rounded-xl bg-white/5 hover:bg-white/10 border border-white/10 text-xs font-semibold text-cyan-300 transition-colors"
+                  title="Tazama Mwongozo wa Zenia (Onboarding)"
+                >
+                  Mwongozo
+                </button>
+              )}
               {/* Theme toggle */}
               <button
                 onClick={toggleTheme}
@@ -908,7 +920,7 @@ export const ProfileView: React.FC<ProfileViewProps> = ({
 
   const isAminaOrAdmin = isUserAdmin(currentUser) || currentUser?.username === 'amina_kaunga';
 
-  const highlights: HighlightItem[] = isAminaOrAdmin
+  const highlights: HighlightItem[] = isAminaOrAdmin && isDemoModeActive()
     ? [
         {
           id: 'hl_1',
@@ -917,13 +929,17 @@ export const ProfileView: React.FC<ProfileViewProps> = ({
           gradient: 'from-cyan-500 to-blue-600',
           emoji: '🏖️',
         },
-        {
-          id: 'hl_2',
-          title: 'Maisha ✨',
-          cover: currentUser.photoURL || aminaAvatar,
-          gradient: 'from-purple-500 to-pink-600',
-          emoji: '✨',
-        },
+        ...(currentUser.photoURL
+          ? [
+              {
+                id: 'hl_2',
+                title: 'Maisha ✨',
+                cover: currentUser.photoURL,
+                gradient: 'from-purple-500 to-pink-600',
+                emoji: '✨',
+              },
+            ]
+          : []),
         {
           id: 'hl_3',
           title: 'Tech 🎧',
@@ -1304,8 +1320,8 @@ export const ProfileView: React.FC<ProfileViewProps> = ({
               title="Bonyeza kubadili mtindo wa Avatar (Organic Blob, Squircle, Shield n.k.)"
             >
               <DynamicAvatar
-                src={currentUser.photoURL || (isAminaOrAdmin ? aminaAvatar : undefined)}
-                fallbackText={currentUser.displayName || 'User'}
+                src={currentUser.photoURL || undefined}
+                fallbackText={currentUser.displayName || ''}
                 alt={currentUser.displayName}
                 size="2xl"
                 hasStory={true}
@@ -1709,7 +1725,8 @@ export const ProfileView: React.FC<ProfileViewProps> = ({
               <div className="flex items-center gap-3">
                 <div className="w-11 h-11 rounded-full p-0.5 bg-gradient-to-tr from-cyan-400 to-purple-500 shrink-0">
                   <SafeImage
-                    src={currentUser.photoURL || aminaAvatar}
+                    src={currentUser.photoURL}
+                    fallbackText={currentUser.displayName}
                     className="w-full h-full rounded-full object-cover"
                   />
                 </div>
@@ -2061,7 +2078,8 @@ export const ProfileView: React.FC<ProfileViewProps> = ({
               <div className="flex items-center gap-2.5">
                 <div className="w-8 h-8 rounded-full overflow-hidden">
                   <SafeImage
-                    src={currentUser.photoURL || aminaAvatar}
+                    src={currentUser.photoURL}
+                    fallbackText={currentUser.displayName}
                     className="w-full h-full object-cover"
                   />
                 </div>

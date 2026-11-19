@@ -89,6 +89,7 @@ interface ChatListProps {
   onOpenAuth?: (initialMode?: 'signin' | 'signup', promptReason?: string) => void;
   onStartCall?: (type: 'video' | 'voice', conv: Conversation) => void;
   onSimulateIncomingCall?: () => void;
+  onOpenOnboarding?: () => void;
 }
 
 export const ChatList: React.FC<ChatListProps> = ({
@@ -111,6 +112,7 @@ export const ChatList: React.FC<ChatListProps> = ({
   onOpenAuth,
   onStartCall,
   onSimulateIncomingCall,
+  onOpenOnboarding,
 }) => {
   const effectiveUser: UserProfile = currentUser || {
     id: 'guest',
@@ -1576,18 +1578,27 @@ export const ChatList: React.FC<ChatListProps> = ({
                   setGuestPromptState({
                     isOpen: true,
                     targetName: 'Marafiki wa Zenia',
-                    targetAvatar: freshKkAvatar,
                     targetSubtitle: 'Anza mazungumzo mapya ya faragha',
                   });
                   return;
                 }
                 onStartNewChat();
               }}
-              className="px-5 py-2.5 rounded-2xl bg-gradient-to-r from-cyan-400 to-blue-500 text-slate-950 font-bold text-xs shadow-lg shadow-cyan-500/20 hover:scale-105 active:scale-95 transition-all flex items-center gap-2 mb-5"
+              className="px-5 py-2.5 rounded-2xl bg-gradient-to-r from-cyan-400 to-blue-500 text-slate-950 font-bold text-xs shadow-lg shadow-cyan-500/20 hover:scale-105 active:scale-95 transition-all flex items-center gap-2 mb-3"
             >
               <UserPlus className="w-4 h-4 stroke-[2.5]" />
               <span>+ Anza Kuchati Sasa</span>
             </button>
+
+            {!currentUser && onOpenOnboarding && (
+              <button
+                type="button"
+                onClick={onOpenOnboarding}
+                className="mb-4 text-xs font-semibold text-cyan-400 hover:text-cyan-300 underline underline-offset-4 transition-colors"
+              >
+                Tazama Muonekano wa Mwanzo (Onboarding)
+              </button>
+            )}
 
             {/* Quick contact suggestion chips */}
             {!searchQuery.trim() && (
@@ -1776,14 +1787,13 @@ export const ChatList: React.FC<ChatListProps> = ({
             }
             const title: string = rawTitle;
             const otherUserAvatar =
-              (isOtherAdmin ? aminaAvatar : undefined) ||
               otherUser?.photoURL ||
               dirUser?.photoURL ||
-              (matchesUser(otherUserId, 'user_fresh_kk')
+              (isDemoModeActive() && matchesUser(otherUserId, 'user_fresh_kk')
                 ? freshKkAvatar
                 : undefined);
             const avatar = conv.isGroup
-              ? conv.groupAvatar || aminaAvatar
+              ? conv.groupAvatar
               : otherUserAvatar;
             const isOnline = !conv.isGroup ? (isOtherAdmin ? true : isUserOnline(otherUser || dirUser, currentUserId)) : false;
             const isSelected = activeConversationId === conv.id;
@@ -2106,7 +2116,6 @@ export const ChatList: React.FC<ChatListProps> = ({
               setGuestPromptState({
                 isOpen: true,
                 targetName: 'Mtu Yeyote',
-                targetAvatar: freshKkAvatar,
                 targetSubtitle: 'Anza mazungumzo mapya ya faragha',
               });
               return;

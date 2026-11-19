@@ -14,7 +14,6 @@ import {
   setStoredAvatarStyle,
 } from '../features/profile/avatarStyles';
 import { DynamicAvatar } from './DynamicAvatar';
-import aminaAvatar from '../assets/images/amina_avatar_1790280951312.jpg';
 
 interface AvatarShapeShowcaseStudioProps {
   currentUser?: UserProfile | null;
@@ -46,8 +45,8 @@ export const AvatarShapeShowcaseStudio: React.FC<AvatarShapeShowcaseStudioProps>
     };
   }, []);
 
-  const userPhoto = currentUser?.photoURL || aminaAvatar;
-  const userName = currentUser?.displayName || 'Amina Kaunga';
+  const userPhoto = currentUser?.photoURL;
+  const userName = currentUser?.displayName || '';
 
   const handleSelectStyle = (styleId: AvatarShapeStyle) => {
     setStoredAvatarStyle(styleId);

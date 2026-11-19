@@ -34,7 +34,6 @@ import { soundEffects } from '../../services/audio/soundEffects';
 import { callHistoryService } from '../../services/calls/callHistoryService';
 import { UserProfile, ChatMessage } from '../../types';
 import { SafeImage } from '../../components/SafeImage';
-import freshKkAvatar from '../../assets/images/fresh_kk_avatar_1791078365294.jpg';
 
 interface VideoCallScreenProps {
   callType?: 'video' | 'voice';
@@ -53,9 +52,9 @@ interface VideoCallScreenProps {
 export const VideoCallScreen: React.FC<VideoCallScreenProps> = ({
   callType = 'voice',
   callId,
-  remoteUserId = 'user_fresh_kk',
-  remoteUserName = 'Fresh kk',
-  remoteUserAvatar = freshKkAvatar,
+  remoteUserId = 'unknown',
+  remoteUserName = 'Mwanachama wa Zenia',
+  remoteUserAvatar,
   remoteUserSubtitle = 'Zenia Call • WebRTC P2P Encrypted',
   isIncoming = false,
   incomingCallData,

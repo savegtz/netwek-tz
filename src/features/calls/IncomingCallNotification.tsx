@@ -15,7 +15,6 @@ import { WebRTCCallData } from '../../services/calls/webrtcService';
 import { soundEffects } from '../../services/audio/soundEffects';
 import { callHistoryService } from '../../services/calls/callHistoryService';
 import { SafeImage } from '../../components/SafeImage';
-import freshKkAvatar from '../../assets/images/fresh_kk_avatar_1791078365294.jpg';
 
 interface IncomingCallNotificationProps {
   call: WebRTCCallData;
@@ -84,7 +83,7 @@ export const IncomingCallNotification: React.FC<IncomingCallNotificationProps> =
         callId: call.id,
         remoteUserId: call.callerId,
         remoteUserName: call.callerName || 'Mwanachama wa Zenia',
-        remoteUserAvatar: call.callerAvatar || freshKkAvatar,
+        remoteUserAvatar: call.callerAvatar,
         callType: call.callType,
         direction: 'missed',
         status: 'missed',
@@ -110,7 +109,7 @@ export const IncomingCallNotification: React.FC<IncomingCallNotificationProps> =
         callId: call.id,
         remoteUserId: call.callerId,
         remoteUserName: call.callerName || 'Mwanachama wa Zenia',
-        remoteUserAvatar: call.callerAvatar || freshKkAvatar,
+        remoteUserAvatar: call.callerAvatar,
         callType: call.callType,
         direction: 'missed',
         status: 'rejected',
@@ -134,7 +133,7 @@ export const IncomingCallNotification: React.FC<IncomingCallNotificationProps> =
         callId: call.id,
         remoteUserId: call.callerId,
         remoteUserName: call.callerName || 'Mwanachama wa Zenia',
-        remoteUserAvatar: call.callerAvatar || freshKkAvatar,
+        remoteUserAvatar: call.callerAvatar,
         callType: call.callType,
         direction: 'missed',
         status: 'rejected',
@@ -153,7 +152,7 @@ export const IncomingCallNotification: React.FC<IncomingCallNotificationProps> =
 
   const isVideo = call.callType === 'video';
   const callerName = call.callerName || 'Mwanachama wa Zenia';
-  const callerAvatar = call.callerAvatar || freshKkAvatar;
+  const callerAvatar = call.callerAvatar;
 
   return (
     <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-black/85 backdrop-blur-md animate-in fade-in select-none">

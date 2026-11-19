@@ -10,14 +10,12 @@ import {
   WalletTransaction,
   NotificationItem,
 } from '../../types';
-import aminaAvatar from '../../assets/images/amina_avatar_1790280951312.jpg';
 
 export const INITIAL_USER: UserProfile = {
   id: '7w6ldhpczBOVpimURqrpQ3C',
   email: 'amytzee@gmail.com',
   displayName: 'Amytzee (Admin)',
   username: 'amytzee',
-  photoURL: aminaAvatar,
   bio: 'Msimamizi Mkuu (Super Admin) wa Zenia Network 🛡️👑',
   accountType: 'creator',
   verified: true,

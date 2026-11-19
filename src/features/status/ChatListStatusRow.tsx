@@ -30,7 +30,6 @@ import {
 // Bundled local image assets matching the app's visual identity
 import freshKkStatus from '../../assets/images/fresh_kk_status_1791078352206.jpg';
 import freshKkAvatar from '../../assets/images/fresh_kk_avatar_1791078365294.jpg';
-import aminaAvatar from '../../assets/images/amina_avatar_1790280951312.jpg';
 import alexPortrait from '../../assets/images/alex_portrait_1791059432462.jpg';
 import alexAvatar from '../../assets/images/alex_avatar_1790802235334.jpg';
 import sarahPortrait from '../../assets/images/sarah_portrait_1791059459448.jpg';
@@ -456,9 +455,13 @@ export const ChatListStatusRow: React.FC<ChatListStatusRowProps> = ({
                 title={myStories.length > 0 ? 'Tazama Hali Yangu' : 'Weka Hali Yako Mpya'}
               >
                 <DynamicAvatar
-                  src={currentUser?.photoURL || aminaAvatar}
-                  fallbackText="Me"
-                  alt="My Status"
+                  src={currentUser?.photoURL || undefined}
+                  fallbackText={
+                    currentUser && currentUser.id !== 'guest' && currentUser.id !== 'guest_user'
+                      ? currentUser.displayName || ''
+                      : ''
+                  }
+                  alt={currentUser?.displayName || 'Hali Yangu'}
                   size="story"
                   styleVariant={myStories[0]?.avatarStyle || currentUser?.avatarStyle}
                   hasStory={myStories.length > 0}

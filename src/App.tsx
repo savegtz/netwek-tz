@@ -49,10 +49,9 @@ import { ZeniaMiniPlayer } from './components/ZeniaMiniPlayer';
 import { NotificationHeadsUpBanner } from './components/NotificationHeadsUpBanner';
 import { pushNotificationService } from './services/notifications/pushNotificationService';
 import { isDemoModeActive, userDirectoryService } from './services/user/userDirectoryService';
-import freshKkAvatar from './assets/images/fresh_kk_avatar_1791078365294.jpg';
+import { MobileOnboardingView } from './features/onboarding/MobileOnboardingView';
 
 export default function App() {
-  // Default to INITIAL_USER (Amytzee Admin) so profile and story avatars are immediately accessible and active
   const [currentUser, setCurrentUser] = useState<UserProfile | null>(() => {
     const saved = localStorage.getItem('zenia_active_user');
     if (saved) {
@@ -63,12 +62,12 @@ export default function App() {
           localStorage.setItem('zenia_active_user', JSON.stringify(canonical));
           return canonical;
         }
-        return u;
+        return u || null;
       } catch {
-        return INITIAL_USER;
+        return null;
       }
     }
-    return INITIAL_USER;
+    return null;
   });
 
   // Safe fallback representation for read-only child components when browsing as guest
@@ -319,6 +318,40 @@ export default function App() {
   const [authPromptReason, setAuthPromptReason] = useState<string | null>(null);
   const [authInitialMode, setAuthInitialMode] = useState<'signin' | 'signup'>('signup');
   const [appToast, setAppToast] = useState<string | null>(null);
+  const [showOnboarding, setShowOnboarding] = useState<boolean>(() => {
+    try {
+      const params = new URLSearchParams(window.location.search);
+      if (params.get('onboarding') === '1') return true;
+      const hasSavedUser = Boolean(localStorage.getItem('zenia_active_user'));
+      if (!hasSavedUser) {
+        return sessionStorage.getItem('zenia_onboarding_guest_dismissed') !== 'true';
+      }
+      return localStorage.getItem('zenia_onboarding_completed') !== 'true';
+    } catch {
+      return true;
+    }
+  });
+
+  const handleCompleteOnboarding = (action: 'explore' | 'signin' | 'signup' = 'explore') => {
+    try {
+      sessionStorage.setItem('zenia_onboarding_guest_dismissed', 'true');
+      if (currentUser || action === 'signin' || action === 'signup') {
+        localStorage.setItem('zenia_onboarding_completed', 'true');
+      }
+    } catch {}
+    setShowOnboarding(false);
+    if (action === 'signin') {
+      setAuthPromptReason(null);
+      setAuthInitialMode('signin');
+      setIsAuthOpen(true);
+    } else if (action === 'signup') {
+      setAuthPromptReason(null);
+      setAuthInitialMode('signup');
+      setIsAuthOpen(true);
+    } else {
+      setActiveTab('chats');
+    }
+  };
 
   useEffect(() => {
     if (!appToast) return;
@@ -689,9 +722,13 @@ export default function App() {
       console.warn('Signout warning:', e);
     }
     localStorage.removeItem('zenia_active_user');
+    try {
+      sessionStorage.removeItem('zenia_onboarding_guest_dismissed');
+    } catch {}
     setCurrentUser(null);
-    setConversations(INITIAL_CONVERSATIONS);
+    setConversations(isDemoModeActive() ? INITIAL_CONVERSATIONS : []);
     setActiveConversation(null);
+    setShowOnboarding(true);
   };
 
   const handleSelectUserToChat = (targetUser: {
@@ -849,6 +886,11 @@ export default function App() {
           } catch {}
         }
         setCurrentUser(null);
+        try {
+          if (sessionStorage.getItem('zenia_onboarding_guest_dismissed') !== 'true') {
+            setShowOnboarding(true);
+          }
+        } catch {}
       }
     });
 
@@ -979,6 +1021,7 @@ export default function App() {
           onToggleFrameMode={() => setIsFrameMode(!isFrameMode)}
           unreadNotificationsCount={notifications.filter((n) => !n.read).length}
           onSwitchUser={(u) => setCurrentUser(u)}
+          onOpenOnboarding={() => setShowOnboarding(true)}
           onTriggerSimulatedIncomingCall={() => {
             webrtcService.triggerSimulatedIncomingCall(activeUser.id, 'Fresh kk', 'video');
           }}
@@ -1060,6 +1103,7 @@ export default function App() {
                       onSimulateIncomingCall={() => {
                         webrtcService.triggerSimulatedIncomingCall(activeUser.id, 'Fresh kk', 'video');
                       }}
+                      onOpenOnboarding={() => setShowOnboarding(true)}
                     />
                   </div>
 
@@ -1212,6 +1256,7 @@ export default function App() {
                     setIsCreateMenuOpen(true);
                   }
                 }}
+                onOpenOnboarding={() => setShowOnboarding(true)}
               />
             )}
 
@@ -1371,12 +1416,22 @@ export default function App() {
 
       <AuthModal
         isOpen={isAuthOpen}
-        onClose={() => setIsAuthOpen(false)}
+        onClose={() => {
+          setIsAuthOpen(false);
+          setAuthPromptReason(null);
+        }}
         currentUser={currentUser}
+        initialMode={authInitialMode}
+        promptReason={authPromptReason}
         onUserUpdate={(updated) => {
           setCurrentUser(updated);
           if (updated) {
             localStorage.setItem('zenia_active_user', JSON.stringify(updated));
+            try {
+              localStorage.setItem('zenia_onboarding_completed', 'true');
+              sessionStorage.setItem('zenia_onboarding_guest_dismissed', 'true');
+            } catch {}
+            setShowOnboarding(false);
           } else {
             localStorage.removeItem('zenia_active_user');
           }
@@ -1481,7 +1536,7 @@ export default function App() {
               callId: call.id,
               remoteUserId: call.callerId,
               remoteName: call.callerName || 'Mwanachama wa Zenia',
-              remoteAvatar: call.callerAvatar || freshKkAvatar,
+              remoteAvatar: call.callerAvatar,
               subtitle: 'Zenia WebRTC • Simu Iliyopokelewa P2P',
               isIncoming: true,
               incomingCallData: call,
@@ -1525,7 +1580,7 @@ export default function App() {
             callId={activeCallSession.callId}
             remoteUserId={activeCallSession.remoteUserId}
             remoteUserName={activeCallSession.remoteName}
-            remoteUserAvatar={activeCallSession.remoteAvatar || freshKkAvatar}
+            remoteUserAvatar={activeCallSession.remoteAvatar}
             remoteUserSubtitle={activeCallSession.subtitle}
             isIncoming={activeCallSession.isIncoming}
             incomingCallData={activeCallSession.incomingCallData}
@@ -1543,7 +1598,7 @@ export default function App() {
       {activeCallSession && isCallMinimized && (
         <FloatingCallBubble
           remoteName={activeCallSession.remoteName}
-          remoteAvatar={activeCallSession.remoteAvatar || freshKkAvatar}
+          remoteAvatar={activeCallSession.remoteAvatar}
           callType={activeCallSession.type}
           durationSeconds={minimizedCallSeconds}
           isMuted={minimizedCallMuted}
@@ -1568,6 +1623,13 @@ export default function App() {
       {isAppLocked && (
         <AppLockScreen onUnlock={() => setIsAppLocked(false)} />
       )}
+
+      {/* Mobile-First Onboarding Screen */}
+      <MobileOnboardingView
+        isOpen={showOnboarding}
+        currentUser={currentUser}
+        onComplete={handleCompleteOnboarding}
+      />
 
       {/* Sleek App Toast Notification */}
       {appToast && (

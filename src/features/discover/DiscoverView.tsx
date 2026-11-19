@@ -666,12 +666,11 @@ export const DiscoverView: React.FC<DiscoverViewProps> = ({
                         <div className="flex items-center justify-between gap-2">
                           <button
                             onClick={() => {
-                              const me = currentUser || {
-                                id: effectiveCurrentUserId,
-                                displayName: 'Amina Kaunga',
-                                username: 'amina_kaunga',
-                                photoURL: '/assets/images/amina_avatar_1790280951312.jpg',
-                              };
+                              if (!currentUser || effectiveCurrentUserId === 'guest') {
+                                showToast('Tafadhali ingia au jisajili kwanza ili kuomba urafiki.');
+                                return;
+                              }
+                              const me = currentUser;
                               friendshipService.sendFriendRequest(me as any, person);
                               showToast(`Ombi la urafiki limetumwa kwa ${person.displayName}! Atakapokubali mtaanza kuchati na kupigiana simu.`);
                             }}

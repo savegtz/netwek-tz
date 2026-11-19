@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { User } from 'lucide-react';
 
 interface SafeImageProps extends React.ImgHTMLAttributes<HTMLImageElement> {
@@ -16,11 +16,16 @@ export const SafeImage: React.FC<SafeImageProps> = ({
 }) => {
   const [error, setError] = useState(false);
 
+  useEffect(() => {
+    setError(false);
+  }, [src]);
+
   if (error || !src) {
     const trimmed = (fallbackText || '').trim();
     const initials = trimmed
       ? trimmed
-          .split(' ')
+          .split(/\s+/)
+          .map((n) => n.replace(/[^a-zA-Z0-9\u00C0-\u024F]/g, ''))
           .filter(Boolean)
           .map((n) => n[0])
           .slice(0, 2)

@@ -2,7 +2,6 @@ import React from 'react';
 import { Maximize2, Mic, MicOff, PhoneOff, Video, Phone } from 'lucide-react';
 import { SafeImage } from '../../components/SafeImage';
 import { webrtcService } from '../../services/calls/webrtcService';
-import freshKkAvatar from '../../assets/images/fresh_kk_avatar_1791078365294.jpg';
 
 interface FloatingCallBubbleProps {
   remoteName: string;
@@ -17,7 +16,7 @@ interface FloatingCallBubbleProps {
 
 export const FloatingCallBubble: React.FC<FloatingCallBubbleProps> = ({
   remoteName,
-  remoteAvatar = freshKkAvatar,
+  remoteAvatar,
   callType,
   durationSeconds,
   isMuted,

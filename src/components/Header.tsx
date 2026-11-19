@@ -40,6 +40,7 @@ interface HeaderProps {
   unreadNotificationsCount: number;
   onTriggerSimulatedIncomingCall?: () => void;
   onSwitchUser?: (user: UserProfile) => void;
+  onOpenOnboarding?: () => void;
 }
 
 export const Header: React.FC<HeaderProps> = ({
@@ -55,6 +56,7 @@ export const Header: React.FC<HeaderProps> = ({
   unreadNotificationsCount,
   onTriggerSimulatedIncomingCall,
   onSwitchUser,
+  onOpenOnboarding,
 }) => {
   const { isDark, toggleTheme } = useTheme();
   const { openPlayer } = useMusicPlayer();
@@ -228,14 +230,26 @@ export const Header: React.FC<HeaderProps> = ({
                 <MoreVertical className="w-3.5 h-3.5 text-slate-400" />
               </button>
             ) : (
-              <button
-                onClick={onOpenAuth}
-                className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-cyan-500 hover:bg-cyan-400 text-slate-950 font-bold text-xs transition-all active:scale-95 shadow-sm"
-                title="Ingia kwenye Akaunti"
-              >
-                <LogIn className="w-3.5 h-3.5 text-slate-950" />
-                <span>Ingia</span>
-              </button>
+              <div className="flex items-center gap-1.5">
+                {onOpenOnboarding && (
+                  <button
+                    onClick={onOpenOnboarding}
+                    className="p-2 rounded-xl bg-white/5 hover:bg-white/10 border border-white/10 text-cyan-300 hover:text-white transition-colors active:scale-95"
+                    title="Mwongozo wa Zenia (Onboarding)"
+                    aria-label="Mwongozo wa Mwanzo"
+                  >
+                    <Compass className="w-4 h-4" />
+                  </button>
+                )}
+                <button
+                  onClick={onOpenAuth}
+                  className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-cyan-500 hover:bg-cyan-400 text-slate-950 font-bold text-xs transition-all active:scale-95 shadow-sm"
+                  title="Ingia kwenye Akaunti"
+                >
+                  <LogIn className="w-3.5 h-3.5 text-slate-950" />
+                  <span>Ingia</span>
+                </button>
+              </div>
             )}
 
             {/* Elegant Dropdown Menu */}
@@ -395,6 +409,24 @@ export const Header: React.FC<HeaderProps> = ({
                     {!isFrameMode ? 'Mobile' : 'Desktop'}
                   </span>
                 </button>
+
+                {onOpenOnboarding && (
+                  <button
+                    onClick={() => {
+                      setIsMenuOpen(false);
+                      onOpenOnboarding();
+                    }}
+                    className="w-full flex items-center justify-between px-3 py-2 rounded-xl text-xs text-slate-200 hover:text-white hover:bg-white/5 transition-colors text-left"
+                  >
+                    <div className="flex items-center gap-2.5">
+                      <Compass className="w-3.5 h-3.5 text-cyan-400" />
+                      <span>Mwongozo wa Mwanzo</span>
+                    </div>
+                    <span className="text-[10px] text-cyan-400 font-semibold">
+                      Onboarding
+                    </span>
+                  </button>
+                )}
 
                 {/* Quick Profile Switcher for Testing Calls and Friendship */}
                 {onSwitchUser && (

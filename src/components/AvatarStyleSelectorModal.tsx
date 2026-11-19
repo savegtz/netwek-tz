@@ -21,7 +21,6 @@ import {
   AvatarStyleDefinition,
 } from '../features/profile/avatarStyles';
 import { DynamicAvatar } from './DynamicAvatar';
-import aminaAvatar from '../assets/images/amina_avatar_1790280951312.jpg';
 
 interface AvatarStyleSelectorModalProps {
   isOpen: boolean;
@@ -43,8 +42,8 @@ export const AvatarStyleSelectorModal: React.FC<AvatarStyleSelectorModalProps> =
 
   if (!isOpen) return null;
 
-  const userPhoto = currentUser?.photoURL || aminaAvatar;
-  const userName = currentUser?.displayName || 'Amina Kaunga';
+  const userPhoto = currentUser?.photoURL;
+  const userName = currentUser?.displayName || '';
 
   const selectedDef =
     AVATAR_STYLES_LIST.find((s) => s.id === selectedStyle) || AVATAR_STYLES_LIST[0];
