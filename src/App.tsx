@@ -323,9 +323,7 @@ export default function App() {
       const params = new URLSearchParams(window.location.search);
       if (params.get('onboarding') === '1') return true;
       const hasSavedUser = Boolean(localStorage.getItem('zenia_active_user'));
-      if (!hasSavedUser) {
-        return sessionStorage.getItem('zenia_onboarding_guest_dismissed') !== 'true';
-      }
+      if (!hasSavedUser) return true;
       return localStorage.getItem('zenia_onboarding_completed') !== 'true';
     } catch {
       return true;
@@ -333,24 +331,30 @@ export default function App() {
   });
 
   const handleCompleteOnboarding = (action: 'explore' | 'signin' | 'signup' = 'explore') => {
-    try {
-      sessionStorage.setItem('zenia_onboarding_guest_dismissed', 'true');
-      if (currentUser || action === 'signin' || action === 'signup') {
-        localStorage.setItem('zenia_onboarding_completed', 'true');
-      }
-    } catch {}
-    setShowOnboarding(false);
     if (action === 'signin') {
       setAuthPromptReason(null);
       setAuthInitialMode('signin');
       setIsAuthOpen(true);
-    } else if (action === 'signup') {
+      return;
+    }
+    if (action === 'signup') {
       setAuthPromptReason(null);
       setAuthInitialMode('signup');
       setIsAuthOpen(true);
-    } else {
-      setActiveTab('chats');
+      return;
     }
+    // Only authenticated users can dismiss onboarding into the main app
+    if (!currentUser) {
+      setAuthPromptReason('Tafadhali ingia au jisajili kwanza ili kuingia kwenye Zenia.');
+      setAuthInitialMode('signup');
+      setIsAuthOpen(true);
+      return;
+    }
+    try {
+      localStorage.setItem('zenia_onboarding_completed', 'true');
+    } catch {}
+    setShowOnboarding(false);
+    setActiveTab('chats');
   };
 
   useEffect(() => {
@@ -886,11 +890,7 @@ export default function App() {
           } catch {}
         }
         setCurrentUser(null);
-        try {
-          if (sessionStorage.getItem('zenia_onboarding_guest_dismissed') !== 'true') {
-            setShowOnboarding(true);
-          }
-        } catch {}
+        setShowOnboarding(true);
       }
     });
 
@@ -1001,6 +1001,56 @@ export default function App() {
     setActiveConversation(businessConv);
     setActiveTab('chats');
   };
+
+  // Strict Auth Gate: If user has not logged in or registered, block all internal app pages
+  if (!currentUser) {
+    return (
+      <div className="h-[100dvh] w-full bg-[#040710] text-slate-100 flex flex-col font-sans selection:bg-cyan-500 selection:text-white overflow-hidden">
+        <MobileOnboardingView
+          isOpen={true}
+          currentUser={null}
+          onComplete={handleCompleteOnboarding}
+        />
+
+        <AuthModal
+          isOpen={isAuthOpen}
+          onClose={() => {
+            setIsAuthOpen(false);
+            setAuthPromptReason(null);
+          }}
+          currentUser={null}
+          initialMode={authInitialMode}
+          promptReason={authPromptReason}
+          onUserUpdate={(updated) => {
+            setCurrentUser(updated);
+            if (updated) {
+              localStorage.setItem('zenia_active_user', JSON.stringify(updated));
+              try {
+                localStorage.setItem('zenia_onboarding_completed', 'true');
+              } catch {}
+              setShowOnboarding(false);
+              setIsAuthOpen(false);
+            } else {
+              localStorage.removeItem('zenia_active_user');
+            }
+          }}
+        />
+
+        {appToast && (
+          <div className="fixed top-5 left-1/2 -translate-x-1/2 z-[100] max-w-md w-[92%] sm:w-auto px-4 py-2.5 rounded-2xl bg-[#0F172A]/95 text-white border border-cyan-400/40 shadow-2xl backdrop-blur-xl flex items-center gap-3 animate-in fade-in slide-in-from-top-3">
+            <div className="w-2 h-2 rounded-full bg-cyan-400 animate-ping shrink-0" />
+            <span className="text-xs sm:text-sm font-semibold text-slate-100 flex-1">{appToast}</span>
+            <button
+              onClick={() => setAppToast(null)}
+              className="text-slate-400 hover:text-white p-1 text-sm font-bold ml-1"
+            >
+              ✕
+            </button>
+          </div>
+        )}
+      </div>
+    );
+  }
 
   return (
     <div className="h-[100dvh] w-full bg-[#06080F] text-slate-100 flex flex-col font-sans selection:bg-cyan-500 selection:text-white overflow-hidden">

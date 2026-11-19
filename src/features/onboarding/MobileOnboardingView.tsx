@@ -79,13 +79,13 @@ export const MobileOnboardingView: React.FC<MobileOnboardingViewProps> = ({
         setCurrentIndex((prev) => Math.min(ONBOARDING_SLIDES.length - 1, prev + 1));
       } else if (e.key === 'ArrowLeft') {
         setCurrentIndex((prev) => Math.max(0, prev - 1));
-      } else if (e.key === 'Escape') {
+      } else if (e.key === 'Escape' && currentUser) {
         onComplete('explore');
       }
     };
     window.addEventListener('keydown', handleKeyDown);
     return () => window.removeEventListener('keydown', handleKeyDown);
-  }, [isOpen, onComplete]);
+  }, [isOpen, currentUser, onComplete]);
 
   if (!isOpen) return null;
 
@@ -197,21 +197,25 @@ export const MobileOnboardingView: React.FC<MobileOnboardingViewProps> = ({
             </span>
           </div>
 
-          <button
-            type="button"
-            onClick={() => onComplete('explore')}
-            className="min-h-[44px] min-w-[44px] px-3 flex items-center justify-center gap-1 rounded-xl text-xs font-semibold text-slate-300 hover:text-white hover:bg-white/[0.06] active:scale-95 transition-all"
-            aria-label={isLastSlide ? 'Funga mwongozo' : 'Ruka mwongozo'}
-          >
-            {isLastSlide ? (
-              <>
-                <X className="w-4 h-4" />
-                <span>Funga</span>
-              </>
-            ) : (
-              <span>Ruka</span>
-            )}
-          </button>
+          {currentUser ? (
+            <button
+              type="button"
+              onClick={() => onComplete('explore')}
+              className="min-h-[44px] min-w-[44px] px-3 flex items-center justify-center gap-1 rounded-xl text-xs font-semibold text-slate-300 hover:text-white hover:bg-white/[0.06] active:scale-95 transition-all"
+              aria-label="Funga mwongozo"
+            >
+              <X className="w-4 h-4" />
+              <span>Funga</span>
+            </button>
+          ) : (
+            <button
+              type="button"
+              onClick={() => onComplete('signin')}
+              className="min-h-[44px] px-3.5 flex items-center justify-center rounded-xl bg-white/[0.07] hover:bg-white/[0.12] border border-white/10 text-xs font-semibold text-cyan-300 active:scale-95 transition-all"
+            >
+              Ingia
+            </button>
+          )}
         </div>
 
         {/* Swipeable Visual Slide Track */}
@@ -372,22 +376,13 @@ export const MobileOnboardingView: React.FC<MobileOnboardingViewProps> = ({
                 <span>Anza Sasa — Jisajili</span>
                 <ArrowRight className="w-4 h-4 stroke-[2.5]" />
               </button>
-              <div className="grid grid-cols-2 gap-2">
-                <button
-                  type="button"
-                  onClick={() => onComplete('signin')}
-                  className="min-h-[44px] px-4 rounded-xl bg-white/[0.06] hover:bg-white/[0.12] border border-white/10 text-white font-semibold text-xs transition-all active:scale-[0.98] whitespace-nowrap"
-                >
-                  Ingia
-                </button>
-                <button
-                  type="button"
-                  onClick={() => onComplete('explore')}
-                  className="min-h-[44px] px-4 rounded-xl bg-white/[0.03] hover:bg-white/[0.08] border border-white/[0.06] text-slate-300 hover:text-white font-medium text-xs transition-all active:scale-[0.98] whitespace-nowrap"
-                >
-                  Vinjari Kwanza
-                </button>
-              </div>
+              <button
+                type="button"
+                onClick={() => onComplete('signin')}
+                className="w-full min-h-[44px] px-4 rounded-2xl bg-white/[0.07] hover:bg-white/[0.13] border border-white/10 text-white font-semibold text-xs transition-all active:scale-[0.98] whitespace-nowrap"
+              >
+                Tayari Nina Akaunti — Ingia
+              </button>
             </div>
           )}
         </div>
